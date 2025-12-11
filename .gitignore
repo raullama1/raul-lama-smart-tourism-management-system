@@ -1,0 +1,76 @@
+# ==========================
+#   LOG FILES
+# ==========================
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+
+# ==========================
+#   DEPENDENCIES
+# ==========================
+node_modules/
+client/node_modules/
+server/node_modules/
+
+
+# ==========================
+#   ENVIRONMENT FILES
+# ==========================
+.env
+.env.*
+client/.env
+server/.env
+
+
+# ==========================
+#   BUILD OUTPUT
+# ==========================
+dist/
+dist-ssr/
+client/dist/
+server/dist/
+
+build/
+*.local
+
+
+# ==========================
+#   SYSTEM FILES
+# ==========================
+.DS_Store
+Thumbs.db
+
+
+# ==========================
+#   EDITORS / IDE FOLDERS
+# ==========================
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?  # SWP, SWO, etc
+
+
+# ==========================
+#   BACKUP / MISC
+# ==========================
+*.bak
+*.tmp
+*.temp
+
+
+# ==========================
+#   SQLITE / MY SQL DUMPS
+# ==========================
+*.sql
+*.sqlite
+*.db
+dump.sql
