@@ -25,7 +25,7 @@ export default function LoginPage() {
       return;
     }
 
-    // 🔹 New: special error if password is shorter than 8 characters
+    // error if password is shorter than 8 characters
     if (trimmedPassword.length < 8) {
       setError("Password must be at least 8 characters long.");
       return;
@@ -37,7 +37,7 @@ export default function LoginPage() {
 
       await login(trimmedEmail, trimmedPassword);
 
-      // later we’ll redirect by role; for now go to public home
+      // later redirect by role; for now go to public home
       navigate("/");
     } catch (err) {
       console.error("Login failed", err);

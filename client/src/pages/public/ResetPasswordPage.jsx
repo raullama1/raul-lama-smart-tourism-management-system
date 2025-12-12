@@ -1,5 +1,5 @@
 // client/src/pages/public/ResetPasswordPage.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { resetPassword } from "../../api/authApi";
 import { FiEye, FiEyeOff } from "react-icons/fi";
@@ -17,79 +17,98 @@ export default function ResetPasswordPage() {
 
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+
+  const [error, setError] = useState("");     // single message
+  const [errors, setErrors] = useState([]);   // ✅ multiple errors list
 
   // Same password rules as signup
-  const passwordRules = [
-    { test: /.{8,}/, message: "At least 8 characters" },
-    { test: /[A-Z]/, message: "At least one uppercase letter (A-Z)" },
-    { test: /[a-z]/, message: "At least one lowercase letter (a-z)" },
-    { test: /[0-9]/, message: "At least one number (0-9)" },
-    {
-      test: /[^A-Za-z0-9]/,
-      message: "At least one special character (!@#$, etc.)",
-    },
-  ];
+  const passwordRules = useMemo(
+    () => [
+      { test: /.{8,}/, message: "At least 8 characters" },
+      { test: /[A-Z]/, message: "At least one uppercase letter (A-Z)" },
+      { test: /[a-z]/, message: "At least one lowercase letter (a-z)" },
+      { test: /[0-9]/, message: "At least one number (0-9)" },
+      {
+        test: /[^A-Za-z0-9]/,
+        message: "At least one special character (!@#$, etc.)",
+      },
+    ],
+    []
+  );
 
   const passwordChecks = passwordRules.map((rule) => ({
     message: rule.message,
     ok: rule.test.test(password),
   }));
 
-  const isPasswordStrong = passwordChecks.every((c) => c.ok);
+  const missingPasswordRules = passwordChecks
+    .filter((c) => !c.ok)
+    .map((c) => c.message);
+
+  const isPasswordStrong = missingPasswordRules.length === 0;
 
   useEffect(() => {
     if (!token) {
       setError("Invalid or missing reset token.");
+      setErrors([]);
     }
   }, [token]);
+
+  const clearAllErrors = () => {
+    if (error) setError("");
+    if (errors.length) setErrors([]);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!token) {
       setError("Invalid or missing reset token.");
+      setErrors([]);
       return;
     }
 
     if (!password || !confirmPassword) {
       setError("Please enter and confirm your new password.");
+      setErrors([]);
       return;
     }
 
+    // ✅ show exactly what is missing
     if (!isPasswordStrong) {
-      setError("Password is too weak. Please follow all the rules below.");
+      setError("Password is too weak. Please fix the following:");
+      setErrors(missingPasswordRules);
       return;
     }
 
     if (password !== confirmPassword) {
       setError("Passwords do not match. Please re-enter them.");
+      setErrors([]);
       return;
     }
 
     try {
       setSubmitting(true);
       setError("");
+      setErrors([]);
       setMessage("");
 
       const res = await resetPassword(token, password);
       setMessage(res.message || "Password reset successful.");
 
-      // auto redirect after 1s
       setTimeout(() => navigate("/login"), 1000);
     } catch (err) {
       console.error("Reset password error", err);
+
       const msg =
-        err?.response?.data?.message ||
-        "Failed to reset password. Try again.";
+        err?.response?.data?.message || "Failed to reset password. Try again.";
+      const apiErrors = err?.response?.data?.errors;
+
       setError(msg);
+      setErrors(Array.isArray(apiErrors) ? apiErrors : []);
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const clearErrorOnChange = () => {
-    if (error) setError("");
   };
 
   return (
@@ -103,9 +122,17 @@ export default function ResetPasswordPage() {
             Choose a strong new password for your account.
           </p>
 
-          {error && (
-            <div className="mb-3 text-xs md:text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-              {error}
+          {(error || errors.length > 0) && (
+            <div className="mb-3 text-xs md:text-sm text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+              {error ? <div className="font-medium">{error}</div> : null}
+
+              {errors.length > 0 && (
+                <ul className="mt-1 list-disc pl-5 space-y-0.5 text-[11px] md:text-xs">
+                  {errors.map((e, idx) => (
+                    <li key={idx}>{e}</li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
 
@@ -121,6 +148,7 @@ export default function ResetPasswordPage() {
               <label className="text-xs md:text-sm font-medium text-gray-700">
                 New password
               </label>
+
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
@@ -128,7 +156,7 @@ export default function ResetPasswordPage() {
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value);
-                    clearErrorOnChange();
+                    clearAllErrors();
                   }}
                   className="w-full h-10 md:h-11 px-3 pr-10 rounded-xl border border-gray-300 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   placeholder="Enter your new password"
@@ -143,7 +171,7 @@ export default function ResetPasswordPage() {
                 </button>
               </div>
 
-              {/* Password hints */}
+              {/* Password hints (live) */}
               <div className="mt-2 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2">
                 <p className="text-[11px] text-gray-600 mb-1">
                   Use a strong password that includes:
@@ -169,6 +197,7 @@ export default function ResetPasswordPage() {
               <label className="text-xs md:text-sm font-medium text-gray-700">
                 Confirm new password
               </label>
+
               <div className="relative">
                 <input
                   type={showConfirmPassword ? "text" : "password"}
@@ -176,21 +205,17 @@ export default function ResetPasswordPage() {
                   value={confirmPassword}
                   onChange={(e) => {
                     setConfirmPassword(e.target.value);
-                    clearErrorOnChange();
+                    clearAllErrors();
                   }}
                   className="w-full h-10 md:h-11 px-3 pr-10 rounded-xl border border-gray-300 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   placeholder="Re-enter new password"
                 />
                 <button
                   type="button"
-                  onClick={() =>
-                    setShowConfirmPassword((prev) => !prev)
-                  }
+                  onClick={() => setShowConfirmPassword((prev) => !prev)}
                   className="absolute inset-y-0 right-2 flex items-center text-gray-500 hover:text-gray-700"
                   aria-label={
-                    showConfirmPassword
-                      ? "Hide password"
-                      : "Show password"
+                    showConfirmPassword ? "Hide password" : "Show password"
                   }
                 >
                   {showConfirmPassword ? (
@@ -200,6 +225,10 @@ export default function ResetPasswordPage() {
                   )}
                 </button>
               </div>
+
+              {confirmPassword.length > 0 && password !== confirmPassword && (
+                <p className="text-[11px] text-red-600">Passwords do not match.</p>
+              )}
             </div>
 
             <button
@@ -213,10 +242,7 @@ export default function ResetPasswordPage() {
 
           <p className="mt-4 text-[11px] md:text-xs text-gray-600 text-center">
             Back to{" "}
-            <Link
-              to="/login"
-              className="text-emerald-700 font-medium hover:underline"
-            >
+            <Link to="/login" className="text-emerald-700 font-medium hover:underline">
               Login
             </Link>
           </p>

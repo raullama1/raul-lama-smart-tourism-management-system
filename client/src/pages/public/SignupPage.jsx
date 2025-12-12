@@ -1,5 +1,5 @@
 // client/src/pages/public/SignupPage.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { requestSignupCode } from "../../api/authApi";
@@ -24,25 +24,30 @@ export default function SignupPage() {
   const [timeLeft, setTimeLeft] = useState(0);
 
   const [error, setError] = useState("");
+  const [errors, setErrors] = useState([]); // ✅ multiple errors
 
-  // Password rules
-  const passwordRules = [
-    { test: /.{8,}/, message: "At least 8 characters" },
-    { test: /[A-Z]/, message: "At least one uppercase letter (A-Z)" },
-    { test: /[a-z]/, message: "At least one lowercase letter (a-z)" },
-    { test: /[0-9]/, message: "At least one number (0-9)" },
-    {
-      test: /[^A-Za-z0-9]/,
-      message: "At least one special character (!@#$, etc.)",
-    },
-  ];
+  // Password rules (same wording as backend)
+  const passwordRules = useMemo(
+    () => [
+      { test: /.{8,}/, message: "At least 8 characters" },
+      { test: /[A-Z]/, message: "At least one uppercase letter (A-Z)" },
+      { test: /[a-z]/, message: "At least one lowercase letter (a-z)" },
+      { test: /[0-9]/, message: "At least one number (0-9)" },
+      { test: /[^A-Za-z0-9]/, message: "At least one special character (!@#$, etc.)" },
+    ],
+    []
+  );
 
   const passwordChecks = passwordRules.map((rule) => ({
     message: rule.message,
     ok: rule.test.test(password),
   }));
 
-  const isPasswordStrong = passwordChecks.every((c) => c.ok);
+  const missingPasswordRules = passwordChecks
+    .filter((c) => !c.ok)
+    .map((c) => c.message);
+
+  const isPasswordStrong = missingPasswordRules.length === 0;
 
   // Timer for resend code
   useEffect(() => {
@@ -53,15 +58,22 @@ export default function SignupPage() {
     return () => clearInterval(id);
   }, [timeLeft]);
 
+  const clearAllErrors = () => {
+    if (error) setError("");
+    if (errors.length) setErrors([]);
+  };
+
   const handleSendCode = async () => {
     if (!email) {
       setError("Please enter your email first.");
+      setErrors([]);
       return;
     }
 
     try {
       setSendingCode(true);
       setError("");
+      setErrors([]);
 
       await requestSignupCode(email);
       setCodeSent(true);
@@ -71,6 +83,7 @@ export default function SignupPage() {
         err?.response?.data?.message ||
         "Failed to send verification code. Try again.";
       setError(msg);
+      setErrors(Array.isArray(err?.response?.data?.errors) ? err.response.data.errors : []);
     } finally {
       setSendingCode(false);
     }
@@ -81,37 +94,40 @@ export default function SignupPage() {
 
     if (!name || !email || !password || !confirmPassword || !verificationCode) {
       setError("All fields are required.");
+      setErrors([]);
       return;
     }
 
+    // ✅ show exactly which rules are missing (client-side)
     if (!isPasswordStrong) {
-      setError("Password is too weak.");
+      setError("Password is too weak. Please fix the following:");
+      setErrors(missingPasswordRules);
       return;
     }
 
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
+      setErrors([]);
       return;
     }
 
     try {
       setSubmitting(true);
       setError("");
+      setErrors([]);
 
       await signup(name, email, password, verificationCode);
-
       navigate("/");
     } catch (err) {
       const msg =
         err?.response?.data?.message || "Signup failed. Please try again.";
+      const apiErrors = err?.response?.data?.errors;
+
       setError(msg);
+      setErrors(Array.isArray(apiErrors) ? apiErrors : []);
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const clearErrorOnChange = () => {
-    if (error) setError("");
   };
 
   return (
@@ -122,9 +138,17 @@ export default function SignupPage() {
             Create Account
           </h1>
 
-          {error && (
-            <div className="mb-3 text-xs md:text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-              {error}
+          {(error || errors.length > 0) && (
+            <div className="mb-3 text-xs md:text-sm text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+              {error ? <div className="font-medium">{error}</div> : null}
+
+              {errors.length > 0 && (
+                <ul className="mt-1 list-disc pl-5 space-y-0.5 text-[11px] md:text-xs">
+                  {errors.map((e, idx) => (
+                    <li key={idx}>{e}</li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
 
@@ -140,7 +164,7 @@ export default function SignupPage() {
                 value={name}
                 onChange={(e) => {
                   setName(e.target.value);
-                  clearErrorOnChange();
+                  clearAllErrors();
                 }}
                 className="w-full h-10 px-3 rounded-xl border border-gray-300 text-xs md:text-sm focus:ring-2 focus:ring-emerald-500"
                 placeholder="Enter your full name"
@@ -159,7 +183,7 @@ export default function SignupPage() {
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
-                    clearErrorOnChange();
+                    clearAllErrors();
                   }}
                   className="flex-1 h-10 px-3 rounded-xl border border-gray-300 text-xs md:text-sm focus:ring-2 focus:ring-emerald-500"
                   placeholder="Enter your email"
@@ -198,7 +222,7 @@ export default function SignupPage() {
                 value={verificationCode}
                 onChange={(e) => {
                   setVerificationCode(e.target.value);
-                  clearErrorOnChange();
+                  clearAllErrors();
                 }}
                 className="w-full h-10 px-3 rounded-xl border border-gray-300 text-xs md:text-sm focus:ring-2 focus:ring-emerald-500 tracking-[0.25em]"
                 placeholder="Enter code"
@@ -218,7 +242,7 @@ export default function SignupPage() {
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value);
-                    clearErrorOnChange();
+                    clearAllErrors();
                   }}
                   className="w-full h-10 px-3 pr-10 rounded-xl border border-gray-300 text-xs md:text-sm focus:ring-2 focus:ring-emerald-500"
                   placeholder="Create a strong password"
@@ -264,7 +288,7 @@ export default function SignupPage() {
                   value={confirmPassword}
                   onChange={(e) => {
                     setConfirmPassword(e.target.value);
-                    clearErrorOnChange();
+                    clearAllErrors();
                   }}
                   className="w-full h-10 px-3 pr-10 rounded-xl border border-gray-300 text-xs md:text-sm focus:ring-2 focus:ring-emerald-500"
                   placeholder="Re-enter your password"
@@ -275,18 +299,12 @@ export default function SignupPage() {
                   onClick={() => setShowConfirmPassword((prev) => !prev)}
                   className="absolute inset-y-0 right-2 flex items-center text-gray-500 hover:text-gray-700"
                 >
-                  {showConfirmPassword ? (
-                    <FiEyeOff size={18} />
-                  ) : (
-                    <FiEye size={18} />
-                  )}
+                  {showConfirmPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
                 </button>
               </div>
 
               {confirmPassword.length > 0 && password !== confirmPassword && (
-                <p className="text-[11px] text-red-600">
-                  Passwords do not match.
-                </p>
+                <p className="text-[11px] text-red-600">Passwords do not match.</p>
               )}
             </div>
 
@@ -302,10 +320,7 @@ export default function SignupPage() {
 
           <p className="mt-3 text-[11px] md:text-xs text-gray-600 text-center">
             Already have an account?{" "}
-            <Link
-              to="/login"
-              className="text-emerald-700 font-medium hover:underline"
-            >
+            <Link to="/login" className="text-emerald-700 font-medium hover:underline">
               Login
             </Link>
           </p>

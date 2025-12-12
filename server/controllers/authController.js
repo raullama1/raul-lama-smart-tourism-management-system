@@ -33,24 +33,30 @@ function signToken(user) {
   });
 }
 
-// Helper: validate password strength (same rules as frontend)
+/**
+ * ✅ Password validation that returns MULTIPLE errors
+ * returns: [] if ok, otherwise ["...", "..."]
+ */
 function validatePasswordStrength(password) {
+  const errors = [];
+
   if (!password || password.length < 8) {
-    return "Password must be at least 8 characters long.";
+    errors.push("At least 8 characters");
   }
-  if (!/[A-Z]/.test(password)) {
-    return "Password must include at least one uppercase letter (A-Z).";
+  if (!/[A-Z]/.test(password || "")) {
+    errors.push("At least one uppercase letter (A-Z)");
   }
-  if (!/[a-z]/.test(password)) {
-    return "Password must include at least one lowercase letter (a-z).";
+  if (!/[a-z]/.test(password || "")) {
+    errors.push("At least one lowercase letter (a-z)");
   }
-  if (!/[0-9]/.test(password)) {
-    return "Password must include at least one number (0-9).";
+  if (!/[0-9]/.test(password || "")) {
+    errors.push("At least one number (0-9)");
   }
-  if (!/[^A-Za-z0-9]/.test(password)) {
-    return "Password must include at least one special character (e.g. !@#$).";
+  if (!/[^A-Za-z0-9]/.test(password || "")) {
+    errors.push("At least one special character (!@#$, etc.)");
   }
-  return null; // password is strong
+
+  return errors;
 }
 
 /* ------------------------------------------------------------------ */
@@ -75,17 +81,14 @@ export async function sendSignupVerificationCodeController(req, res) {
     }
 
     const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
-    const expiresAt = new Date(Date.now() + 60 * 1000); // 60 seconds from now
+    const expiresAt = new Date(Date.now() + 60 * 1000); // 60 seconds
 
-    // Save code in DB
     await createEmailVerification(email, code, expiresAt);
 
-    // Try sending email, but don't crash on failure
     try {
       await sendSignupVerificationEmail(email, code);
     } catch (mailErr) {
       console.error("sendSignupVerificationEmail error", mailErr);
-      // still respond success, we don't want 500 in UI
     }
 
     return res.json({
@@ -94,9 +97,7 @@ export async function sendSignupVerificationCodeController(req, res) {
     });
   } catch (err) {
     console.error("sendSignupVerificationCodeController error", err);
-    return res
-      .status(500)
-      .json({ message: "Failed to send verification code." });
+    return res.status(500).json({ message: "Failed to send verification code." });
   }
 }
 
@@ -113,12 +114,14 @@ export async function signupController(req, res) {
       });
     }
 
-    const pwdError = validatePasswordStrength(password);
-    if (pwdError) {
-      return res.status(400).json({ message: pwdError });
+    const pwdErrors = validatePasswordStrength(password);
+    if (pwdErrors.length > 0) {
+      return res.status(400).json({
+        message: "Password is too weak. Please follow the rules.",
+        errors: pwdErrors,
+      });
     }
 
-    // Check if user already exists
     const existing = await findUserByEmail(email);
     if (existing) {
       return res
@@ -126,11 +129,7 @@ export async function signupController(req, res) {
         .json({ message: "An account with this email already exists." });
     }
 
-    // Check verification code (must match, not used, not expired)
-    const verification = await findValidEmailVerification(
-      email,
-      verificationCode
-    );
+    const verification = await findValidEmailVerification(email, verificationCode);
     if (!verification) {
       return res
         .status(400)
@@ -146,7 +145,6 @@ export async function signupController(req, res) {
       role: "tourist",
     });
 
-    // Mark the code as used so it can't be reused
     await markVerificationUsed(verification.id);
 
     const token = signToken(user);
@@ -173,23 +171,17 @@ export async function loginController(req, res) {
     const { email, password } = req.body || {};
 
     if (!email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Email and password are required." });
+      return res.status(400).json({ message: "Email and password are required." });
     }
 
     const user = await findUserByEmail(email);
     if (!user) {
-      return res
-        .status(400)
-        .json({ message: "Invalid email or password." });
+      return res.status(400).json({ message: "Invalid email or password." });
     }
 
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
     if (!passwordMatch) {
-      return res
-        .status(400)
-        .json({ message: "Invalid email or password." });
+      return res.status(400).json({ message: "Invalid email or password." });
     }
 
     const safeUser = {
@@ -220,7 +212,6 @@ export async function forgotPasswordController(req, res) {
 
     const user = await findUserByEmail(email);
 
-    // Always respond success-style to avoid leaking which emails exist
     if (!user) {
       return res.json({
         message:
@@ -228,16 +219,13 @@ export async function forgotPasswordController(req, res) {
       });
     }
 
-    // Generate a random token (we send plain, store hash)
     const plainToken = crypto.randomBytes(32).toString("hex");
     const tokenHash = crypto.createHash("sha256").update(plainToken).digest("hex");
 
-    // Token valid for 5 minutes
     const expiresAt = new Date(
       Date.now() + RESET_PASSWORD_TOKEN_EXP_MINUTES * 60 * 1000
     );
 
-    // Save token in DB (single-use, not used yet)
     await db.query(
       `INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
        VALUES (?, ?, ?)`,
@@ -250,7 +238,6 @@ export async function forgotPasswordController(req, res) {
       await sendPasswordResetEmail(email, resetLink);
     } catch (err) {
       console.error("Error sending reset email", err);
-      // Still respond success message (no info leak)
     }
 
     return res.json({
@@ -276,15 +263,16 @@ export async function resetPasswordController(req, res) {
         .json({ message: "Token and new password are required." });
     }
 
-    const pwdError = validatePasswordStrength(password);
-    if (pwdError) {
-      return res.status(400).json({ message: pwdError });
+    const pwdErrors = validatePasswordStrength(password);
+    if (pwdErrors.length > 0) {
+      return res.status(400).json({
+        message: "Password is too weak. Please follow the rules.",
+        errors: pwdErrors,
+      });
     }
 
-    // Hash the incoming token to compare with DB
     const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
 
-    // Look up token record
     const [rows] = await db.query(
       `SELECT id, user_id, expires_at, used_at
        FROM password_reset_tokens
@@ -297,32 +285,25 @@ export async function resetPasswordController(req, res) {
 
     if (!record) {
       return res.status(400).json({
-        message:
-          "This password reset link is invalid or has already been used.",
+        message: "This password reset link is invalid or has already been used.",
       });
     }
 
-    // If already used (single-use)
     if (record.used_at) {
       return res.status(400).json({
         message: "This password reset link has already been used.",
       });
     }
 
-    // Check expiry (5 minutes)
     const now = new Date();
     const expiresAt = new Date(record.expires_at);
     if (expiresAt < now) {
-      return res
-        .status(400)
-        .json({ message: "This password reset link has expired." });
+      return res.status(400).json({ message: "This password reset link has expired." });
     }
 
-    // Update user password
     const newHash = await bcrypt.hash(password, 10);
     await updateUserPasswordHash(record.user_id, newHash);
 
-    // Mark token as used (single-use)
     await db.query(
       `UPDATE password_reset_tokens
        SET used_at = NOW()
