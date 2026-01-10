@@ -12,6 +12,8 @@ import {
   FaChevronRight,
 } from "react-icons/fa";
 
+import { useAuth } from "../../context/AuthContext";
+
 gsap.registerPlugin(Draggable);
 
 export default function TourCard({
@@ -22,11 +24,17 @@ export default function TourCard({
   const containerRef = useRef(null);
   const draggableRef = useRef(null);
   const navigate = useNavigate();
+  const { token } = useAuth();
 
   const [itemWidth] = useState(288); // base width for smooth scroll
   const gap = 16;
 
-  const handlePublicAlert = () => {
+  // ✅ If logged in -> go /home for now, else alert
+  const requireLoginOrGoHome = () => {
+    if (token) {
+      navigate("/home"); // later replace with real screen routes
+      return;
+    }
     alert("Please login or signup to access this feature.");
   };
 
@@ -176,9 +184,9 @@ export default function TourCard({
                         <FaEye size={14} /> View Details
                       </button>
 
-                      {/* Wishlist → alert */}
+                      {/* Wishlist → login? alert : /home */}
                       <button
-                        onClick={handlePublicAlert}
+                        onClick={requireLoginOrGoHome}
                         className="w-full flex items-center justify-center gap-2 px-2 py-2 rounded-md bg-[#e6f4ed] text-emerald-700 text-xs md:text-sm font-medium shadow hover:bg-gradient-to-r hover:from-emerald-600 hover:to-emerald-500 hover:text-white hover:scale-105 transition-all"
                       >
                         <FaHeart size={14} /> Add to Wishlist
@@ -192,9 +200,9 @@ export default function TourCard({
                         <FaUsers size={14} /> Show All Agencies
                       </button>
 
-                      {/* View on Map → alert */}
+                      {/* View on Map → login? alert : /home */}
                       <button
-                        onClick={handlePublicAlert}
+                        onClick={requireLoginOrGoHome}
                         className="w-full flex items-center justify-center gap-2 px-2 py-2 rounded-md bg-[#e6f4ed] text-emerald-700 text-xs md:text-sm font-medium shadow hover:bg-gradient-to-r hover:from-emerald-600 hover:to-emerald-500 hover:text-white hover:scale-105 transition-all"
                       >
                         <FaMapMarkerAlt size={14} /> View on Map
