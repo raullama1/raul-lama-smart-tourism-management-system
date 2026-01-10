@@ -10,6 +10,7 @@ import {
   FaEye,
   FaChevronLeft,
   FaChevronRight,
+  FaCheck,
 } from "react-icons/fa";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -36,6 +37,7 @@ export default function TourCard({
   const [wishlistIds, setWishlistIds] = useState(new Set());
   const [busyId, setBusyId] = useState(null);
 
+  // normalize tour fields (home cards use image/name/price)
   const normalizedTours = useMemo(() => {
     return (tours || []).map((t) => ({
       id: t.id,
@@ -55,6 +57,7 @@ export default function TourCard({
     return true;
   };
 
+  // load wishlist ids
   useEffect(() => {
     const load = async () => {
       if (!token) {
@@ -62,8 +65,8 @@ export default function TourCard({
         return;
       }
       try {
-        const data = await fetchWishlistIds(token);
-        const ids = Array.isArray(data) ? data : data?.ids || [];
+        const res = await fetchWishlistIds(token); // { data: [ids] } or { ids: [ids] }
+        const ids = Array.isArray(res?.data) ? res.data : res?.ids || res?.data || [];
         setWishlistIds(new Set(ids.map((x) => Number(x))));
       } catch (e) {
         console.error("Failed to load wishlist ids", e);
@@ -77,33 +80,51 @@ export default function TourCard({
 
     const idNum = Number(tourId);
 
-    // ✅ block spam click / double click
+    // block spam click
     if (busyId === idNum) return;
 
     const already = wishlistIds.has(idNum);
 
-    try {
-      setBusyId(idNum);
-
-      if (already) {
+    // ✅ If already wishlisted → remove (toggle)
+    if (already) {
+      try {
+        setBusyId(idNum);
         await removeFromWishlist(token, idNum);
+
         setWishlistIds((prev) => {
           const next = new Set(prev);
           next.delete(idNum);
           return next;
         });
-      } else {
-        await addToWishlist(token, idNum);
-        setWishlistIds((prev) => {
-          const next = new Set(prev);
-          next.add(idNum);
-          return next;
-        });
+      } catch (e) {
+        console.error("Wishlist remove failed", e);
+        alert("Wishlist update failed. Please try again.");
+      } finally {
+        setBusyId(null);
       }
-    } catch (e) {
-      const status = e?.response?.status;
+      return;
+    }
 
-      // ✅ If backend says duplicate, show "Already added"
+    // ✅ If not wishlisted → add
+    try {
+      setBusyId(idNum);
+
+      // since DB uses INSERT IGNORE, we stop duplicates from UI
+      await addToWishlist(token, idNum);
+
+      setWishlistIds((prev) => {
+        const next = new Set(prev);
+        next.add(idNum);
+        return next;
+      });
+
+      // optional friendly message (same vibe as Details page)
+      // alert("Added to wishlist ✅");
+    } catch (e) {
+      console.error("Wishlist add failed", e);
+
+      // If you later make backend return 409, this will handle it:
+      const status = e?.response?.status;
       if (status === 409) {
         alert("Already added to wishlist ✅");
         setWishlistIds((prev) => {
@@ -114,13 +135,13 @@ export default function TourCard({
         return;
       }
 
-      console.error("Wishlist toggle failed", e);
       alert("Wishlist update failed. Please try again.");
     } finally {
       setBusyId(null);
     }
   };
 
+  // Infinite loop helper
   const loop = (container) => {
     if (!container || !normalizedTours.length) return;
     const originalCount = normalizedTours.length;
@@ -131,14 +152,13 @@ export default function TourCard({
     else if (x >= 0) gsap.set(container, { x: x - totalWidthSingle });
   };
 
+  // GSAP draggable infinite
   useEffect(() => {
     const container = containerRef.current;
     if (!container || !normalizedTours.length) return;
 
     const originalChildren = Array.from(container.children);
-    originalChildren.forEach((item) =>
-      container.appendChild(item.cloneNode(true))
-    );
+    originalChildren.forEach((item) => container.appendChild(item.cloneNode(true)));
 
     gsap.set(container, { x: 0 });
 
@@ -149,14 +169,8 @@ export default function TourCard({
       onThrowUpdate: () => loop(container),
     })[0];
 
-    container.addEventListener(
-      "pointerdown",
-      () => (container.style.cursor = "grabbing")
-    );
-    container.addEventListener(
-      "pointerup",
-      () => (container.style.cursor = "grab")
-    );
+    container.addEventListener("pointerdown", () => (container.style.cursor = "grabbing"));
+    container.addEventListener("pointerup", () => (container.style.cursor = "grab"));
     container.style.cursor = "grab";
 
     return () => {
@@ -202,6 +216,7 @@ export default function TourCard({
           </div>
         )}
 
+        {/* Arrows */}
         <button
           onClick={scrollLeft}
           className="absolute top-1/2 -left-4 transform -translate-y-1/2 z-10 p-2 bg-white rounded-full shadow hover:bg-gray-100 transition-all"
@@ -216,6 +231,7 @@ export default function TourCard({
           <FaChevronRight size={20} />
         </button>
 
+        {/* Cards */}
         <div className="overflow-hidden">
           <div
             ref={containerRef}
@@ -254,7 +270,9 @@ export default function TourCard({
                         </span>
                       </div>
 
+                      {/* ACTION BUTTONS */}
                       <div className="mt-4 grid grid-cols-2 gap-2">
+                        {/* View Details */}
                         <button
                           onClick={() => navigate(`/tours/${tour.id}`)}
                           className="w-full flex items-center justify-center gap-2 px-2 py-2 rounded-md bg-gradient-to-r from-emerald-600 to-emerald-500 text-white text-xs md:text-sm font-medium shadow hover:scale-105 transition-transform"
@@ -262,6 +280,7 @@ export default function TourCard({
                           <FaEye size={14} /> View Details
                         </button>
 
+                        {/* Wishlist (Details-page style: ✔ Added) */}
                         <button
                           disabled={isBusy}
                           onClick={() => toggleWishlist(tour.id)}
@@ -274,10 +293,11 @@ export default function TourCard({
                             ${isBusy ? "opacity-70 cursor-not-allowed" : "hover:scale-105"}
                           `}
                         >
-                          <FaHeart size={14} />
-                          {inWishlist ? "Remove" : "Add to Wishlist"}
+                          {inWishlist ? <FaCheck size={14} /> : <FaHeart size={14} />}
+                          {inWishlist ? "Added to Wishlist" : "Add to Wishlist"}
                         </button>
 
+                        {/* Agencies */}
                         <button
                           onClick={() => navigate(`/tours/${tour.id}#agencies`)}
                           className="w-full flex items-center justify-center gap-2 px-2 py-2 rounded-md bg-[#e6f4ed] text-emerald-700 text-xs md:text-sm font-medium shadow hover:bg-gradient-to-r hover:from-emerald-600 hover:to-emerald-500 hover:text-white hover:scale-105 transition-all"
@@ -285,6 +305,7 @@ export default function TourCard({
                           <FaUsers size={14} /> Show All Agencies
                         </button>
 
+                        {/* Map */}
                         <button
                           onClick={() => {
                             if (!requireLogin()) return;

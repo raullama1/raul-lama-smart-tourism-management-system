@@ -7,21 +7,15 @@ import {
   addToWishlist,
   removeFromWishlist,
 } from "../../api/wishlistApi";
-
-// Icons (match TourCard button styling)
-import { FaHeart, FaMapMarkerAlt, FaUsers, FaEye } from "react-icons/fa";
+import { FaHeart, FaMapMarkerAlt, FaUsers, FaEye, FaCheck } from "react-icons/fa";
 
 export default function TourGrid({ tours }) {
   const navigate = useNavigate();
   const { token } = useAuth();
 
-  // Wishlist state is stored as a Set for O(1) membership checks.
   const [wishlistIds, setWishlistIds] = useState(new Set());
-
-  // Prevents duplicate requests from rapid clicks on the same tour.
   const [busyId, setBusyId] = useState(null);
 
-  // Guard: certain actions are available only for authenticated users.
   const requireLogin = () => {
     if (!token) {
       alert("Please login or signup to access this feature.");
@@ -30,33 +24,28 @@ export default function TourGrid({ tours }) {
     return true;
   };
 
-  // Load wishlist IDs once the user is authenticated (and reset on logout).
+  // Load wishlist ids
   useEffect(() => {
     const load = async () => {
       if (!token) {
         setWishlistIds(new Set());
         return;
       }
-
       try {
-        const data = await fetchWishlistIds(token);
-        const ids = Array.isArray(data) ? data : data?.ids || [];
+        const res = await fetchWishlistIds(token);
+        const ids = Array.isArray(res?.data) ? res.data : res?.ids || res?.data || [];
         setWishlistIds(new Set(ids.map((x) => Number(x))));
       } catch (e) {
         console.error("Failed to load wishlist ids", e);
       }
     };
-
     load();
   }, [token]);
 
-  // Toggle wishlist membership for a given tour with optimistic UI updates.
   const toggleWishlist = async (tourId) => {
     if (!requireLogin()) return;
 
     const idNum = Number(tourId);
-
-    // Block repeated clicks while a request is in-flight for this tour.
     if (busyId === idNum) return;
 
     const already = wishlistIds.has(idNum);
@@ -80,19 +69,6 @@ export default function TourGrid({ tours }) {
         });
       }
     } catch (e) {
-      const status = e?.response?.status;
-
-      // If backend reports duplicate insert, keep UI consistent and inform the user.
-      if (status === 409) {
-        alert("Already added to wishlist ✅");
-        setWishlistIds((prev) => {
-          const next = new Set(prev);
-          next.add(idNum);
-          return next;
-        });
-        return;
-      }
-
       console.error("Wishlist toggle failed", e);
       alert("Wishlist update failed. Please try again.");
     } finally {
@@ -100,7 +76,6 @@ export default function TourGrid({ tours }) {
     }
   };
 
-  // Empty state for grid.
   if (!tours || tours.length === 0) {
     return (
       <div className="flex-1 bg-white rounded-2xl border border-gray-100 p-6 text-center text-sm text-gray-500">
@@ -155,7 +130,6 @@ export default function TourGrid({ tours }) {
                   </span>
                 </div>
 
-                {/* Action buttons (aligned with TourCard styling + icons) */}
                 <div className="mt-4 grid grid-cols-2 gap-2">
                   <button
                     onClick={() => navigate(`/tours/${tour.id}`)}
@@ -173,13 +147,11 @@ export default function TourGrid({ tours }) {
                           ? "bg-emerald-600 text-white hover:bg-emerald-700"
                           : "bg-[#e6f4ed] text-emerald-700 hover:bg-gradient-to-r hover:from-emerald-600 hover:to-emerald-500 hover:text-white"
                       }
-                      ${
-                        isBusy ? "opacity-70 cursor-not-allowed" : "hover:scale-105"
-                      }
+                      ${isBusy ? "opacity-70 cursor-not-allowed" : "hover:scale-105"}
                     `}
                   >
-                    <FaHeart size={14} />
-                    {inWishlist ? "Remove" : "Add to Wishlist"}
+                    {inWishlist ? <FaCheck size={14} /> : <FaHeart size={14} />}
+                    {inWishlist ? "Added to Wishlist" : "Add to Wishlist"}
                   </button>
 
                   <button
