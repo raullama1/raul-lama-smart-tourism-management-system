@@ -4,8 +4,6 @@ import L from "leaflet";
 import NavbarTourist from "../../components/tourist/NavbarTourist";
 import FooterTourist from "../../components/tourist/FooterTourist";
 import { fetchTourMapTours } from "../../api/tourApi";
-
-// Fix default marker icon (common Leaflet issue in Vite)
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
@@ -21,15 +19,13 @@ export default function TouristNepalMapPage() {
   const [loading, setLoading] = useState(true);
 
   // Nepal center
-  const nepalCenter = [28.3949, 84.1240]; // lat, lng
+  const nepalCenter = [28.3949, 84.1240];
 
   useEffect(() => {
     const load = async () => {
       try {
         setLoading(true);
         const res = await fetchTourMapTours();
-
-        // your fetchPublicTours returns { data, pagination }
         const list = res?.data || [];
         setTours(list);
       } catch (e) {
@@ -109,7 +105,8 @@ export default function TouristNepalMapPage() {
                               onClick={() =>
                                 (window.location.href = `/tours/${tour.id}`)
                               }
-                              className="px-3 py-1 rounded-md bg-emerald-600 text-white text-xs"
+                              className="px-3 py-1 rounded-md bg-emerald-600 text-white text-xs
+                                         transition-all duration-200 hover:bg-emerald-700 hover:scale-[1.04]"
                             >
                               View Details
                             </button>
@@ -117,7 +114,8 @@ export default function TouristNepalMapPage() {
                               onClick={() =>
                                 (window.location.href = `/tours/${tour.id}#agencies`)
                               }
-                              className="px-3 py-1 rounded-md bg-emerald-50 text-emerald-700 text-xs border border-emerald-100"
+                              className="px-3 py-1 rounded-md bg-emerald-50 text-emerald-700 text-xs border border-emerald-100
+                                         transition-all duration-200 hover:bg-emerald-100 hover:border-emerald-200 hover:scale-[1.04]"
                             >
                               Agencies
                             </button>
