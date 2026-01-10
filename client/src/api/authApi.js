@@ -7,7 +7,7 @@ export async function login(email, password) {
   return res.data; // { token, user }
 }
 
-// Signup (now with verificationCode)
+// Signup (with verificationCode)
 export async function signup(name, email, password, verificationCode) {
   const res = await apiClient.post("/auth/signup", {
     name,
@@ -16,6 +16,12 @@ export async function signup(name, email, password, verificationCode) {
     verificationCode,
   });
   return res.data; // { token, user }
+}
+
+// Validate token + return current user (used on refresh)
+export async function me() {
+  const res = await apiClient.get("/auth/me");
+  return res.data; // { user }
 }
 
 // Request signup verification code

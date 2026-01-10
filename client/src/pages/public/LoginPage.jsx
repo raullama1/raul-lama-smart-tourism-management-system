@@ -1,4 +1,3 @@
-// client/src/pages/public/LoginPage.jsx
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -37,8 +36,8 @@ export default function LoginPage() {
 
       await login(trimmedEmail, trimmedPassword);
 
-      // later redirect by role; for now go to public home
-      navigate("/");
+      // ✅ after login go to Tourist Home (private)
+      navigate("/home");
     } catch (err) {
       console.error("Login failed", err);
       const msg =
@@ -108,6 +107,7 @@ export default function LoginPage() {
                   type="button"
                   onClick={() => setShowPassword((prev) => !prev)}
                   className="absolute inset-y-0 right-2 flex items-center text-gray-500 hover:text-gray-700"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
                 </button>

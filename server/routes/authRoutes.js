@@ -6,7 +6,9 @@ import {
   forgotPasswordController,
   resetPasswordController,
   sendSignupVerificationCodeController,
+  meController,
 } from "../controllers/authController.js";
+import { authRequired } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -18,6 +20,9 @@ router.post("/signup", signupController);
 
 // Login
 router.post("/login", loginController);
+
+// Get current logged-in user (used for refresh session)
+router.get("/me", authRequired, meController);
 
 // Forgot / reset password
 router.post("/forgot-password", forgotPasswordController);

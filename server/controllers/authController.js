@@ -317,3 +317,31 @@ export async function resetPasswordController(req, res) {
     return res.status(500).json({ message: "Failed to reset password." });
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* ME – return current user from token                                */
+/* ------------------------------------------------------------------ */
+export async function meController(req, res) {
+  try {
+    // authRequired sets req.user = { id, role, iat, exp }
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "Authentication required." });
+    }
+
+    const [rows] = await db.query(
+      "SELECT id, name, email, role FROM users WHERE id = ? LIMIT 1",
+      [userId]
+    );
+
+    const user = rows[0];
+    if (!user) {
+      return res.status(401).json({ message: "User not found." });
+    }
+
+    return res.json({ user });
+  } catch (err) {
+    console.error("meController error", err);
+    return res.status(500).json({ message: "Failed to load user." });
+  }
+}

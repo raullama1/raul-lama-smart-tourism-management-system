@@ -1,4 +1,5 @@
-import { Routes, Route } from "react-router-dom";
+// client/src/Router/AppRouter.jsx
+import { Routes, Route, Navigate } from "react-router-dom";
 import ScrollToTop from "./ScrollToTop";
 
 import PublicHomePage from "../pages/public/PublicHomePage";
@@ -12,24 +13,103 @@ import SignupPage from "../pages/public/SignupPage";
 import ForgotPasswordPage from "../pages/public/ForgotPasswordPage";
 import ResetPasswordPage from "../pages/public/ResetPasswordPage";
 
+import TouristHomePage from "../pages/tourist/TouristHomePage";
+import { useAuth } from "../context/AuthContext";
+
+/* Protect private routes */
+function PrivateRoute({ children }) {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center text-gray-600">
+        Loading...
+      </div>
+    );
+  }
+
+  return isAuthenticated ? children : <Navigate to="/login" replace />;
+}
+
+/* Redirect logged-in users away from public pages */
+function PublicRoute({ children }) {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center text-gray-600">
+        Loading...
+      </div>
+    );
+  }
+
+  return isAuthenticated ? <Navigate to="/home" replace /> : children;
+}
+
 export default function AppRouter() {
   return (
     <>
-      <ScrollToTop />  {/* Always on top when navigating */}
+      <ScrollToTop />
 
       <Routes>
-      {/* Public site */}
-      <Route path="/" element={<PublicHomePage />} />
-      <Route path="/tours" element={<PublicToursPage />} />
-      <Route path="/tours/:tourId" element={<PublicTourDetailsPage />} />
-      <Route path="/blogs" element={<PublicBlogsPage />} />
-      <Route path="/blogs/:blogId" element={<PublicBlogDetailsPage />} />
+        {/* ✅ "/" becomes smart: logged-in -> /home, else public home */}
+        <Route
+          path="/"
+          element={
+            <PublicRoute>
+              <PublicHomePage />
+            </PublicRoute>
+          }
+        />
 
-      {/* Auth */}
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/signup" element={<SignupPage />} />
-      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-      <Route path="/reset-password" element={<ResetPasswordPage />} />
+        {/* ✅ Public site */}
+        <Route path="/tours" element={<PublicToursPage />} />
+        <Route path="/tours/:tourId" element={<PublicTourDetailsPage />} />
+        <Route path="/blogs" element={<PublicBlogsPage />} />
+        <Route path="/blogs/:blogId" element={<PublicBlogDetailsPage />} />
+
+        {/* (Optional) keep /public working if you already used it somewhere */}
+        <Route
+          path="/public"
+          element={
+            <PublicRoute>
+              <PublicHomePage />
+            </PublicRoute>
+          }
+        />
+
+        {/* ✅ Auth (optional: you can also block login/signup for logged-in users) */}
+        <Route
+          path="/login"
+          element={
+            <PublicRoute>
+              <LoginPage />
+            </PublicRoute>
+          }
+        />
+        <Route
+          path="/signup"
+          element={
+            <PublicRoute>
+              <SignupPage />
+            </PublicRoute>
+          }
+        />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+        {/* ✅ Tourist private home */}
+        <Route
+          path="/home"
+          element={
+            <PrivateRoute>
+              <TouristHomePage />
+            </PrivateRoute>
+          }
+        />
+
+        {/* ✅ Fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>
   );
