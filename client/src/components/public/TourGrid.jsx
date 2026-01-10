@@ -1,10 +1,13 @@
-// client/src/components/public/TourGrid.jsx
 import { useNavigate } from "react-router-dom";
 
-export default function TourGrid({ tours }) {
+export default function TourGrid({ tours, isAuthed = false }) {
   const navigate = useNavigate();
 
-  const handleAlert = () => {
+  const requireLoginOrGoTours = () => {
+    if (isAuthed) {
+      navigate("/tours"); // for now
+      return;
+    }
     alert("Please login or signup to access this feature.");
   };
 
@@ -68,20 +71,21 @@ export default function TourGrid({ tours }) {
                 </button>
 
                 <button
-                  onClick={handleAlert}
+                  onClick={requireLoginOrGoTours}
                   className="flex items-center justify-center gap-1 px-2 py-2 rounded-md bg-[#e6f4ed] text-emerald-700 text-[11px] md:text-xs font-medium shadow hover:bg-gradient-to-r hover:from-emerald-600 hover:to-emerald-500 hover:text-white hover:scale-105 transition-all"
                 >
                   Add to Wishlist
                 </button>
 
-                <button 
-                onClick={() => navigate(`/tours/${tour.id}`)}
-                className="flex items-center justify-center gap-1 px-2 py-2 rounded-md bg-[#e6f4ed] text-emerald-700 text-[11px] md:text-xs font-medium shadow hover:bg-gradient-to-r hover:from-emerald-600 hover:to-emerald-500 hover:text-white hover:scale-105 transition-all">
+                <button
+                  onClick={() => navigate(`/tours/${tour.id}#agencies`)}
+                  className="flex items-center justify-center gap-1 px-2 py-2 rounded-md bg-[#e6f4ed] text-emerald-700 text-[11px] md:text-xs font-medium shadow hover:bg-gradient-to-r hover:from-emerald-600 hover:to-emerald-500 hover:text-white hover:scale-105 transition-all"
+                >
                   Show All Agencies
                 </button>
 
                 <button
-                  onClick={handleAlert}
+                  onClick={requireLoginOrGoTours}
                   className="flex items-center justify-center gap-1 px-2 py-2 rounded-md bg-[#e6f4ed] text-emerald-700 text-[11px] md:text-xs font-medium shadow hover:bg-gradient-to-r hover:from-emerald-600 hover:to-emerald-500 hover:text-white hover:scale-105 transition-all"
                 >
                   View on Map

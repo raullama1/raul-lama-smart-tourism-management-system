@@ -1,13 +1,19 @@
-// client/src/pages/public/PublicToursPage.jsx
 import { useEffect, useState } from "react";
 import NavbarPublic from "../../components/public/NavbarPublic";
 import FooterPublic from "../../components/public/FooterPublic";
+import NavbarTourist from "../../components/tourist/NavbarTourist";
+import FooterTourist from "../../components/tourist/FooterTourist";
+
 import TourFiltersBar from "../../components/public/TourFiltersBar";
 import TourSidebarFilters from "../../components/public/TourSidebarFilters";
 import TourGrid from "../../components/public/TourGrid";
 import { fetchPublicTours } from "../../api/tourApi";
+import { useAuth } from "../../context/AuthContext";
 
 export default function PublicToursPage() {
+  const { token } = useAuth();
+  const isAuthed = !!token;
+
   const [filters, setFilters] = useState({
     search: "",
     location: "",
@@ -79,7 +85,7 @@ export default function PublicToursPage() {
       type: "",
       minPrice: "",
       maxPrice: "",
-      sort: "", // back to Default (random)
+      sort: "",
       page: 1,
       limit: 6,
     });
@@ -92,9 +98,13 @@ export default function PublicToursPage() {
     loadTours(nextPage);
   };
 
+  const Navbar = isAuthed ? NavbarTourist : NavbarPublic;
+  const Footer = isAuthed ? FooterTourist : FooterPublic;
+
   return (
     <>
-      <NavbarPublic />
+      <Navbar />
+
       <main className="bg-[#e6f4ec] min-h-screen pt-6 pb-10">
         <div className="max-w-6xl mx-auto px-4 md:px-6">
           <header className="mb-4">
@@ -124,7 +134,7 @@ export default function PublicToursPage() {
                 <span className="text-sm text-gray-500">Loading tours...</span>
               </div>
             ) : (
-              <TourGrid tours={tours} />
+              <TourGrid tours={tours} isAuthed={isAuthed} />
             )}
           </section>
 
@@ -140,7 +150,8 @@ export default function PublicToursPage() {
           </div>
         </div>
       </main>
-      <FooterPublic />
+
+      <Footer />
     </>
   );
 }

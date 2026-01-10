@@ -1,4 +1,3 @@
-// client/src/components/public/TourCard.jsx
 import { useRef, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { gsap } from "gsap";
@@ -11,7 +10,6 @@ import {
   FaChevronLeft,
   FaChevronRight,
 } from "react-icons/fa";
-
 import { useAuth } from "../../context/AuthContext";
 
 gsap.registerPlugin(Draggable);
@@ -26,41 +24,33 @@ export default function TourCard({
   const navigate = useNavigate();
   const { token } = useAuth();
 
-  const [itemWidth] = useState(288); // base width for smooth scroll
+  const [itemWidth] = useState(288);
   const gap = 16;
 
-  // ✅ If logged in -> go /home for now, else alert
-  const requireLoginOrGoHome = () => {
+  const requireLoginOrGoTours = () => {
     if (token) {
-      navigate("/home"); // later replace with real screen routes
+      navigate("/tours"); // ✅ now /tours
       return;
     }
     alert("Please login or signup to access this feature.");
   };
 
-  // ✅ Infinite loop helper (same idea as BlogCardSection)
   const loop = (container) => {
     if (!container || !tours.length) return;
     const originalCount = tours.length;
     const totalWidthSingle = originalCount * (itemWidth + gap);
     const x = gsap.getProperty(container, "x");
 
-    if (x <= -totalWidthSingle) {
-      gsap.set(container, { x: x + totalWidthSingle });
-    } else if (x >= 0) {
-      gsap.set(container, { x: x - totalWidthSingle });
-    }
+    if (x <= -totalWidthSingle) gsap.set(container, { x: x + totalWidthSingle });
+    else if (x >= 0) gsap.set(container, { x: x - totalWidthSingle });
   };
 
-  // ✅ GSAP Infinite draggable
   useEffect(() => {
     const container = containerRef.current;
     if (!container || !tours.length) return;
 
     const originalChildren = Array.from(container.children);
-    originalChildren.forEach((item) =>
-      container.appendChild(item.cloneNode(true))
-    );
+    originalChildren.forEach((item) => container.appendChild(item.cloneNode(true)));
 
     gsap.set(container, { x: 0 });
 
@@ -71,14 +61,8 @@ export default function TourCard({
       onThrowUpdate: () => loop(container),
     })[0];
 
-    container.addEventListener(
-      "pointerdown",
-      () => (container.style.cursor = "grabbing")
-    );
-    container.addEventListener(
-      "pointerup",
-      () => (container.style.cursor = "grab")
-    );
+    container.addEventListener("pointerdown", () => (container.style.cursor = "grabbing"));
+    container.addEventListener("pointerup", () => (container.style.cursor = "grab"));
     container.style.cursor = "grab";
 
     return () => {
@@ -89,7 +73,6 @@ export default function TourCard({
     };
   }, [tours, itemWidth]);
 
-  // ✅ Smooth scroll with gsap.to (like BlogCard)
   const scrollLeft = () => {
     const container = containerRef.current;
     if (!container) return;
@@ -125,7 +108,6 @@ export default function TourCard({
           </div>
         )}
 
-        {/* Arrows */}
         <button
           onClick={scrollLeft}
           className="absolute top-1/2 -left-4 transform -translate-y-1/2 z-10 p-2 bg-white rounded-full shadow hover:bg-gray-100 transition-all"
@@ -140,7 +122,6 @@ export default function TourCard({
           <FaChevronRight size={20} />
         </button>
 
-        {/* Cards */}
         <div className="overflow-hidden">
           <div
             ref={containerRef}
@@ -174,9 +155,7 @@ export default function TourCard({
                       </span>
                     </div>
 
-                    {/* ACTION BUTTONS */}
                     <div className="mt-4 grid grid-cols-2 gap-2">
-                      {/* View Details → go to tour details */}
                       <button
                         onClick={() => navigate(`/tours/${tour.id}`)}
                         className="w-full flex items-center justify-center gap-2 px-2 py-2 rounded-md bg-gradient-to-r from-emerald-600 to-emerald-500 text-white text-xs md:text-sm font-medium shadow hover:scale-105 transition-transform"
@@ -184,15 +163,13 @@ export default function TourCard({
                         <FaEye size={14} /> View Details
                       </button>
 
-                      {/* Wishlist → login? alert : /home */}
                       <button
-                        onClick={requireLoginOrGoHome}
+                        onClick={requireLoginOrGoTours}
                         className="w-full flex items-center justify-center gap-2 px-2 py-2 rounded-md bg-[#e6f4ed] text-emerald-700 text-xs md:text-sm font-medium shadow hover:bg-gradient-to-r hover:from-emerald-600 hover:to-emerald-500 hover:text-white hover:scale-105 transition-all"
                       >
                         <FaHeart size={14} /> Add to Wishlist
                       </button>
 
-                      {/* Show All Agencies → go to same details section */}
                       <button
                         onClick={() => navigate(`/tours/${tour.id}#agencies`)}
                         className="w-full flex items-center justify-center gap-2 px-2 py-2 rounded-md bg-[#e6f4ed] text-emerald-700 text-xs md:text-sm font-medium shadow hover:bg-gradient-to-r hover:from-emerald-600 hover:to-emerald-500 hover:text-white hover:scale-105 transition-all"
@@ -200,9 +177,8 @@ export default function TourCard({
                         <FaUsers size={14} /> Show All Agencies
                       </button>
 
-                      {/* View on Map → login? alert : /home */}
                       <button
-                        onClick={requireLoginOrGoHome}
+                        onClick={requireLoginOrGoTours}
                         className="w-full flex items-center justify-center gap-2 px-2 py-2 rounded-md bg-[#e6f4ed] text-emerald-700 text-xs md:text-sm font-medium shadow hover:bg-gradient-to-r hover:from-emerald-600 hover:to-emerald-500 hover:text-white hover:scale-105 transition-all"
                       >
                         <FaMapMarkerAlt size={14} /> View on Map

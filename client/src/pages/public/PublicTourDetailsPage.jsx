@@ -1,19 +1,31 @@
-// client/src/pages/public/PublicTourDetailsPage.jsx
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+
 import NavbarPublic from "../../components/public/NavbarPublic";
 import FooterPublic from "../../components/public/FooterPublic";
+import NavbarTourist from "../../components/tourist/NavbarTourist";
+import FooterTourist from "../../components/tourist/FooterTourist";
+
 import TourAgenciesList from "../../components/public/TourAgenciesList";
 import { fetchPublicTourDetails } from "../../api/tourApi";
+import { useAuth } from "../../context/AuthContext";
 
 export default function PublicTourDetailsPage() {
   const { tourId } = useParams();
+  const navigate = useNavigate();
+
+  const { token } = useAuth();
+  const isAuthed = !!token;
 
   const [tour, setTour] = useState(null);
   const [agencies, setAgencies] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const handleLoginAlert = () => {
+  const requireLoginOrGoTours = () => {
+    if (isAuthed) {
+      navigate("/tours"); // ✅ for now (until wishlist/map pages are built)
+      return;
+    }
     alert("Please login or signup to access this feature.");
   };
 
@@ -39,29 +51,28 @@ export default function PublicTourDetailsPage() {
     if (!tour) return;
 
     if (window.location.hash === "#agencies") {
-      // small delay so DOM is fully painted
       setTimeout(() => {
         const el = document.getElementById("agencies-section");
         if (el) {
           const rect = el.getBoundingClientRect();
-          const offsetTop = rect.top + window.scrollY - 80; // 80px offset above
-          window.scrollTo({
-            top: offsetTop,
-            behavior: "smooth",
-          });
+          const offsetTop = rect.top + window.scrollY - 80;
+          window.scrollTo({ top: offsetTop, behavior: "smooth" });
         }
       }, 300);
     }
   }, [tour]);
 
+  const Navbar = isAuthed ? NavbarTourist : NavbarPublic;
+  const Footer = isAuthed ? FooterTourist : FooterPublic;
+
   if (loading) {
     return (
       <>
-        <NavbarPublic />
+        <Navbar />
         <main className="bg-[#e6f4ec] min-h-screen pt-6 pb-10">
           <div className="text-center text-sm text-gray-500">Loading...</div>
         </main>
-        <FooterPublic />
+        <Footer />
       </>
     );
   }
@@ -69,18 +80,18 @@ export default function PublicTourDetailsPage() {
   if (!tour) {
     return (
       <>
-        <NavbarPublic />
+        <Navbar />
         <main className="bg-[#e6f4ec] min-h-screen pt-6 pb-10">
           <div className="text-center text-red-500 text-sm">Tour not found.</div>
         </main>
-        <FooterPublic />
+        <Footer />
       </>
     );
   }
 
   return (
     <>
-      <NavbarPublic />
+      <Navbar />
 
       <main className="bg-[#e6f4ec] min-h-screen pt-6 pb-10">
         <div className="max-w-6xl mx-auto px-4 md:px-6 space-y-6">
@@ -110,8 +121,9 @@ export default function PublicTourDetailsPage() {
               </div>
             </div>
 
+            {/* Wishlist button becomes redirect for logged-in */}
             <button
-              onClick={handleLoginAlert}
+              onClick={requireLoginOrGoTours}
               className="self-start md:self-auto inline-flex items-center gap-2 px-4 py-2 rounded-full border border-gray-300 bg-white text-xs md:text-sm text-gray-800 hover:bg-gray-50"
             >
               ♡ Add to Wishlist
@@ -125,7 +137,6 @@ export default function PublicTourDetailsPage() {
             </h2>
 
             <p className="text-xs md:text-sm text-gray-700 leading-relaxed whitespace-pre-line">
-              {/* use long_description if you set it in DB, fallback to short_description */}
               {tour.long_description || tour.description || tour.short_description}
             </p>
           </section>
@@ -138,13 +149,14 @@ export default function PublicTourDetailsPage() {
 
             <TourAgenciesList
               agencies={agencies}
-              onLoginAlert={handleLoginAlert}
+              // 🔥 Keep prop name the same, but now it routes when authed
+              onLoginAlert={requireLoginOrGoTours}
             />
           </section>
         </div>
       </main>
 
-      <FooterPublic />
+      <Footer />
     </>
   );
 }
