@@ -2,11 +2,17 @@
 import { FaMapMarkerAlt, FaChevronDown } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
-export default function HeroSection({ onDiscoverToursClick }) {
-  const navigate = useNavigate(); // hook to navigate programmatically
+export default function HeroSection() {
+  const navigate = useNavigate();
 
+  // Redirects user to Tours page
   const handleExploreClick = () => {
-    navigate("/tours"); // redirect to /tours page
+    navigate("/tours");
+  };
+
+  // Redirects user to Map page
+  const handleMapClick = () => {
+    navigate("/map");
   };
 
   return (
@@ -34,7 +40,7 @@ export default function HeroSection({ onDiscoverToursClick }) {
           {/* Buttons */}
           <div className="mt-6 flex flex-col items-center gap-2 relative">
             <button
-              onClick={handleExploreClick} // redirect on click
+              onClick={handleExploreClick}
               className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-semibold text-base shadow-lg hover:scale-105 transition-transform"
             >
               Explore Tours
@@ -42,15 +48,21 @@ export default function HeroSection({ onDiscoverToursClick }) {
 
             <div className="relative w-full flex justify-center items-center">
               <button
-                onClick={onDiscoverToursClick}
+                onClick={handleMapClick}
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-full border-2 border-emerald-600 text-emerald-600 font-semibold text-base bg-white shadow-md hover:bg-emerald-50 hover:scale-105 transition-all"
               >
                 <span>Discover Tours on Nepal Map</span>
                 <FaMapMarkerAlt className="text-lg" />
               </button>
 
-              <FaChevronDown className="hidden md:block absolute left-0 -translate-x-6 -bottom-5 text-gray-400 animate-bounce" size={28} />
-              <FaChevronDown className="hidden md:block absolute right-0 translate-x-6 -bottom-5 text-gray-400 animate-bounce" size={28} />
+              <FaChevronDown
+                className="hidden md:block absolute left-0 -translate-x-6 -bottom-5 text-gray-400 animate-bounce"
+                size={28}
+              />
+              <FaChevronDown
+                className="hidden md:block absolute right-0 translate-x-6 -bottom-5 text-gray-400 animate-bounce"
+                size={28}
+              />
             </div>
 
             <FaChevronDown className="block md:hidden mt-3 text-gray-400 animate-bounce" size={28} />

@@ -13,7 +13,9 @@ import ForgotPasswordPage from "../pages/public/ForgotPasswordPage";
 import ResetPasswordPage from "../pages/public/ResetPasswordPage";
 
 import TouristHomePage from "../pages/tourist/TouristHomePage";
-import TouristNepalMapPage from "../pages/tourist/TouristNepalMapPage"; // ✅ NEW
+import TouristNepalMapPage from "../pages/tourist/TouristNepalMapPage";
+import WishlistPage from "../pages/tourist/WishlistPage";
+
 
 import { useAuth } from "../context/AuthContext";
 
@@ -108,7 +110,7 @@ export default function AppRouter() {
           }
         />
 
-        {/* ✅ NEW MAP ROUTE */}
+        {/* MAP */}
         <Route
           path="/map"
           element={
@@ -117,6 +119,17 @@ export default function AppRouter() {
             </PrivateRoute>
           }
         />
+
+        {/* Wishlist */}
+        <Route
+          path="/wishlist"
+          element={
+            <PrivateRoute>
+              <WishlistPage />
+            </PrivateRoute>
+          }
+        />
+
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
