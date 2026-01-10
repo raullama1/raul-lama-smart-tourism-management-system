@@ -1,4 +1,3 @@
-// client/src/Router/AppRouter.jsx
 import { Routes, Route, Navigate } from "react-router-dom";
 import ScrollToTop from "./ScrollToTop";
 
@@ -14,6 +13,8 @@ import ForgotPasswordPage from "../pages/public/ForgotPasswordPage";
 import ResetPasswordPage from "../pages/public/ResetPasswordPage";
 
 import TouristHomePage from "../pages/tourist/TouristHomePage";
+import TouristNepalMapPage from "../pages/tourist/TouristNepalMapPage"; // ✅ NEW
+
 import { useAuth } from "../context/AuthContext";
 
 /* Protect private routes */
@@ -52,7 +53,7 @@ export default function AppRouter() {
       <ScrollToTop />
 
       <Routes>
-        {/* ✅ "/" becomes smart: logged-in -> /home, else public home */}
+        {/* "/" smart redirect */}
         <Route
           path="/"
           element={
@@ -62,13 +63,12 @@ export default function AppRouter() {
           }
         />
 
-        {/* ✅ Public site */}
+        {/* Public pages */}
         <Route path="/tours" element={<PublicToursPage />} />
         <Route path="/tours/:tourId" element={<PublicTourDetailsPage />} />
         <Route path="/blogs" element={<PublicBlogsPage />} />
         <Route path="/blogs/:blogId" element={<PublicBlogDetailsPage />} />
 
-        {/* (Optional) keep /public working if you already used it somewhere */}
         <Route
           path="/public"
           element={
@@ -78,7 +78,7 @@ export default function AppRouter() {
           }
         />
 
-        {/* ✅ Auth (optional: you can also block login/signup for logged-in users) */}
+        {/* Auth */}
         <Route
           path="/login"
           element={
@@ -98,7 +98,7 @@ export default function AppRouter() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-        {/* ✅ Tourist private home */}
+        {/* Tourist private pages */}
         <Route
           path="/home"
           element={
@@ -108,7 +108,17 @@ export default function AppRouter() {
           }
         />
 
-        {/* ✅ Fallback */}
+        {/* ✅ NEW MAP ROUTE */}
+        <Route
+          path="/map"
+          element={
+            <PrivateRoute>
+              <TouristNepalMapPage />
+            </PrivateRoute>
+          }
+        />
+
+        {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>

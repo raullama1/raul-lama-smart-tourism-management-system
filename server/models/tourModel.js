@@ -69,6 +69,8 @@ export async function getPublicTours(filters) {
         t.title,
         t.short_description,
         t.location,
+        t.latitude,
+        t.longitude,
         t.type,
         t.starting_price,
         t.image_url
@@ -107,6 +109,8 @@ export async function getPopularTours(limit = 6) {
         title,
         short_description,
         location,
+        latitude,
+        longitude,
         type,
         starting_price,
         image_url
@@ -133,6 +137,8 @@ export async function getPublicTourDetails(tourId) {
         t.short_description,
         t.long_description,
         t.location,
+        t.latitude,
+        t.longitude,
         t.type,
         t.starting_price,
         t.image_url
@@ -150,10 +156,7 @@ export async function getPublicTourDetails(tourId) {
   const tour = tourRows[0];
 
   // Make sure front-end always has "description"
-  tour.description =
-    tour.long_description ||
-    tour.short_description ||
-    "";
+  tour.description = tour.long_description || tour.short_description || "";
 
   // 2) Get agencies offering this tour
   const [agencyRows] = await db.query(

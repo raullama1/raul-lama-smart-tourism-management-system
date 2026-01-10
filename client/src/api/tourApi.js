@@ -1,4 +1,3 @@
-// client/src/api/tourApi.js
 import apiClient from "./apiClient";
 
 // GET /api/public/tours
@@ -16,3 +15,12 @@ export async function fetchPublicTourDetails(tourId) {
   const res = await apiClient.get(`/public/tours/${tourId}`);
   return res.data; // { tour, agencies }
 }
+
+// GET tours for map view (reuse public tours)
+export const fetchTourMapTours = async () => {
+  const res = await apiClient.get("/public/tours", {
+    params: { page: 1, limit: 1000 }
+  });
+
+  return res.data; // { data: [...] }
+};
