@@ -164,7 +164,7 @@ export default function WishlistPage() {
                           </button>
 
                           <button
-                            onClick={() => navigate("/map")}
+                            onClick={() => navigate(`/map?tour=${tour.id}`)}
                             className={`${btnBase} bg-emerald-50 text-emerald-800 border border-emerald-100 hover:bg-emerald-100`}
                           >
                             <FaMapMarkerAlt /> View on Map

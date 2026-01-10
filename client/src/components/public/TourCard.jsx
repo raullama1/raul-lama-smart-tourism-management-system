@@ -309,7 +309,7 @@ export default function TourCard({
                         <button
                           onClick={() => {
                             if (!requireLogin()) return;
-                            navigate("/map");
+                            navigate(`/map?tour=${tour.id}`);
                           }}
                           className="w-full flex items-center justify-center gap-2 px-2 py-2 rounded-md bg-[#e6f4ed] text-emerald-700 text-xs md:text-sm font-medium shadow hover:bg-gradient-to-r hover:from-emerald-600 hover:to-emerald-500 hover:text-white hover:scale-105 transition-all"
                         >
