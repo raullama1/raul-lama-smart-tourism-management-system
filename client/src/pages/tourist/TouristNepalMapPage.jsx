@@ -48,8 +48,7 @@ export default function TouristNepalMapPage() {
   return (
     <>
       <NavbarTourist />
-
-      <main className="bg-[#e6f4ec] min-h-screen pt-6 pb-10">
+      <main className="bg-[#e6f4ec] pt-6 pb-8">
         <div className="max-w-6xl mx-auto px-4 md:px-6">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
@@ -78,7 +77,7 @@ export default function TouristNepalMapPage() {
                 <MapContainer
                   center={nepalCenter}
                   zoom={7}
-                  style={{ height: "70vh", width: "100%" }}
+                  style={{ height: "70vh", width: "100%", zIndex: 1 }}
                   scrollWheelZoom
                 >
                   <TileLayer
@@ -99,18 +98,25 @@ export default function TouristNepalMapPage() {
                           </div>
 
                           <div className="text-xs">
-                            From <span className="font-semibold">NPR {Number(tour.starting_price).toLocaleString()}</span>
+                            From{" "}
+                            <span className="font-semibold">
+                              NPR {Number(tour.starting_price).toLocaleString()}
+                            </span>
                           </div>
 
                           <div className="flex gap-2 pt-1">
                             <button
-                              onClick={() => (window.location.href = `/tours/${tour.id}`)}
+                              onClick={() =>
+                                (window.location.href = `/tours/${tour.id}`)
+                              }
                               className="px-3 py-1 rounded-md bg-emerald-600 text-white text-xs"
                             >
                               View Details
                             </button>
                             <button
-                              onClick={() => (window.location.href = `/tours/${tour.id}#agencies`)}
+                              onClick={() =>
+                                (window.location.href = `/tours/${tour.id}#agencies`)
+                              }
                               className="px-3 py-1 rounded-md bg-emerald-50 text-emerald-700 text-xs border border-emerald-100"
                             >
                               Agencies
