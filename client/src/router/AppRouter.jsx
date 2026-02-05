@@ -1,3 +1,4 @@
+// client/src/router/AppRouter.js
 import { Routes, Route, Navigate } from "react-router-dom";
 import ScrollToTop from "./ScrollToTop";
 
@@ -16,6 +17,7 @@ import TouristHomePage from "../pages/tourist/TouristHomePage";
 import TouristNepalMapPage from "../pages/tourist/TouristNepalMapPage";
 import WishlistPage from "../pages/tourist/WishlistPage";
 import BookingsPage from "../pages/tourist/BookingsPage";
+import ConfirmBookingPage from "../pages/tourist/ConfirmBookingPage";
 
 import { useAuth } from "../context/AuthContext";
 
@@ -131,7 +133,24 @@ export default function AppRouter() {
         />
 
         {/* Bookings */}
-        <Route path="/bookings" element={<BookingsPage />} />
+        <Route
+          path="/bookings"
+          element={
+            <PrivateRoute>
+              <BookingsPage />
+            </PrivateRoute>
+          }
+        />
+
+        {/* Confirm Booking*/}
+        <Route
+          path="/bookings/confirm"
+          element={
+            <PrivateRoute>
+              <ConfirmBookingPage />
+            </PrivateRoute>
+          }
+        />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
