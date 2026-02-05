@@ -41,6 +41,9 @@ app.use("/api/auth", authRoutes);
 // Wishlist routes
 app.use("/api/wishlist", wishlistRoutes);
 
+// Booking routes
+import bookingRoutes from "./routes/bookingRoutes.js";
+app.use("/api/bookings", bookingRoutes);
 
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => console.log(`Server running on ${PORT}`));

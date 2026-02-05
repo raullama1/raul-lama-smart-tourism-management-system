@@ -15,7 +15,7 @@ import ResetPasswordPage from "../pages/public/ResetPasswordPage";
 import TouristHomePage from "../pages/tourist/TouristHomePage";
 import TouristNepalMapPage from "../pages/tourist/TouristNepalMapPage";
 import WishlistPage from "../pages/tourist/WishlistPage";
-
+import BookingsPage from "../pages/tourist/BookingsPage";
 
 import { useAuth } from "../context/AuthContext";
 
@@ -130,6 +130,8 @@ export default function AppRouter() {
           }
         />
 
+        {/* Bookings */}
+        <Route path="/bookings" element={<BookingsPage />} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
