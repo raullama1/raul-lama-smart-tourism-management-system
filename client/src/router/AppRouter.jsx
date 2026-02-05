@@ -18,6 +18,7 @@ import TouristNepalMapPage from "../pages/tourist/TouristNepalMapPage";
 import WishlistPage from "../pages/tourist/WishlistPage";
 import BookingsPage from "../pages/tourist/BookingsPage";
 import ConfirmBookingPage from "../pages/tourist/ConfirmBookingPage";
+import PaymentPage from "../pages/tourist/PaymentPage";
 
 import { useAuth } from "../context/AuthContext";
 
@@ -148,6 +149,16 @@ export default function AppRouter() {
           element={
             <PrivateRoute>
               <ConfirmBookingPage />
+            </PrivateRoute>
+          }
+        />
+
+        {/* Payment */}
+        <Route
+          path="/payment/:bookingId"
+          element={
+            <PrivateRoute>
+              <PaymentPage />
             </PrivateRoute>
           }
         />

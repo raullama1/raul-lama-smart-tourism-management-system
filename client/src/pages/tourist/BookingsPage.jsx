@@ -370,7 +370,7 @@ export default function BookingsPage() {
                               {unpaid && !cancelled && (
                                 <button
                                   disabled={rowBusy}
-                                  onClick={() => handlePayNow(b.id)}
+                                  onClick={() => navigate(`/payment/${b.id}`)}
                                   className={[
                                     actionBase,
                                     lift,
