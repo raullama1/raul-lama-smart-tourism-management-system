@@ -21,20 +21,20 @@ L.Icon.Default.mergeOptions({
 export default function TouristNepalMapPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const tourParam = searchParams.get("tour"); // ✅ /map?tour=3
+  const tourParam = searchParams.get("tour"); // ?tour=ID
 
   const [tours, setTours] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // ✅ filter state
+  // filter state
   const [selectedType, setSelectedType] = useState("all");
 
-  // ✅ map view state (center + zoom)
+  // map view state (center + zoom)
   const nepalCenter = [28.3949, 84.124];
   const [mapCenter, setMapCenter] = useState(nepalCenter);
   const [mapZoom, setMapZoom] = useState(7);
 
-  // ✅ marker popup refs for auto-open
+  // marker popup refs for auto-open
   const markerRefs = useRef({}); // { [id]: markerInstance }
   const [focusTourId, setFocusTourId] = useState(null); // id to open popup
 
@@ -73,10 +73,10 @@ export default function TouristNepalMapPage() {
     return toursWithCoords.filter((t) => t.type === selectedType);
   }, [toursWithCoords, selectedType]);
 
-  // ✅ When opened via /map?tour=ID → auto filter + center + open popup
+  // When opened via /map?tour=ID → auto filter + center + open popup
   useEffect(() => {
     if (!tourParam) {
-      // ✅ If coming from hero button /map (no param) -> normal default
+      // If coming from hero button /map (no param) -> normal default
       setFocusTourId(null);
       setSelectedType("all");
       setMapCenter(nepalCenter);
@@ -93,18 +93,18 @@ export default function TouristNepalMapPage() {
     const found = toursWithCoords.find((t) => Number(t.id) === idNum);
     if (!found) return;
 
-    // ✅ apply filter based on that tour
+    // apply filter based on that tour
     setSelectedType(found.type);
 
-    // ✅ zoom + center to tour
+    // zoom + center to tour
     setMapCenter([Number(found.latitude), Number(found.longitude)]);
     setMapZoom(11);
 
-    // ✅ open popup after markers mount
+    // open popup after markers mount
     setFocusTourId(idNum);
   }, [tourParam, loading, toursWithCoords]);
 
-  // ✅ open popup when marker ref exists
+  // open popup when marker ref exists
   useEffect(() => {
     if (!focusTourId) return;
 
@@ -113,7 +113,7 @@ export default function TouristNepalMapPage() {
       if (marker && marker.openPopup) {
         marker.openPopup();
       }
-    }, 400);
+    }, 300);
 
     return () => clearTimeout(t);
   }, [focusTourId, selectedType]);
