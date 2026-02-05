@@ -8,6 +8,7 @@ import publicHomeRoutes from "./routes/publicHomeRoutes.js";
 import publicBlogsRoutes from "./routes/publicBlogsRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import wishlistRoutes from "./routes/wishlistRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
 
 dotenv.config();
 
@@ -44,6 +45,9 @@ app.use("/api/wishlist", wishlistRoutes);
 // Booking routes
 import bookingRoutes from "./routes/bookingRoutes.js";
 app.use("/api/bookings", bookingRoutes);
+
+// Payment routes
+app.use("/api/payments", paymentRoutes);
 
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => console.log(`Server running on ${PORT}`));

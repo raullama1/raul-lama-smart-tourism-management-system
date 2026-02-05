@@ -5,13 +5,13 @@ import FooterTourist from "../../components/tourist/FooterTourist";
 import { useAuth } from "../../context/AuthContext";
 import { fetchMyBookings, payBooking, cancelBooking } from "../../api/bookingApi";
 import {
-  FaFilter,
   FaCreditCard,
-  FaEye,
   FaPen,
   FaTimes,
   FaExclamationTriangle,
   FaTimesCircle,
+  FaRedo,
+  FaInfoCircle,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
@@ -19,8 +19,10 @@ export default function BookingsPage() {
   const { token } = useAuth();
   const navigate = useNavigate();
 
-  const [filters, setFilters] = useState({ q: "", date: "All", status: "All" });
-  const [draft, setDraft] = useState(filters);
+  const DEFAULT_FILTERS = { q: "", date: "All", status: "All" };
+
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [draft, setDraft] = useState(DEFAULT_FILTERS);
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -35,6 +37,19 @@ export default function BookingsPage() {
     refCode: "",
   });
 
+  // Simple info popup (for review rule)
+  const [infoModal, setInfoModal] = useState({
+    open: false,
+    title: "Write Review",
+    message: "",
+  });
+
+  const openInfoModal = (message) =>
+    setInfoModal({ open: true, title: "Write Review", message });
+
+  const closeInfoModal = () =>
+    setInfoModal({ open: false, title: "Write Review", message: "" });
+
   const load = async (f = filters) => {
     if (!token) {
       setRows([]);
@@ -45,10 +60,12 @@ export default function BookingsPage() {
     try {
       setLoading(true);
       const res = await fetchMyBookings(f);
-      setRows(res?.data || []);
+      const list = Array.isArray(res?.data) ? res.data : [];
+      setRows(list);
     } catch (e) {
       console.error("Failed to load bookings", e);
       alert("Failed to load bookings.");
+      setRows([]);
     } finally {
       setLoading(false);
     }
@@ -58,6 +75,16 @@ export default function BookingsPage() {
     load(filters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
+
+  // auto-apply filters (debounce for search)
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setFilters(draft);
+      load(draft);
+    }, 350);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft.q, draft.date, draft.status]);
 
   const STATUS_STEPS = useMemo(
     () => ["Pending", "Approved", "Confirmed", "Completed"],
@@ -69,7 +96,14 @@ export default function BookingsPage() {
     return idx === -1 ? -1 : idx;
   };
 
-  // Current status badge (stands out)
+  // If Paid, show Confirmed (unless Completed/Cancelled)
+  const displayStatus = (b) => {
+    if (b.payment_status === "Paid" && b.booking_status !== "Cancelled") {
+      return b.booking_status === "Completed" ? "Completed" : "Confirmed";
+    }
+    return b.booking_status;
+  };
+
   const StatusBadge = ({ status }) => {
     const map = {
       Pending: "bg-amber-500 text-white",
@@ -118,15 +152,13 @@ export default function BookingsPage() {
     </span>
   );
 
-  // Button micro-interaction helpers (simple)
   const actionBase =
     "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200";
   const lift =
     "hover:-translate-y-[1px] hover:shadow-md active:translate-y-0 active:shadow-sm";
 
-  const handleApply = () => {
-    setFilters(draft);
-    load(draft);
+  const handleReset = () => {
+    setDraft(DEFAULT_FILTERS);
   };
 
   const handlePayNow = async (bookingId) => {
@@ -149,7 +181,6 @@ export default function BookingsPage() {
     }
   };
 
-  // Open cancel popup
   const openCancelModal = (b) => {
     setCancelModal({
       open: true,
@@ -159,12 +190,10 @@ export default function BookingsPage() {
     });
   };
 
-  // Close cancel popup
   const closeCancelModal = () => {
     setCancelModal({ open: false, bookingId: null, tourTitle: "", refCode: "" });
   };
 
-  // Confirm cancel inside popup
   const confirmCancel = async () => {
     const bookingId = cancelModal.bookingId;
     if (!bookingId || busyId) return;
@@ -203,7 +232,7 @@ export default function BookingsPage() {
               Your past and current bookings with status and payment details.
             </p>
 
-            {/* Filters */}
+            {/* Filters (auto apply) */}
             <div className="mt-4 flex flex-col md:flex-row gap-2 md:items-center">
               <input
                 value={draft.q}
@@ -214,7 +243,9 @@ export default function BookingsPage() {
 
               <select
                 value={draft.date}
-                onChange={(e) => setDraft((p) => ({ ...p, date: e.target.value }))}
+                onChange={(e) =>
+                  setDraft((p) => ({ ...p, date: e.target.value }))
+                }
                 className="w-full md:w-[170px] px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm"
               >
                 <option value="All">Date: All</option>
@@ -238,14 +269,14 @@ export default function BookingsPage() {
               </select>
 
               <button
-                onClick={handleApply}
+                onClick={handleReset}
                 className={[
                   actionBase,
                   lift,
                   "w-full md:w-auto justify-center border border-gray-200 bg-white text-gray-900 hover:bg-gray-50",
                 ].join(" ")}
               >
-                <FaFilter /> Apply
+                <FaRedo /> Reset
               </button>
             </div>
           </div>
@@ -297,9 +328,11 @@ export default function BookingsPage() {
                       const cancelled = b.booking_status === "Cancelled";
                       const paid = b.payment_status === "Paid";
                       const unpaid = b.payment_status === "Unpaid";
-                      const completed = b.booking_status === "Completed";
 
-                      const sIdx = stepIndex(b.booking_status);
+                      const uiStatus = displayStatus(b);
+                      const completed = uiStatus === "Completed";
+                      const sIdx = stepIndex(uiStatus);
+
                       const rowBusy = busyId === b.id;
 
                       return (
@@ -344,7 +377,7 @@ export default function BookingsPage() {
                                 <span className="text-[11px] text-gray-500 font-semibold">
                                   Current:
                                 </span>
-                                <StatusBadge status={b.booking_status} />
+                                <StatusBadge status={uiStatus} />
                               </div>
 
                               {!cancelled && (
@@ -367,6 +400,7 @@ export default function BookingsPage() {
                           {/* Actions */}
                           <td className="px-4 py-4">
                             <div className="flex gap-2 justify-end flex-nowrap">
+                              {/* Pay Now */}
                               {unpaid && !cancelled && (
                                 <button
                                   disabled={rowBusy}
@@ -384,32 +418,36 @@ export default function BookingsPage() {
                                 </button>
                               )}
 
-                              {paid && (
+                              {/* Write Review (only show after Paid) */}
+                              {paid && !cancelled && (
                                 <button
-                                  onClick={() => navigate(`/tours/${b.tour_id}`)}
+                                  onClick={() => {
+                                    if (!completed) {
+                                      openInfoModal(
+                                        "You can write a review only after the tour is marked as Completed by the agency."
+                                      );
+                                      return;
+                                    }
+                                    navigate(`/review?booking=${b.id}`);
+                                  }}
                                   className={[
                                     actionBase,
                                     lift,
-                                    "border border-gray-200 bg-white text-gray-900 hover:bg-gray-50",
+                                    completed
+                                      ? "bg-emerald-700 text-white hover:bg-emerald-800"
+                                      : "bg-white text-emerald-800 border border-emerald-200 hover:bg-emerald-50",
                                   ].join(" ")}
-                                >
-                                  <FaEye /> View
-                                </button>
-                              )}
-
-                              {paid && completed && (
-                                <button
-                                  onClick={() => navigate(`/review?booking=${b.id}`)}
-                                  className={[
-                                    actionBase,
-                                    lift,
-                                    "bg-emerald-700 text-white hover:bg-emerald-800",
-                                  ].join(" ")}
+                                  title={
+                                    completed
+                                      ? "Write your review"
+                                      : "Available after tour completion"
+                                  }
                                 >
                                   <FaPen /> Write Review
                                 </button>
                               )}
 
+                              {/* Cancel */}
                               {!paid && !cancelled && (
                                 <button
                                   disabled={rowBusy}
@@ -447,7 +485,6 @@ export default function BookingsPage() {
             }}
           >
             <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-              {/* Header with X */}
               <div className="p-5 border-b border-gray-100 flex items-start justify-between">
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center border border-red-100">
@@ -477,8 +514,7 @@ export default function BookingsPage() {
                   <span className="font-semibold">{cancelModal.tourTitle}</span>
                 </div>
                 <div className="text-xs text-gray-500">
-                  Ref:{" "}
-                  <span className="font-semibold">#{cancelModal.refCode}</span>
+                  Ref: <span className="font-semibold">#{cancelModal.refCode}</span>
                 </div>
               </div>
 
@@ -505,9 +541,60 @@ export default function BookingsPage() {
                       : "bg-red-600 text-white hover:bg-red-700",
                   ].join(" ")}
                 >
-                  {busyId === cancelModal.bookingId
-                    ? "Cancelling..."
-                    : "Yes, Cancel"}
+                  {busyId === cancelModal.bookingId ? "Cancelling..." : "Yes, Cancel"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Info Popup Modal (review rule) */}
+        {infoModal.open && (
+          <div
+            className="fixed inset-0 z-[85] flex items-center justify-center bg-black/40 px-4"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) closeInfoModal();
+            }}
+          >
+            <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+              <div className="p-5 border-b border-gray-100 flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-100">
+                    <FaInfoCircle />
+                  </div>
+                  <div>
+                    <div className="text-base font-bold text-gray-900">
+                      {infoModal.title}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-0.5">
+                      Quick info
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={closeInfoModal}
+                  className="text-gray-400 hover:text-gray-700 transition"
+                  title="Close"
+                >
+                  <FaTimesCircle size={20} />
+                </button>
+              </div>
+
+              <div className="p-5">
+                <div className="text-sm text-gray-700">{infoModal.message}</div>
+              </div>
+
+              <div className="p-5 pt-0 flex justify-end">
+                <button
+                  onClick={closeInfoModal}
+                  className={[
+                    actionBase,
+                    lift,
+                    "bg-emerald-700 text-white hover:bg-emerald-800",
+                  ].join(" ")}
+                >
+                  Okay
                 </button>
               </div>
             </div>

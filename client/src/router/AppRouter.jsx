@@ -19,6 +19,8 @@ import WishlistPage from "../pages/tourist/WishlistPage";
 import BookingsPage from "../pages/tourist/BookingsPage";
 import ConfirmBookingPage from "../pages/tourist/ConfirmBookingPage";
 import PaymentPage from "../pages/tourist/PaymentPage";
+import PaymentSuccessPage from "../pages/tourist/PaymentSuccessPage";
+import PaymentFailurePage from "../pages/tourist/PaymentFailurePage";
 
 import { useAuth } from "../context/AuthContext";
 
@@ -113,7 +115,6 @@ export default function AppRouter() {
           }
         />
 
-        {/* MAP */}
         <Route
           path="/map"
           element={
@@ -123,7 +124,6 @@ export default function AppRouter() {
           }
         />
 
-        {/* Wishlist */}
         <Route
           path="/wishlist"
           element={
@@ -133,7 +133,6 @@ export default function AppRouter() {
           }
         />
 
-        {/* Bookings */}
         <Route
           path="/bookings"
           element={
@@ -143,7 +142,6 @@ export default function AppRouter() {
           }
         />
 
-        {/* Confirm Booking*/}
         <Route
           path="/bookings/confirm"
           element={
@@ -153,12 +151,29 @@ export default function AppRouter() {
           }
         />
 
-        {/* Payment */}
         <Route
           path="/payment/:bookingId"
           element={
             <PrivateRoute>
               <PaymentPage />
+            </PrivateRoute>
+          }
+        />
+
+        {/* Payment result pages */}
+        <Route
+          path="/payment/success/:bookingId"
+          element={
+            <PrivateRoute>
+              <PaymentSuccessPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/payment/failure/:bookingId"
+          element={
+            <PrivateRoute>
+              <PaymentFailurePage />
             </PrivateRoute>
           }
         />
