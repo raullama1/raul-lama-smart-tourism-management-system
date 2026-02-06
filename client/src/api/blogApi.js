@@ -1,7 +1,5 @@
-// client/src/api/blogApi.js
 import apiClient from "./apiClient";
 
-// GET /api/public/blogs   (from client POV: /public/blogs)
 export async function fetchPublicBlogs(params = {}) {
   const searchParams = new URLSearchParams();
 
@@ -11,17 +9,41 @@ export async function fetchPublicBlogs(params = {}) {
   if (params.limit) searchParams.set("limit", params.limit);
 
   const queryString = searchParams.toString();
-  const url = queryString
-    ? `/public/blogs?${queryString}`
-    : `/public/blogs`;
+  const url = queryString ? `/public/blogs?${queryString}` : `/public/blogs`;
 
   const res = await apiClient.get(url);
-  return res.data; // { data, pagination }
+  return res.data;
 }
 
-// GET /api/public/blogs/:blogId   (from client POV: /public/blogs/:blogId)
 export async function fetchPublicBlogDetails(blogId) {
   const res = await apiClient.get(`/public/blogs/${blogId}`);
-  // { blog, recentBlogs }
+  return res.data;
+}
+
+export async function fetchBlogComments(blogId, params = {}) {
+  const searchParams = new URLSearchParams();
+  if (params.page) searchParams.set("page", params.page);
+  if (params.limit) searchParams.set("limit", params.limit);
+
+  const qs = searchParams.toString();
+  const url = qs ? `/blogs/${blogId}/comments?${qs}` : `/blogs/${blogId}/comments`;
+
+  const res = await apiClient.get(url);
+  return res.data; // { comments, pagination }
+}
+
+export async function postBlogComment(blogId, comment, token) {
+  const res = await apiClient.post(
+    `/blogs/${blogId}/comments`,
+    { comment },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return res.data;
+}
+
+export async function deleteBlogComment(blogId, commentId, token) {
+  const res = await apiClient.delete(`/blogs/${blogId}/comments/${commentId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   return res.data;
 }

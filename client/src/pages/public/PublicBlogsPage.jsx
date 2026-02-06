@@ -1,15 +1,35 @@
 // client/src/pages/public/PublicBlogsPage.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import NavbarPublic from "../../components/public/NavbarPublic";
 import FooterPublic from "../../components/public/FooterPublic";
+import NavbarTourist from "../../components/tourist/NavbarTourist";
+import FooterTourist from "../../components/tourist/FooterTourist";
 import BlogSidebarFilters from "../../components/public/BlogSidebarFilters";
 import BlogListItem from "../../components/public/BlogListItem";
-import { fetchPublicBlogs } from "../../api/blogApi";
+import { fetchPublicBlogs, fetchBlogComments } from "../../api/blogApi";
+import { useAuth } from "../../context/AuthContext";
+
+function makePreviewText(text, max = 140) {
+  if (!text) return "";
+
+  const firstLine = String(text).split(/\r?\n/).find((l) => l.trim().length > 0) || "";
+  const clean = firstLine.replace(/\s+/g, " ").trim();
+
+  if (clean.length <= max) return clean;
+  return clean.slice(0, max).trim() + "...";
+}
 
 export default function PublicBlogsPage() {
+  const { isAuthenticated } = useAuth();
+  const location = useLocation();
+
+  const Navbar = isAuthenticated ? NavbarTourist : NavbarPublic;
+  const Footer = isAuthenticated ? FooterTourist : FooterPublic;
+
   const [filters, setFilters] = useState({
     search: "",
-    sort: "",   // "" initially (nothing selected)
+    sort: "",
     page: 1,
     limit: 6,
   });
@@ -18,24 +38,25 @@ export default function PublicBlogsPage() {
   const [pagination, setPagination] = useState({ total: 0, hasMore: false });
   const [loading, setLoading] = useState(false);
 
-  const loadBlogs = async (overridePage) => {
+  const [commentsByBlog, setCommentsByBlog] = useState({});
+  const [loadingComments, setLoadingComments] = useState(false);
+
+  const loadBlogs = async ({ page, append }) => {
     try {
       setLoading(true);
 
-      const query = {
+      const res = await fetchPublicBlogs({
         ...filters,
-        page: overridePage || filters.page,
-      };
+        page,
+      });
 
-      const res = await fetchPublicBlogs(query); // { data, pagination }
-
-      if (overridePage && overridePage > 1) {
-        setBlogs((prev) => [...prev, ...res.data]);
+      if (append) {
+        setBlogs((prev) => [...prev, ...(res.data || [])]);
       } else {
-        setBlogs(res.data);
+        setBlogs(res.data || []);
       }
 
-      setPagination(res.pagination);
+      setPagination(res.pagination || { total: 0, hasMore: false });
     } catch (err) {
       console.error("Failed to load blogs", err);
     } finally {
@@ -43,10 +64,51 @@ export default function PublicBlogsPage() {
     }
   };
 
+  const loadCommentsPreview = async (list) => {
+    try {
+      setLoadingComments(true);
+
+      const results = await Promise.all(
+        (list || []).map(async (b) => {
+          try {
+            const res = await fetchBlogComments(b.id, { page: 1, limit: 2 });
+            return [
+              b.id,
+              {
+                count: res.pagination?.total ?? (res.comments?.length || 0),
+                items: res.comments || [],
+              },
+            ];
+          } catch {
+            return [b.id, { count: 0, items: [] }];
+          }
+        })
+      );
+
+      const obj = {};
+      results.forEach(([id, payload]) => (obj[id] = payload));
+      setCommentsByBlog(obj);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
   useEffect(() => {
-    loadBlogs(1);
+    setFilters((prev) => ({ ...prev, page: 1 }));
+    loadBlogs({ page: 1, append: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.search, filters.sort]);
+
+  useEffect(() => {
+    if (blogs.length > 0) loadCommentsPreview(blogs);
+    else setCommentsByBlog({});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blogs]);
+
+  useEffect(() => {
+    if (blogs.length > 0) loadCommentsPreview(blogs);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.key]);
 
   const handleSidebarChange = (next) => {
     setFilters((prev) => ({ ...prev, ...next, page: 1 }));
@@ -61,67 +123,48 @@ export default function PublicBlogsPage() {
     });
   };
 
-  const handleLoadMore = () => {
+  const handleLoadMore = async () => {
     if (!pagination.hasMore) return;
+
     const nextPage = (filters.page || 1) + 1;
+
     setFilters((prev) => ({ ...prev, page: nextPage }));
-    loadBlogs(nextPage);
+    await loadBlogs({ page: nextPage, append: true });
   };
 
-  // Map date + attach sample comments for UI
-  const mappedBlogs = blogs.map((b) => ({
-    ...b,
-    formattedDate: new Date(b.created_at).toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    }),
-    sampleComments:
-      b.title === "Chitwan Jungle Safari Tips"
-        ? [
-            {
-              author: "Raul Lama",
-              timeAgo: "2h ago",
-              text: "Morning drives gave us rhino sightings. Tharu cultural show at Sauraha was a highlight!",
-            },
-            {
-              author: "John Smith",
-              timeAgo: "1h ago",
-              text: "Any tips for families traveling with kids in May heat?",
-            },
-          ]
-        : b.title === "Top 5 Trekking Places in Nepal"
-        ? [
-            {
-              author: "John Smith",
-              timeAgo: "3h ago",
-              text: "Great tips for choosing between EBC and Annapurna Circuit.",
-            },
-          ]
-        : b.title === "Pokhara Travel Guide 2025"
-        ? [
-            {
-              author: "John Smith",
-              timeAgo: "5h ago",
-              text: "Love the timing notes for Sarangkot. Lakeside cafes open early for coffee.",
-            },
-          ]
-        : [],
-  }));
+  const mappedBlogs = useMemo(() => {
+    return blogs.map((b) => {
+      const formattedDate = new Date(b.created_at).toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+
+      const preview = commentsByBlog[b.id]?.items || [];
+      const count = commentsByBlog[b.id]?.count || 0;
+
+      return {
+        ...b,
+        formattedDate,
+        // ✅ force list preview to match full blog text
+        excerpt: makePreviewText(b.content || b.excerpt, 140),
+        commentCount: count,
+        commentsPreview: preview,
+      };
+    });
+  }, [blogs, commentsByBlog]);
 
   return (
     <>
-      <NavbarPublic />
+      <Navbar />
       <main className="bg-[#e6f4ec] min-h-screen pt-6 pb-10">
         <div className="max-w-6xl mx-auto px-4 md:px-6 flex flex-col md:flex-row gap-4">
-          {/* Left Sidebar */}
           <BlogSidebarFilters
             filters={filters}
             onChange={handleSidebarChange}
             onReset={handleReset}
           />
 
-          {/* Blogs list */}
           <section className="flex-1">
             <header className="mb-4">
               <h1 className="text-xl md:text-2xl font-semibold text-gray-900">
@@ -142,8 +185,18 @@ export default function PublicBlogsPage() {
               </div>
             ) : (
               <>
+                {loadingComments && (
+                  <div className="mb-2 text-xs text-gray-500">
+                    Updating comments...
+                  </div>
+                )}
+
                 {mappedBlogs.map((blog) => (
-                  <BlogListItem key={blog.id} blog={blog} />
+                  <BlogListItem
+                    key={blog.id}
+                    blog={blog}
+                    isAuthenticated={isAuthenticated}
+                  />
                 ))}
 
                 {pagination.hasMore && (
@@ -151,6 +204,7 @@ export default function PublicBlogsPage() {
                     <button
                       onClick={handleLoadMore}
                       className="px-5 py-2.5 rounded-full border border-gray-300 bg-white text-sm text-gray-800 hover:bg-gray-50"
+                      type="button"
                     >
                       Load More
                     </button>
@@ -161,7 +215,7 @@ export default function PublicBlogsPage() {
           </section>
         </div>
       </main>
-      <FooterPublic />
+      <Footer />
     </>
   );
 }

@@ -10,6 +10,7 @@ import authRoutes from "./routes/authRoutes.js";
 import wishlistRoutes from "./routes/wishlistRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
+import blogCommentsRoutes from "./routes/blogCommentsRoutes.js";
 
 dotenv.config();
 
@@ -52,6 +53,9 @@ app.use("/api/payments", paymentRoutes);
 
 // Review routes
 app.use("/api/reviews", reviewRoutes);
+
+// Blog comments routes
+app.use("/api/blogs", blogCommentsRoutes);
 
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => console.log(`Server running on ${PORT}`));

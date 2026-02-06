@@ -3,14 +3,12 @@ import { useNavigate } from "react-router-dom";
 
 export default function BlogListItem({ blog }) {
   const navigate = useNavigate();
-  const sampleComments = blog.sampleComments || [];
+
+  const commentsPreview = blog.commentsPreview || [];
+  const commentCount = Number(blog.commentCount || 0);
 
   const handleReadMore = () => {
     navigate(`/blogs/${blog.id}`);
-  };
-
-  const handlePostComment = () => {
-    alert("Please login or signup to post a comment.");
   };
 
   return (
@@ -25,66 +23,61 @@ export default function BlogListItem({ blog }) {
             {blog.excerpt}
           </p>
         </div>
+
         <div className="text-right text-[11px] text-gray-500">
           <div className="font-medium text-gray-800">{blog.agency_name}</div>
           <div>{blog.formattedDate}</div>
         </div>
       </div>
 
-      {/* Read more */}
-      <div className="mt-3">
-        <button
-          onClick={handleReadMore}
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-md bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700"
-        >
-          Read More
-        </button>
-      </div>
-
-      {/* Comments */}
+      {/* Comments preview */}
       <div className="mt-4 border-t border-gray-100 pt-3">
-        <h3 className="text-xs font-semibold text-gray-800 mb-2">Comments</h3>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-xs font-semibold text-gray-800">Comments</h3>
+          <span className="text-[11px] text-gray-500">
+            {commentCount} comment{commentCount === 1 ? "" : "s"}
+          </span>
+        </div>
 
-        {/* Existing comments */}
-        {sampleComments.length > 0 ? (
-          <div className="max-h-32 overflow-y-auto space-y-2 pr-1 mb-2">
-            {sampleComments.map((c, idx) => (
+        {commentsPreview.length > 0 ? (
+          <div className="max-h-32 overflow-y-auto space-y-2 pr-1">
+            {commentsPreview.map((c) => (
               <div
-                key={idx}
+                key={c.id}
                 className="bg-[#e6f4ec] rounded-lg px-3 py-2 text-[11px]"
               >
-                <div className="flex items-center justify-between mb-0.5">
+                <div className="flex items-center justify-between mb-0.5 gap-2">
                   <span className="font-medium text-gray-800">
-                    {c.author}
+                    {c.user_name || "User"}
                   </span>
                   <span className="text-gray-500 text-[10px]">
-                    {c.timeAgo}
+                    {new Date(c.created_at).toLocaleDateString("en-GB", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })}
                   </span>
                 </div>
-                <p className="text-gray-700">{c.text}</p>
+                <p className="text-gray-700 line-clamp-2">{c.comment}</p>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-[11px] text-gray-400 mb-2">
-            No comments yet. Be the first to share your thoughts.
+          <p className="text-[11px] text-gray-400">
+            No comments yet.
           </p>
         )}
+      </div>
 
-        {/* Write comment */}
-        <div className="flex items-center gap-2 mt-1">
-          <input
-            type="text"
-            placeholder="Write a comment..."
-            className="flex-1 h-8 rounded-md border border-gray-300 px-3 text-[11px] focus:outline-none focus:ring-1 focus:ring-emerald-500"
-          />
-          <button
-            onClick={handlePostComment}
-            className="h-8 px-3 rounded-md bg-emerald-600 text-white text-[11px] font-medium hover:bg-emerald-700"
-          >
-            Post Comment
-          </button>
-        </div>
+      {/* Read more (at bottom – single CTA) */}
+      <div className="mt-4 flex justify-end">
+        <button
+          onClick={handleReadMore}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700"
+          type="button"
+        >
+          Read More
+        </button>
       </div>
     </article>
   );
