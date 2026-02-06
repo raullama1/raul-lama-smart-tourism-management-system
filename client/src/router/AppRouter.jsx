@@ -21,6 +21,7 @@ import ConfirmBookingPage from "../pages/tourist/ConfirmBookingPage";
 import PaymentPage from "../pages/tourist/PaymentPage";
 import PaymentSuccessPage from "../pages/tourist/PaymentSuccessPage";
 import PaymentFailurePage from "../pages/tourist/PaymentFailurePage";
+import WriteReviewPage from "../pages/tourist/WriteReviewPage";
 
 import { useAuth } from "../context/AuthContext";
 
@@ -174,6 +175,25 @@ export default function AppRouter() {
           element={
             <PrivateRoute>
               <PaymentFailurePage />
+            </PrivateRoute>
+          }
+        />
+
+        {/* Write review page */}
+        <Route
+          path="/review/:bookingId"
+          element={
+            <PrivateRoute>
+              <WriteReviewPage />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/review"
+          element={
+            <PrivateRoute>
+              <WriteReviewPage />
             </PrivateRoute>
           }
         />

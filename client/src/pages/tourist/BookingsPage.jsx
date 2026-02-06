@@ -424,7 +424,7 @@ export default function BookingsPage() {
                                   onClick={() => {
                                     if (!completed) {
                                       openInfoModal(
-                                        "You can write a review only after the tour is marked as Completed by the agency."
+                                        "You can write a review only after the tour is completed."
                                       );
                                       return;
                                     }
