@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import NavbarTourist from "../../components/tourist/NavbarTourist";
 import FooterTourist from "../../components/tourist/FooterTourist";
+import ChangePasswordModal from "../../components/tourist/ChangePasswordModal";
 import { useAuth } from "../../context/AuthContext";
 import {
   fetchMyProfile,
@@ -85,10 +86,17 @@ export default function TouristProfilePage() {
   const [phoneNumber, setPhoneNumber] = useState("");
 
   // toast state
-  const [toast, setToast] = useState({ open: false, type: "success", message: "" });
+  const [toast, setToast] = useState({
+    open: false,
+    type: "success",
+    message: "",
+  });
 
   // confirm remove avatar modal
   const [confirmRemove, setConfirmRemove] = useState(false);
+
+  // ✅ change password modal
+  const [changePwdOpen, setChangePwdOpen] = useState(false);
 
   const showToast = (type, message) => {
     setToast({ open: true, type, message });
@@ -199,8 +207,9 @@ export default function TouristProfilePage() {
     }
 
     // save as one string: +CODE + NUMBER (or empty string if user cleared)
-    const fullPhone =
-      phoneNumber.trim() ? `${countryCode}${phoneNumber.trim()}` : "";
+    const fullPhone = phoneNumber.trim()
+      ? `${countryCode}${phoneNumber.trim()}`
+      : "";
 
     try {
       setSaving(true);
@@ -267,7 +276,9 @@ export default function TouristProfilePage() {
               </div>
 
               <div className="flex flex-col gap-2">
-                <div className="text-sm font-semibold text-gray-900">Profile photo</div>
+                <div className="text-sm font-semibold text-gray-900">
+                  Profile photo
+                </div>
 
                 <div className="flex flex-wrap gap-2">
                   <input
@@ -299,7 +310,9 @@ export default function TouristProfilePage() {
                   )}
 
                   {imgLoading && (
-                    <div className="text-sm text-gray-500 flex items-center">Uploading...</div>
+                    <div className="text-sm text-gray-500 flex items-center">
+                      Uploading...
+                    </div>
                   )}
                 </div>
 
@@ -310,7 +323,9 @@ export default function TouristProfilePage() {
             {/* form */}
             <div className="mt-6 space-y-4">
               <div>
-                <div className="text-sm font-semibold text-emerald-900/70">Name</div>
+                <div className="text-sm font-semibold text-emerald-900/70">
+                  Name
+                </div>
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -322,7 +337,9 @@ export default function TouristProfilePage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <div className="text-sm font-semibold text-emerald-900/70">Email</div>
+                  <div className="text-sm font-semibold text-emerald-900/70">
+                    Email
+                  </div>
                   <input
                     value={user?.email || ""}
                     readOnly
@@ -332,7 +349,9 @@ export default function TouristProfilePage() {
                 </div>
 
                 <div>
-                  <div className="text-sm font-semibold text-emerald-900/70">Phone</div>
+                  <div className="text-sm font-semibold text-emerald-900/70">
+                    Phone
+                  </div>
 
                   {/* same design area, just split into dropdown + input */}
                   <div className="mt-2 flex gap-2">
@@ -382,14 +401,16 @@ export default function TouristProfilePage() {
 
                 <button
                   type="button"
-                  onClick={() => showToast("success", "Change Password screen will be next")}
+                  onClick={() => setChangePwdOpen(true)}
                   className="rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-900 hover:bg-gray-50"
                 >
                   Change Password
                 </button>
               </div>
 
-              <div className="text-xs text-gray-500">By updating, you agree to our latest terms.</div>
+              <div className="text-xs text-gray-500">
+                By updating, you agree to our latest terms.
+              </div>
             </div>
           </div>
         </div>
@@ -413,6 +434,12 @@ export default function TouristProfilePage() {
           setConfirmRemove(false);
           doRemoveAvatar();
         }}
+      />
+
+      <ChangePasswordModal
+        open={changePwdOpen}
+        onClose={() => setChangePwdOpen(false)}
+        onSuccess={() => showToast("success", "Password updated")}
       />
     </>
   );

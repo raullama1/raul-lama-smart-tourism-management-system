@@ -7,6 +7,7 @@ import {
   resetPasswordController,
   sendSignupVerificationCodeController,
   meController,
+  changePasswordController,
 } from "../controllers/authController.js";
 import { authRequired } from "../middleware/authMiddleware.js";
 
@@ -23,6 +24,9 @@ router.post("/login", loginController);
 
 // Get current logged-in user (used for refresh session)
 router.get("/me", authRequired, meController);
+
+// Change password (logged in)
+router.put("/change-password", authRequired, changePasswordController);
 
 // Forgot / reset password
 router.post("/forgot-password", forgotPasswordController);

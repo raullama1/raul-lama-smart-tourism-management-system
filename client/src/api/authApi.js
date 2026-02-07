@@ -44,3 +44,12 @@ export async function resetPassword(token, password) {
   });
   return res.data;
 }
+
+// Change password for logged-in user
+export async function changePassword(currentPassword, newPassword) {
+  const res = await apiClient.put("/auth/change-password", {
+    currentPassword,
+    newPassword,
+  });
+  return res.data; // { message }
+}

@@ -6,6 +6,7 @@ import { db } from "../db.js";
 
 import {
   findUserByEmail,
+  findUserById,
   createUser,
   updateUserPasswordHash,
 } from "../models/userModel.js";
@@ -34,7 +35,7 @@ function signToken(user) {
 }
 
 /**
- * ✅ Password validation that returns MULTIPLE errors
+ * Password validation that returns MULTIPLE errors
  * returns: [] if ok, otherwise ["...", "..."]
  */
 function validatePasswordStrength(password) {
@@ -315,6 +316,58 @@ export async function resetPasswordController(req, res) {
   } catch (err) {
     console.error("resetPasswordController error", err);
     return res.status(500).json({ message: "Failed to reset password." });
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* CHANGE PASSWORD (logged-in user)                                   */
+/* ------------------------------------------------------------------ */
+export async function changePasswordController(req, res) {
+  try {
+    const userId = req.user?.id;
+    const { currentPassword, newPassword } = req.body || {};
+
+    if (!userId) {
+      return res.status(401).json({ message: "Authentication required." });
+    }
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        message: "Current password and new password are required.",
+      });
+    }
+
+    if (currentPassword === newPassword) {
+      return res.status(400).json({
+        message: "New password must be different from current password.",
+      });
+    }
+
+    const pwdErrors = validatePasswordStrength(newPassword);
+    if (pwdErrors.length > 0) {
+      return res.status(400).json({
+        message: "Password is too weak. Please follow the rules.",
+        errors: pwdErrors,
+      });
+    }
+
+    const user = await findUserById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    const ok = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!ok) {
+      return res.status(400).json({ message: "Current password is incorrect." });
+    }
+
+    const newHash = await bcrypt.hash(newPassword, 10);
+    await updateUserPasswordHash(userId, newHash);
+
+    return res.json({ message: "Password updated successfully." });
+  } catch (err) {
+    console.error("changePasswordController error", err);
+    return res.status(500).json({ message: "Failed to change password." });
   }
 }
 
