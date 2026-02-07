@@ -4,6 +4,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import http from "http";
 import { Server as SocketIOServer } from "socket.io";
+import path from "path";
 
 import publicToursRoutes from "./routes/publicToursRoutes.js";
 import publicHomeRoutes from "./routes/publicHomeRoutes.js";
@@ -15,6 +16,7 @@ import paymentRoutes from "./routes/paymentRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
 import blogCommentsRoutes from "./routes/blogCommentsRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
+import profileRoutes from "./routes/profileRoutes.js"; 
 
 import { initChatSocket } from "./sockets/chatSocket.js";
 
@@ -29,7 +31,13 @@ app.use(
   })
 );
 
-app.use(express.json());
+app.use(express.json()); // keep
+
+// serve uploaded images
+app.use(
+  "/uploads",
+  express.static(path.join(process.cwd(), "server", "uploads"))
+);
 
 app.get("/", (req, res) => {
   res.json({ message: "Smart Tourism API running..." });
@@ -54,6 +62,9 @@ app.use("/api/blogs", blogCommentsRoutes);
 
 // Chat REST
 app.use("/api/chat", chatRoutes);
+
+// Profile
+app.use("/api/profile", profileRoutes);
 
 // Socket.IO
 const server = http.createServer(app);

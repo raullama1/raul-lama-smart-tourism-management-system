@@ -23,6 +23,7 @@ import PaymentSuccessPage from "../pages/tourist/PaymentSuccessPage";
 import PaymentFailurePage from "../pages/tourist/PaymentFailurePage";
 import WriteReviewPage from "../pages/tourist/WriteReviewPage";
 import TouristChatPage from "../pages/tourist/TouristChatPage";
+import TouristProfilePage from "../pages/tourist/TouristProfilePage"; 
 
 import { useAuth } from "../context/AuthContext";
 
@@ -200,6 +201,16 @@ export default function AppRouter() {
           element={
             <PrivateRoute>
               <TouristChatPage />
+            </PrivateRoute>
+          }
+        />
+
+        {/* Tourist Profile */}
+        <Route
+          path="/profile"
+          element={
+            <PrivateRoute>
+              <TouristProfilePage />
             </PrivateRoute>
           }
         />
