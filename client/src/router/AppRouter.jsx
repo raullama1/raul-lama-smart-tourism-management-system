@@ -22,10 +22,10 @@ import PaymentPage from "../pages/tourist/PaymentPage";
 import PaymentSuccessPage from "../pages/tourist/PaymentSuccessPage";
 import PaymentFailurePage from "../pages/tourist/PaymentFailurePage";
 import WriteReviewPage from "../pages/tourist/WriteReviewPage";
+import TouristChatPage from "../pages/tourist/TouristChatPage";
 
 import { useAuth } from "../context/AuthContext";
 
-/* Protect private routes */
 function PrivateRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
 
@@ -40,7 +40,6 @@ function PrivateRoute({ children }) {
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 }
 
-/* Redirect logged-in users away from public pages */
 function PublicRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
 
@@ -61,7 +60,6 @@ export default function AppRouter() {
       <ScrollToTop />
 
       <Routes>
-        {/* "/" smart redirect */}
         <Route
           path="/"
           element={
@@ -71,7 +69,7 @@ export default function AppRouter() {
           }
         />
 
-        {/* Public pages */}
+        {/* Public */}
         <Route path="/tours" element={<PublicToursPage />} />
         <Route path="/tours/:tourId" element={<PublicTourDetailsPage />} />
         <Route path="/blogs" element={<PublicBlogsPage />} />
@@ -106,7 +104,7 @@ export default function AppRouter() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-        {/* Tourist private pages */}
+        {/* Tourist */}
         <Route
           path="/home"
           element={
@@ -161,7 +159,6 @@ export default function AppRouter() {
           }
         />
 
-        {/* Payment result pages */}
         <Route
           path="/payment/success/:bookingId"
           element={
@@ -179,7 +176,6 @@ export default function AppRouter() {
           }
         />
 
-        {/* Write review page */}
         <Route
           path="/review/:bookingId"
           element={
@@ -198,7 +194,16 @@ export default function AppRouter() {
           }
         />
 
-        {/* Fallback */}
+        {/* Chat */}
+        <Route
+          path="/chat"
+          element={
+            <PrivateRoute>
+              <TouristChatPage />
+            </PrivateRoute>
+          }
+        />
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>

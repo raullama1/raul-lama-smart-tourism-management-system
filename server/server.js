@@ -2,15 +2,21 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import http from "http";
+import { Server as SocketIOServer } from "socket.io";
 
 import publicToursRoutes from "./routes/publicToursRoutes.js";
 import publicHomeRoutes from "./routes/publicHomeRoutes.js";
 import publicBlogsRoutes from "./routes/publicBlogsRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import wishlistRoutes from "./routes/wishlistRoutes.js";
+import bookingRoutes from "./routes/bookingRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
 import blogCommentsRoutes from "./routes/blogCommentsRoutes.js";
+import chatRoutes from "./routes/chatRoutes.js";
+
+import { initChatSocket } from "./sockets/chatSocket.js";
 
 dotenv.config();
 
@@ -18,44 +24,49 @@ const app = express();
 
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: process.env.CLIENT_ORIGIN || "http://localhost:5173",
+    credentials: true,
   })
 );
 
 app.use(express.json());
 
-// Root check
 app.get("/", (req, res) => {
   res.json({ message: "Smart Tourism API running..." });
 });
 
-// Home (popular tours + latest blogs)
+// Public
 app.use("/api/public/home", publicHomeRoutes);
-
-// Tours list + details
 app.use("/api/public/tours", publicToursRoutes);
-
-// Blogs list
 app.use("/api/public/blogs", publicBlogsRoutes);
 
-// Auth routes
+// Auth
 app.use("/api/auth", authRoutes);
 
-// Wishlist routes
+// Tourist features
 app.use("/api/wishlist", wishlistRoutes);
-
-// Booking routes
-import bookingRoutes from "./routes/bookingRoutes.js";
 app.use("/api/bookings", bookingRoutes);
-
-// Payment routes
 app.use("/api/payments", paymentRoutes);
-
-// Review routes
 app.use("/api/reviews", reviewRoutes);
 
-// Blog comments routes
+// Blogs (comments)
 app.use("/api/blogs", blogCommentsRoutes);
 
+// Chat REST
+app.use("/api/chat", chatRoutes);
+
+// Socket.IO
+const server = http.createServer(app);
+
+const io = new SocketIOServer(server, {
+  cors: {
+    origin: process.env.CLIENT_ORIGIN || "http://localhost:5173",
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
+});
+
+initChatSocket(io);
+
 const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => console.log(`Server running on ${PORT}`));
+server.listen(PORT, () => console.log(`Server running on ${PORT}`));
