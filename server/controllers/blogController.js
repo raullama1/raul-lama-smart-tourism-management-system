@@ -2,7 +2,7 @@
 import {
   getPublicBlogs,
   getPublicBlogById,
-  getLatestBlogs,
+  getSmartRecentBlogs,
 } from "../models/blogModel.js";
 
 export async function getPublicBlogsController(req, res) {
@@ -25,8 +25,15 @@ export async function getPublicBlogDetailsController(req, res) {
       return res.status(404).json({ message: "Blog not found" });
     }
 
-    // 3 recent blogs, excluding current
-    const recentBlogs = await getLatestBlogs(3, blog.id);
+    // ✅ Smart recent:
+    // - last 7 days first (latest-first)
+    // - if none, fallback older (still latest-first)
+    // - exclude current blog
+    const recentBlogs = await getSmartRecentBlogs({
+      limit: 12,
+      excludeId: blog.id,
+      daysWindow: 7,
+    });
 
     res.json({ blog, recentBlogs });
   } catch (err) {

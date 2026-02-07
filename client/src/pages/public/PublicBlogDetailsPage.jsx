@@ -1,3 +1,4 @@
+// client/src/pages/public/PublicBlogDetailsPage.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import NavbarPublic from "../../components/public/NavbarPublic";
@@ -13,6 +14,14 @@ import {
 } from "../../api/blogApi";
 import { useAuth } from "../../context/AuthContext";
 
+function makePreviewText(text, max = 140) {
+  if (!text) return "";
+  const firstLine =
+    String(text).split(/\r?\n/).find((l) => l.trim().length > 0) || "";
+  const clean = firstLine.replace(/\s+/g, " ").trim();
+  return clean.length <= max ? clean : clean.slice(0, max).trim() + "...";
+}
+
 function AuthPopup({ open, onClose, onLogin, onSignup }) {
   if (!open) return null;
 
@@ -20,7 +29,9 @@ function AuthPopup({ open, onClose, onLogin, onSignup }) {
     <div className="fixed inset-0 z-[80] flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative w-full max-w-sm rounded-2xl bg-white shadow-xl border border-gray-100 p-5">
-        <div className="text-base font-semibold text-gray-900">Login required</div>
+        <div className="text-base font-semibold text-gray-900">
+          Login required
+        </div>
         <p className="mt-1 text-sm text-gray-600">
           Please login or signup to post a comment.
         </p>
@@ -29,12 +40,14 @@ function AuthPopup({ open, onClose, onLogin, onSignup }) {
           <button
             onClick={onLogin}
             className="flex-1 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+            type="button"
           >
             Login
           </button>
           <button
             onClick={onSignup}
             className="flex-1 rounded-xl border border-emerald-600 px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
+            type="button"
           >
             Signup
           </button>
@@ -43,6 +56,7 @@ function AuthPopup({ open, onClose, onLogin, onSignup }) {
         <button
           onClick={onClose}
           className="mt-3 w-full rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+          type="button"
         >
           Cancel
         </button>
@@ -115,7 +129,9 @@ export default function PublicBlogDetailsPage() {
         setComments(res.comments || []);
       }
 
-      setCommentPagination(res.pagination || { total: 0, page, limit: 6, hasMore: false });
+      setCommentPagination(
+        res.pagination || { total: 0, page, limit: 6, hasMore: false }
+      );
     } catch (err) {
       console.error("Failed to load comments", err);
       setComments([]);
@@ -211,10 +227,11 @@ export default function PublicBlogDetailsPage() {
   };
   const tags = tagMap[blog.title] || [];
 
-  const mappedRecentBlogs = recentBlogs.map((b) => ({
+  // ✅ Preview uses FIRST LINE of content (or excerpt fallback), so it matches Read More page
+  const mappedRecentBlogs = (recentBlogs || []).map((b) => ({
     id: b.id,
     title: b.title,
-    excerpt: b.excerpt,
+    excerpt: makePreviewText(b.content || b.excerpt, 140),
     agency: b.agency_name,
     image: b.image_url,
     date: new Date(b.created_at).toLocaleDateString("en-GB", {
@@ -235,7 +252,9 @@ export default function PublicBlogDetailsPage() {
       <main className="bg-[#e6f4ec] min-h-screen pt-6 pb-10">
         <div className="max-w-6xl mx-auto px-4 md:px-6 space-y-6">
           <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-5">
-            <h1 className="text-lg md:text-xl font-semibold text-gray-900">{blog.title}</h1>
+            <h1 className="text-lg md:text-xl font-semibold text-gray-900">
+              {blog.title}
+            </h1>
 
             <div className="mt-1 text-xs md:text-sm text-gray-600">
               <div className="font-medium">{blog.agency_name}</div>
@@ -270,8 +289,12 @@ export default function PublicBlogDetailsPage() {
 
           <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-5 space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm md:text-base font-semibold text-gray-900">Comments</h2>
-              <span className="text-xs text-gray-500">{commentPagination.total} total</span>
+              <h2 className="text-sm md:text-base font-semibold text-gray-900">
+                Comments
+              </h2>
+              <span className="text-xs text-gray-500">
+                {commentPagination.total} total
+              </span>
             </div>
 
             <div className="flex gap-2 items-center">
@@ -286,6 +309,7 @@ export default function PublicBlogDetailsPage() {
                 onClick={handlePostComment}
                 disabled={posting || !commentText.trim()}
                 className="inline-flex items-center justify-center px-4 py-2 rounded-md bg-emerald-600 text-white text-xs md:text-sm font-medium hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                type="button"
               >
                 {posting ? "Posting..." : "Post Comment"}
               </button>
@@ -299,9 +323,14 @@ export default function PublicBlogDetailsPage() {
               <>
                 <div className="mt-2 space-y-2 pr-1">
                   {comments.map((c) => (
-                    <div key={c.id} className="bg-[#e6f4ec] rounded-lg px-3 py-2 text-[11px]">
+                    <div
+                      key={c.id}
+                      className="bg-[#e6f4ec] rounded-lg px-3 py-2 text-[11px]"
+                    >
                       <div className="flex items-center justify-between mb-0.5 gap-2">
-                        <span className="font-medium text-gray-800">{c.user_name || "User"}</span>
+                        <span className="font-medium text-gray-800">
+                          {c.user_name || "User"}
+                        </span>
 
                         <div className="flex items-center gap-2">
                           <span className="text-gray-500 text-[10px]">
@@ -325,7 +354,9 @@ export default function PublicBlogDetailsPage() {
                         </div>
                       </div>
 
-                      <p className="text-gray-800 whitespace-pre-line">{c.comment}</p>
+                      <p className="text-gray-800 whitespace-pre-line">
+                        {c.comment}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -347,7 +378,11 @@ export default function PublicBlogDetailsPage() {
 
           {mappedRecentBlogs.length > 0 && (
             <section className="bg-[#e6f4ec] -mx-4 md:-mx-6">
-              <BlogCardSection blogs={mappedRecentBlogs} sectionTitle="Recent Blogs" viewAllLink="/blogs" />
+              <BlogCardSection
+                blogs={mappedRecentBlogs}
+                sectionTitle="Recent Blogs"
+                viewAllLink="/blogs"
+              />
             </section>
           )}
         </div>

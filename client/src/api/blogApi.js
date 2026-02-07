@@ -1,3 +1,4 @@
+// client/src/api/blogApi.js
 import apiClient from "./apiClient";
 
 export async function fetchPublicBlogs(params = {}) {
@@ -5,11 +6,11 @@ export async function fetchPublicBlogs(params = {}) {
 
   if (params.search) searchParams.set("search", params.search);
   if (params.sort) searchParams.set("sort", params.sort);
-  if (params.page) searchParams.set("page", params.page);
-  if (params.limit) searchParams.set("limit", params.limit);
+  if (params.page != null) searchParams.set("page", String(params.page));
+  if (params.limit != null) searchParams.set("limit", String(params.limit));
 
-  const queryString = searchParams.toString();
-  const url = queryString ? `/public/blogs?${queryString}` : `/public/blogs`;
+  const qs = searchParams.toString();
+  const url = qs ? `/public/blogs?${qs}` : `/public/blogs`;
 
   const res = await apiClient.get(url);
   return res.data;
@@ -17,13 +18,13 @@ export async function fetchPublicBlogs(params = {}) {
 
 export async function fetchPublicBlogDetails(blogId) {
   const res = await apiClient.get(`/public/blogs/${blogId}`);
-  return res.data;
+  return res.data; // { blog, recentBlogs }
 }
 
 export async function fetchBlogComments(blogId, params = {}) {
   const searchParams = new URLSearchParams();
-  if (params.page) searchParams.set("page", params.page);
-  if (params.limit) searchParams.set("limit", params.limit);
+  if (params.page != null) searchParams.set("page", String(params.page));
+  if (params.limit != null) searchParams.set("limit", String(params.limit));
 
   const qs = searchParams.toString();
   const url = qs ? `/blogs/${blogId}/comments?${qs}` : `/blogs/${blogId}/comments`;

@@ -7,10 +7,10 @@ import {
 
 const router = express.Router();
 
-// List blogs (Screen 4)
+// List blogs
 router.get("/", getPublicBlogsController);
 
-// Single blog details (Screen 5)
+// Single blog details
 router.get("/:blogId", getPublicBlogDetailsController);
 
 export default router;
