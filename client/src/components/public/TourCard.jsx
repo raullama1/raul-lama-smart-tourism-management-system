@@ -1,5 +1,5 @@
 // client/src/components/public/TourCard.jsx
-import { useRef, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { gsap } from "gsap";
 import { Draggable } from "gsap/Draggable";
@@ -28,16 +28,17 @@ export default function TourCard({
 }) {
   const containerRef = useRef(null);
   const draggableRef = useRef(null);
+  const resizeObsRef = useRef(null);
+
   const navigate = useNavigate();
   const { token } = useAuth();
 
-  const [itemWidth] = useState(288);
-  const gap = 16;
+  const [dims, setDims] = useState({ itemW: 288, gap: 16, ready: false });
 
   const [wishlistIds, setWishlistIds] = useState(new Set());
   const [busyId, setBusyId] = useState(null);
 
-  // normalize tour fields (home cards use image/name/price)
+  // normalize tour fields
   const normalizedTours = useMemo(() => {
     return (tours || []).map((t) => ({
       id: t.id,
@@ -48,6 +49,12 @@ export default function TourCard({
       price: t.starting_price ?? t.price,
     }));
   }, [tours]);
+
+  // Render 3 copies for seamless infinite wrap (React-controlled, NO DOM clone)
+  const tripledTours = useMemo(() => {
+    if (!normalizedTours.length) return [];
+    return [...normalizedTours, ...normalizedTours, ...normalizedTours];
+  }, [normalizedTours]);
 
   const requireLogin = () => {
     if (!token) {
@@ -65,8 +72,10 @@ export default function TourCard({
         return;
       }
       try {
-        const res = await fetchWishlistIds(token); // { data: [ids] } or { ids: [ids] }
-        const ids = Array.isArray(res?.data) ? res.data : res?.ids || res?.data || [];
+        const res = await fetchWishlistIds(token);
+        const ids = Array.isArray(res?.data)
+          ? res.data
+          : res?.ids || res?.data || [];
         setWishlistIds(new Set(ids.map((x) => Number(x))));
       } catch (e) {
         console.error("Failed to load wishlist ids", e);
@@ -79,61 +88,36 @@ export default function TourCard({
     if (!requireLogin()) return;
 
     const idNum = Number(tourId);
-
-    // block spam click
     if (busyId === idNum) return;
 
     const already = wishlistIds.has(idNum);
 
-    // ✅ If already wishlisted → remove (toggle)
-    if (already) {
-      try {
-        setBusyId(idNum);
-        await removeFromWishlist(token, idNum);
+    // Optimistic UI update (instant button change)
+    setWishlistIds((prev) => {
+      const next = new Set(prev);
+      if (already) next.delete(idNum);
+      else next.add(idNum);
+      return next;
+    });
 
-        setWishlistIds((prev) => {
-          const next = new Set(prev);
-          next.delete(idNum);
-          return next;
-        });
-      } catch (e) {
-        console.error("Wishlist remove failed", e);
-        alert("Wishlist update failed. Please try again.");
-      } finally {
-        setBusyId(null);
-      }
-      return;
-    }
-
-    // ✅ If not wishlisted → add
     try {
       setBusyId(idNum);
 
-      // since DB uses INSERT IGNORE, we stop duplicates from UI
-      await addToWishlist(token, idNum);
+      if (already) {
+        await removeFromWishlist(token, idNum);
+      } else {
+        await addToWishlist(token, idNum);
+      }
+    } catch (e) {
+      console.error("Wishlist update failed", e);
 
+      // rollback on error
       setWishlistIds((prev) => {
         const next = new Set(prev);
-        next.add(idNum);
+        if (already) next.add(idNum);
+        else next.delete(idNum);
         return next;
       });
-
-      // optional friendly message (same vibe as Details page)
-      // alert("Added to wishlist ✅");
-    } catch (e) {
-      console.error("Wishlist add failed", e);
-
-      // If you later make backend return 409, this will handle it:
-      const status = e?.response?.status;
-      if (status === 409) {
-        alert("Already added to wishlist ✅");
-        setWishlistIds((prev) => {
-          const next = new Set(prev);
-          next.add(idNum);
-          return next;
-        });
-        return;
-      }
 
       alert("Wishlist update failed. Please try again.");
     } finally {
@@ -141,69 +125,120 @@ export default function TourCard({
     }
   };
 
-  // Infinite loop helper
-  const loop = (container) => {
-    if (!container || !normalizedTours.length) return;
-    const originalCount = normalizedTours.length;
-    const totalWidthSingle = originalCount * (itemWidth + gap);
-    const x = gsap.getProperty(container, "x");
+  // --------- Infinite wrap helpers (smooth, no teleport) ---------
+  const measure = () => {
+    const container = containerRef.current;
+    if (!container) return;
 
-    if (x <= -totalWidthSingle) gsap.set(container, { x: x + totalWidthSingle });
-    else if (x >= 0) gsap.set(container, { x: x - totalWidthSingle });
+    const firstCard = container.querySelector("[data-tour-card='true']");
+    if (!firstCard) return;
+
+    const itemW = firstCard.getBoundingClientRect().width || 288;
+
+    const styles = getComputedStyle(container);
+    const gapStr = styles.gap || styles.columnGap || "0";
+    const gap = Number.parseFloat(gapStr) || 16;
+
+    setDims({ itemW, gap, ready: true });
   };
 
-  // GSAP draggable infinite
+  const singleWidth = () => normalizedTours.length * (dims.itemW + dims.gap);
+
+  const wrapX = (x) => {
+    const single = singleWidth();
+    if (!single || !normalizedTours.length) return x;
+    // keep x always inside the middle copy range
+    const wrap = gsap.utils.wrap(-2 * single, 0);
+    return wrap(x);
+  };
+
+  const applyWrap = () => {
+    const container = containerRef.current;
+    if (!container) return;
+    const x = Number(gsap.getProperty(container, "x")) || 0;
+    gsap.set(container, { x: wrapX(x) });
+  };
+
+  const destroyDraggable = () => {
+    if (draggableRef.current) {
+      draggableRef.current.kill();
+      draggableRef.current = null;
+    }
+  };
+
+  // measure on mount + resize
   useEffect(() => {
     const container = containerRef.current;
     if (!container || !normalizedTours.length) return;
 
-    const originalChildren = Array.from(container.children);
-    originalChildren.forEach((item) => container.appendChild(item.cloneNode(true)));
+    measure();
 
-    gsap.set(container, { x: 0 });
+    if (resizeObsRef.current) resizeObsRef.current.disconnect();
+    resizeObsRef.current = new ResizeObserver(() => measure());
+    resizeObsRef.current.observe(container);
+
+    return () => {
+      if (resizeObsRef.current) {
+        resizeObsRef.current.disconnect();
+        resizeObsRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [normalizedTours.length]);
+
+  // init draggable after measure
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !dims.ready || !normalizedTours.length) return;
+
+    destroyDraggable();
+
+    const single = singleWidth();
+
+    // start in the middle copy (so you can drag both ways)
+    gsap.set(container, { x: -single });
 
     draggableRef.current = Draggable.create(container, {
       type: "x",
       inertia: true,
-      onDrag: () => loop(container),
-      onThrowUpdate: () => loop(container),
+      dragResistance: 0.12,
+      allowContextMenu: true,
+      onPress() {
+        container.style.cursor = "grabbing";
+      },
+      onRelease() {
+        container.style.cursor = "grab";
+      },
+      onDrag: applyWrap,
+      onThrowUpdate: applyWrap,
     })[0];
 
-    container.addEventListener("pointerdown", () => (container.style.cursor = "grabbing"));
-    container.addEventListener("pointerup", () => (container.style.cursor = "grab"));
     container.style.cursor = "grab";
 
     return () => {
-      if (draggableRef.current) draggableRef.current.kill();
-      const childrenNow = Array.from(container.children);
-      childrenNow.slice(originalChildren.length).forEach((el) => el.remove());
+      destroyDraggable();
       container.style.cursor = "";
     };
-  }, [normalizedTours, itemWidth]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dims.ready, dims.itemW, dims.gap, normalizedTours.length]);
 
-  const scrollLeft = () => {
+  const moveBy = (delta) => {
     const container = containerRef.current;
     if (!container) return;
 
     gsap.to(container, {
-      x: `+=${itemWidth + gap}`,
-      duration: 0.3,
-      onUpdate: () => loop(container),
-      onComplete: () => loop(container),
+      x: `+=${delta}`,
+      duration: 0.45,
+      ease: "power2.out",
+      onUpdate: applyWrap,
+      onComplete: applyWrap,
     });
   };
 
-  const scrollRight = () => {
-    const container = containerRef.current;
-    if (!container) return;
+  const scrollLeft = () => moveBy(dims.itemW + dims.gap);
+  const scrollRight = () => moveBy(-(dims.itemW + dims.gap));
 
-    gsap.to(container, {
-      x: `-=${itemWidth + gap}`,
-      duration: 0.3,
-      onUpdate: () => loop(container),
-      onComplete: () => loop(container),
-    });
-  };
+  // --------------------------------------------------------------
 
   return (
     <div className="bg-[#e6f4ec] py-8 md:py-10 relative">
@@ -220,6 +255,9 @@ export default function TourCard({
         <button
           onClick={scrollLeft}
           className="absolute top-1/2 -left-4 transform -translate-y-1/2 z-10 p-2 bg-white rounded-full shadow hover:bg-gray-100 transition-all"
+          type="button"
+          aria-label="Previous"
+          title="Previous"
         >
           <FaChevronLeft size={20} />
         </button>
@@ -227,6 +265,9 @@ export default function TourCard({
         <button
           onClick={scrollRight}
           className="absolute top-1/2 -right-4 transform -translate-y-1/2 z-10 p-2 bg-white rounded-full shadow hover:bg-gray-100 transition-all"
+          type="button"
+          aria-label="Next"
+          title="Next"
         >
           <FaChevronRight size={20} />
         </button>
@@ -238,18 +279,23 @@ export default function TourCard({
             className="flex gap-4 md:gap-5 select-none"
             style={{ width: "max-content", alignItems: "stretch" }}
           >
-            {normalizedTours.map((tour) => {
+            {tripledTours.map((tour, idx) => {
               const idNum = Number(tour.id);
               const inWishlist = wishlistIds.has(idNum);
               const isBusy = busyId === idNum;
 
               return (
-                <div key={tour.id} className={`flex-shrink-0 ${cardWidth}`}>
+                <div
+                  key={`${tour.id}-${idx}`} // must be unique in triple list
+                  className={`flex-shrink-0 ${cardWidth}`}
+                  data-tour-card="true"
+                >
                   <div className="bg-white rounded-xl shadow-md overflow-hidden flex flex-col hover:shadow-xl transition-shadow duration-300">
                     <img
                       src={tour.image}
                       alt={tour.title}
                       className="h-40 w-full object-cover transition-transform duration-500 hover:scale-105"
+                      draggable="false"
                     />
 
                     <div className="p-4 flex-1 flex flex-col">
@@ -258,9 +304,9 @@ export default function TourCard({
                       </h3>
 
                       <div className="mt-1 text-xs text-gray-500 flex items-center gap-2">
-                        <span>{tour.location}</span>
+                        <span className="line-clamp-1">{tour.location}</span>
                         <span>•</span>
-                        <span>{tour.type}</span>
+                        <span className="line-clamp-1">{tour.type}</span>
                       </div>
 
                       <div className="mt-2 text-sm text-gray-800">
@@ -276,11 +322,12 @@ export default function TourCard({
                         <button
                           onClick={() => navigate(`/tours/${tour.id}`)}
                           className="w-full flex items-center justify-center gap-2 px-2 py-2 rounded-md bg-gradient-to-r from-emerald-600 to-emerald-500 text-white text-xs md:text-sm font-medium shadow hover:scale-105 transition-transform"
+                          type="button"
                         >
                           <FaEye size={14} /> View Details
                         </button>
 
-                        {/* Wishlist (Details-page style: ✔ Added) */}
+                        {/* Wishlist */}
                         <button
                           disabled={isBusy}
                           onClick={() => toggleWishlist(tour.id)}
@@ -292,6 +339,7 @@ export default function TourCard({
                             }
                             ${isBusy ? "opacity-70 cursor-not-allowed" : "hover:scale-105"}
                           `}
+                          type="button"
                         >
                           {inWishlist ? <FaCheck size={14} /> : <FaHeart size={14} />}
                           {inWishlist ? "Added to Wishlist" : "Add to Wishlist"}
@@ -301,6 +349,7 @@ export default function TourCard({
                         <button
                           onClick={() => navigate(`/tours/${tour.id}#agencies`)}
                           className="w-full flex items-center justify-center gap-2 px-2 py-2 rounded-md bg-[#e6f4ed] text-emerald-700 text-xs md:text-sm font-medium shadow hover:bg-gradient-to-r hover:from-emerald-600 hover:to-emerald-500 hover:text-white hover:scale-105 transition-all"
+                          type="button"
                         >
                           <FaUsers size={14} /> Show All Agencies
                         </button>
@@ -312,6 +361,7 @@ export default function TourCard({
                             navigate(`/map?tour=${tour.id}`);
                           }}
                           className="w-full flex items-center justify-center gap-2 px-2 py-2 rounded-md bg-[#e6f4ed] text-emerald-700 text-xs md:text-sm font-medium shadow hover:bg-gradient-to-r hover:from-emerald-600 hover:to-emerald-500 hover:text-white hover:scale-105 transition-all"
+                          type="button"
                         >
                           <FaMapMarkerAlt size={14} /> View on Map
                         </button>
@@ -321,6 +371,10 @@ export default function TourCard({
                 </div>
               );
             })}
+
+            {normalizedTours.length === 0 && (
+              <div className="text-sm text-gray-500 p-4">No tours available.</div>
+            )}
           </div>
         </div>
       </section>
