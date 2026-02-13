@@ -16,7 +16,8 @@ import paymentRoutes from "./routes/paymentRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
 import blogCommentsRoutes from "./routes/blogCommentsRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
-import profileRoutes from "./routes/profileRoutes.js"; 
+import profileRoutes from "./routes/profileRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
 
 import { initChatSocket } from "./sockets/chatSocket.js";
 
@@ -31,13 +32,10 @@ app.use(
   })
 );
 
-app.use(express.json()); // keep
+app.use(express.json());
 
-// serve uploaded images
-app.use(
-  "/uploads",
-  express.static(path.join(process.cwd(), "server", "uploads"))
-);
+// Serve uploaded images
+app.use("/uploads", express.static(path.join(process.cwd(), "server", "uploads")));
 
 app.get("/", (req, res) => {
   res.json({ message: "Smart Tourism API running..." });
@@ -66,6 +64,9 @@ app.use("/api/chat", chatRoutes);
 // Profile
 app.use("/api/profile", profileRoutes);
 
+// Notifications
+app.use("/api/notifications", notificationRoutes);
+
 // Socket.IO
 const server = http.createServer(app);
 
@@ -76,6 +77,9 @@ const io = new SocketIOServer(server, {
     credentials: true,
   },
 });
+
+// Make io available to controllers if you need it later
+app.set("io", io);
 
 initChatSocket(io);
 

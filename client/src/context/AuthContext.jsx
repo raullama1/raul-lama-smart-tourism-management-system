@@ -1,6 +1,10 @@
 // client/src/context/AuthContext.jsx
 import { createContext, useContext, useEffect, useState } from "react";
-import { login as loginApi, signup as signupApi, me as meApi } from "../api/authApi";
+import {
+  login as loginApi,
+  signup as signupApi,
+  me as meApi,
+} from "../api/authApi";
 
 const AuthContext = createContext(null);
 
@@ -11,13 +15,17 @@ export function AuthProvider({ children }) {
     loading: true,
   });
 
-  // Load saved auth + verify token once on app start (refresh)
+  /*
+    On app start:
+    - load saved token/user from localStorage
+    - set token immediately (so protected API calls can work)
+    - then verify token by calling /auth/me
+  */
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const stored = localStorage.getItem("tn_auth");
 
-    // No saved auth -> stop loading
     if (!stored) {
       setAuth({ user: null, token: null, loading: false });
       return;
@@ -33,24 +41,26 @@ export function AuthProvider({ children }) {
       return;
     }
 
-    // Saved but missing token -> treat as logged out
     if (!parsed?.token) {
       localStorage.removeItem("tn_auth");
       setAuth({ user: null, token: null, loading: false });
       return;
     }
 
-    // Set token immediately so API calls work, then verify token with /auth/me
     setAuth({ user: parsed.user || null, token: parsed.token, loading: true });
 
     (async () => {
       try {
-        const res = await meApi(); // { user }
+        // Your authApi.js should attach token automatically (or read from localStorage).
+        const res = await meApi(); // expected: { user }
         const next = { user: res.user, token: parsed.token, loading: false };
         setAuth(next);
-        localStorage.setItem("tn_auth", JSON.stringify({ user: res.user, token: parsed.token }));
+
+        localStorage.setItem(
+          "tn_auth",
+          JSON.stringify({ user: res.user, token: parsed.token })
+        );
       } catch (err) {
-        // Token invalid/expired -> clear saved auth
         localStorage.removeItem("tn_auth");
         setAuth({ user: null, token: null, loading: false });
       }
@@ -67,17 +77,20 @@ export function AuthProvider({ children }) {
     setAuth(next);
 
     if (typeof window !== "undefined") {
-      localStorage.setItem("tn_auth", JSON.stringify({ user: data.user, token: data.token }));
+      localStorage.setItem(
+        "tn_auth",
+        JSON.stringify({ user: data.user, token: data.token })
+      );
     }
   };
 
   const login = async (email, password) => {
-    const res = await loginApi(email, password); // { token, user }
+    const res = await loginApi(email, password); // expected: { token, user }
     saveAuth(res);
   };
 
   const signup = async (name, email, password, verificationCode) => {
-    const res = await signupApi(name, email, password, verificationCode); // { token, user }
+    const res = await signupApi(name, email, password, verificationCode); // expected: { token, user }
     saveAuth(res);
   };
 

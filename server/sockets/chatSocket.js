@@ -4,8 +4,12 @@ import {
   getConversationById,
   addMessage,
   markAgencyMessagesRead,
-  deleteMessageForAll, // ✅ new
+  deleteMessageForAll,
 } from "../models/chatModel.js";
+
+import {
+  createNotification,
+} from "../models/notificationModel.js";
 
 function getUserFromToken(token) {
   try {
@@ -16,6 +20,12 @@ function getUserFromToken(token) {
   } catch {
     return null;
   }
+}
+
+function safeText(input, max = 90) {
+  const s = String(input || "").trim();
+  if (s.length <= max) return s;
+  return s.slice(0, max - 1) + "…";
 }
 
 export function initChatSocket(io) {
@@ -30,9 +40,17 @@ export function initChatSocket(io) {
     }
 
     socket.user = user;
+
+    // Default join for direct user notifications
     socket.join(`user:${user.id}`);
 
-    const displayName = user.name || (user.role === "agency" ? "Agency" : "Tourist");
+    const displayName =
+      user.name || (user.role === "agency" ? "Agency" : "Tourist");
+
+    // Client emits this on connect as well; safe to keep.
+    socket.on("user:join", () => {
+      socket.join(`user:${user.id}`);
+    });
 
     socket.on("chat:join", async ({ conversationId }) => {
       try {
@@ -85,9 +103,7 @@ export function initChatSocket(io) {
 
         if (user.role === "tourist" && Number(convo.tourist_id) !== Number(user.id)) return;
 
-        socket.to(`convo:${conversationId}`).emit("chat:stopTyping", {
-          conversationId,
-        });
+        socket.to(`convo:${conversationId}`).emit("chat:stopTyping", { conversationId });
       } catch (e) {
         console.error("chat:stopTyping error", e);
       }
@@ -116,6 +132,35 @@ export function initChatSocket(io) {
           message: saved,
         });
 
+        // Create notification for the other side
+        const receiverId =
+          user.role === "tourist" ? Number(convo.agency_id) : Number(convo.tourist_id);
+
+        const notifTitle =
+          user.role === "tourist"
+            ? "New message from Tourist"
+            : "New message from Agency";
+
+        const notifBody = safeText(text);
+
+        // Store in DB and emit in realtime
+        try {
+          const created = await createNotification({
+            userId: receiverId,
+            type: "chat",
+            title: notifTitle,
+            message: notifBody,
+            meta: JSON.stringify({
+              conversationId: Number(conversationId),
+              senderRole: user.role,
+            }),
+          });
+
+          io.to(`user:${receiverId}`).emit("notification:new", created);
+        } catch (e) {
+          console.error("createNotification(chat) error", e);
+        }
+
         ack?.({ ok: true, message: saved });
       } catch (e) {
         console.error("chat:send error", e);
@@ -143,10 +188,11 @@ export function initChatSocket(io) {
       }
     });
 
-    // ✅ NEW: delete (unsend)
     socket.on("chat:delete", async ({ conversationId, messageId }, ack) => {
       try {
-        if (!conversationId || !messageId) return ack?.({ ok: false, message: "Missing params." });
+        if (!conversationId || !messageId) {
+          return ack?.({ ok: false, message: "Missing params." });
+        }
 
         const convo = await getConversationById(conversationId);
         if (!convo) return ack?.({ ok: false, message: "Conversation not found." });

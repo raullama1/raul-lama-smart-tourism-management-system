@@ -12,9 +12,9 @@ import {
   fetchMessages,
   sendMessage,
   markRead,
-  deleteMessage, // ✅ add in chatApi.js (I’ll give below)
+  deleteMessage,
 } from "../../api/chatApi";
-import { createSocket } from "../../socket";
+import { getSocket } from "../../socket";
 
 export default function TouristChatPage() {
   const { token } = useAuth();
@@ -69,7 +69,7 @@ export default function TouristChatPage() {
       const res = await fetchMessages(token, conversationId, { page, limit: 20 });
 
       if (page > 1) {
-        setMessages((prev) => [...(res.messages || []), ...prev]);
+        setMessages((prev) => [...(res.messages || []), ...(prev || [])]);
       } else {
         setMessages(res.messages || []);
       }
@@ -92,29 +92,31 @@ export default function TouristChatPage() {
     }
   };
 
-  // Socket init
+  // Socket init (shared socket)
   useEffect(() => {
     if (!token) return;
 
-    const s = createSocket(token);
+    const s = getSocket(token);
     socketRef.current = s;
 
-    s.on("auth_error", (payload) => {
+    const onAuthError = (payload) => {
       console.log("socket auth_error", payload);
-    });
+    };
 
-    // ✅ NEW: receive message
-    s.on("chat:message", ({ conversationId, message }) => {
+    const onChatMessage = ({ conversationId, message }) => {
       // Update sidebar preview
       setConvos((prev) => {
-        const next = [...prev];
+        const next = [...(prev || [])];
         const idx = next.findIndex(
           (x) => Number(x.conversation_id) === Number(conversationId)
         );
+
         if (idx >= 0) {
           next[idx] = {
             ...next[idx],
-            last_message: message?.is_deleted ? "This message was deleted" : message?.message,
+            last_message: message?.is_deleted
+              ? "This message was deleted"
+              : message?.message,
             last_message_at: message?.created_at,
           };
           const [item] = next.splice(idx, 1);
@@ -123,7 +125,6 @@ export default function TouristChatPage() {
         return next;
       });
 
-      // Append ONLY if this convo is open
       const cur = selectedRef.current;
       const isOpen =
         cur?.conversation_id &&
@@ -131,29 +132,25 @@ export default function TouristChatPage() {
 
       if (!isOpen) return;
 
-      // ✅ Fix double message:
-      // If the message is from tourist (me), DO NOT append here.
-      // The optimistic bubble is replaced by ack in handleSend.
+      // Prevent double append for my own message
       if (message?.sender_role === "tourist") return;
 
-      setMessages((prev) => [...prev, message]);
-    });
+      setMessages((prev) => [...(prev || []), message]);
+    };
 
-    // ✅ typing events
-    s.on("chat:typing", ({ conversationId, name }) => {
+    const onTyping = ({ conversationId, name }) => {
       if (Number(selectedRef.current?.conversation_id) === Number(conversationId)) {
         setTypingText(`${name || "Agency"} is typing...`);
       }
-    });
+    };
 
-    s.on("chat:stopTyping", ({ conversationId }) => {
+    const onStopTyping = ({ conversationId }) => {
       if (Number(selectedRef.current?.conversation_id) === Number(conversationId)) {
         setTypingText("");
       }
-    });
+    };
 
-    // ✅ read event
-    s.on("chat:read", ({ conversationId }) => {
+    const onRead = ({ conversationId }) => {
       setConvos((prev) =>
         (prev || []).map((c) =>
           Number(c.conversation_id) === Number(conversationId)
@@ -161,11 +158,9 @@ export default function TouristChatPage() {
             : c
         )
       );
-    });
+    };
 
-    // ✅ NEW: deleted event
-    s.on("chat:deleted", ({ conversationId, messageId }) => {
-      // update messages list if open
+    const onDeleted = ({ conversationId, messageId }) => {
       const cur = selectedRef.current;
       const isOpen =
         cur?.conversation_id &&
@@ -179,12 +174,28 @@ export default function TouristChatPage() {
         );
       }
 
-      // update sidebar preview if last msg was deleted (cheap safe way: reload convos)
       loadConvos();
-    });
+    };
 
+    s.on("auth_error", onAuthError);
+    s.on("chat:message", onChatMessage);
+    s.on("chat:typing", onTyping);
+    s.on("chat:stopTyping", onStopTyping);
+    s.on("chat:read", onRead);
+    s.on("chat:deleted", onDeleted);
+
+    // IMPORTANT: do NOT disconnect shared socket
     return () => {
-      s.disconnect();
+      try {
+        s.off("auth_error", onAuthError);
+        s.off("chat:message", onChatMessage);
+        s.off("chat:typing", onTyping);
+        s.off("chat:stopTyping", onStopTyping);
+        s.off("chat:read", onRead);
+        s.off("chat:deleted", onDeleted);
+      } catch {
+        // ignore
+      }
       socketRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -212,7 +223,6 @@ export default function TouristChatPage() {
 
     const conversationId = selected.conversation_id;
 
-    // optimistic bubble
     const tempId = `tmp-${Date.now()}`;
     const optimistic = {
       id: tempId,
@@ -222,43 +232,41 @@ export default function TouristChatPage() {
       created_at: new Date().toISOString(),
       is_deleted: 0,
     };
-    setMessages((prev) => [...prev, optimistic]);
+    setMessages((prev) => [...(prev || []), optimistic]);
 
-    // send via socket if connected
     if (socketRef.current?.connected) {
       socketRef.current.emit(
         "chat:send",
         { conversationId, message: text },
         (ack) => {
           if (!ack?.ok) {
-            setMessages((prev) => prev.filter((m) => m.id !== tempId));
+            setMessages((prev) => (prev || []).filter((m) => m.id !== tempId));
             alert("Failed to send message.");
             return;
           }
           const saved = ack.message;
-          setMessages((prev) => prev.map((m) => (m.id === tempId ? saved : m)));
+          setMessages((prev) => (prev || []).map((m) => (m.id === tempId ? saved : m)));
           loadConvos();
         }
       );
       return;
     }
 
-    // fallback REST
     try {
       const res = await sendMessage(token, conversationId, text);
       const saved = res.message;
 
       if (!saved) {
-        setMessages((prev) => prev.filter((m) => m.id !== tempId));
+        setMessages((prev) => (prev || []).filter((m) => m.id !== tempId));
         alert("Failed to send message.");
         return;
       }
 
-      setMessages((prev) => prev.map((m) => (m.id === tempId ? saved : m)));
+      setMessages((prev) => (prev || []).map((m) => (m.id === tempId ? saved : m)));
       loadConvos();
     } catch (e) {
       console.error("send message error", e);
-      setMessages((prev) => prev.filter((m) => m.id !== tempId));
+      setMessages((prev) => (prev || []).filter((m) => m.id !== tempId));
       alert("Failed to send message.");
     }
   };
@@ -267,14 +275,12 @@ export default function TouristChatPage() {
     const conversationId = selectedRef.current?.conversation_id;
     if (!conversationId || !messageId || !token) return;
 
-    // optimistic UI: mark deleted immediately
     setMessages((prev) =>
       (prev || []).map((m) =>
         Number(m.id) === Number(messageId) ? { ...m, is_deleted: 1 } : m
       )
     );
 
-    // Prefer socket
     if (socketRef.current?.connected) {
       socketRef.current.emit(
         "chat:delete",
@@ -291,7 +297,6 @@ export default function TouristChatPage() {
       return;
     }
 
-    // fallback REST
     try {
       const res = await deleteMessage(token, conversationId, messageId);
       if (!res?.ok) {
@@ -346,7 +351,6 @@ export default function TouristChatPage() {
     }
   };
 
-  // typing emitters (used by ChatWindow)
   const handleTyping = (conversationId) => {
     if (!socketRef.current?.connected) return;
     socketRef.current.emit("chat:typing", { conversationId });
