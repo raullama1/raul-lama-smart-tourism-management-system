@@ -9,6 +9,7 @@ import path from "path";
 import publicToursRoutes from "./routes/publicToursRoutes.js";
 import publicHomeRoutes from "./routes/publicHomeRoutes.js";
 import publicBlogsRoutes from "./routes/publicBlogsRoutes.js";
+
 import authRoutes from "./routes/authRoutes.js";
 import wishlistRoutes from "./routes/wishlistRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
@@ -18,6 +19,8 @@ import blogCommentsRoutes from "./routes/blogCommentsRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
+
+import agencyAuthRoutes from "./routes/agencyAuthRoutes.js";
 
 import { initChatSocket } from "./sockets/chatSocket.js";
 
@@ -46,7 +49,7 @@ app.use("/api/public/home", publicHomeRoutes);
 app.use("/api/public/tours", publicToursRoutes);
 app.use("/api/public/blogs", publicBlogsRoutes);
 
-// Auth
+// Tourist Auth
 app.use("/api/auth", authRoutes);
 
 // Tourist features
@@ -66,6 +69,9 @@ app.use("/api/profile", profileRoutes);
 
 // Notifications
 app.use("/api/notifications", notificationRoutes);
+
+// Agency Auth (MUST be before server starts)
+app.use("/api/agency/auth", agencyAuthRoutes);
 
 // Socket.IO
 const server = http.createServer(app);
