@@ -21,6 +21,7 @@ import profileRoutes from "./routes/profileRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 
 import agencyAuthRoutes from "./routes/agencyAuthRoutes.js";
+import agencySupportRoutes from "./routes/agencySupportRoutes.js";
 
 import { initChatSocket } from "./sockets/chatSocket.js";
 
@@ -72,6 +73,9 @@ app.use("/api/notifications", notificationRoutes);
 
 // Agency Auth (MUST be before server starts)
 app.use("/api/agency/auth", agencyAuthRoutes);
+
+// Agency Support
+app.use("/api/agency/support", agencySupportRoutes);
 
 // Socket.IO
 const server = http.createServer(app);
