@@ -8,8 +8,11 @@ export default function AgencyAuthLayout({ children }) {
         <AgencySidebar />
       </aside>
 
-      <section className="flex-1 h-screen overflow-y-auto px-5 py-10">
-        <div className="w-full max-w-2xl mx-auto">{children}</div>
+      {/* Equal left/right space next to sidebar */}
+      <section className="flex-1 px-6 py-10 flex justify-center">
+        <div className="w-full max-w-3xl">
+          {children}
+        </div>
       </section>
     </main>
   );

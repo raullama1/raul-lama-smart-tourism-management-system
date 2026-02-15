@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import AgencyHelpLayout from "../../components/agency/AgencyHelpLayout";
+import AgencyAuthLayout from "../../components/agency/AgencyAuthLayout";
 import { createAgencySupportTicket } from "../../api/agencySupportApi";
 
 function Chevron({ open }) {
@@ -182,11 +182,11 @@ export default function AgencyHelpPage() {
   };
 
   return (
-    <AgencyHelpLayout>
+    <AgencyAuthLayout>
       {/* Make whole page container wider */}
       <div
         ref={topRef}
-        className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 md:p-8 w-full max-w-6xl"
+        className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 md:p-8"
       >
         <div className="mb-5">
           <h1 className="text-xl font-semibold text-gray-900">Help & Support</h1>
@@ -350,6 +350,6 @@ export default function AgencyHelpPage() {
           </div>
         </div>
       </div>
-    </AgencyHelpLayout>
+    </AgencyAuthLayout>
   );
 }

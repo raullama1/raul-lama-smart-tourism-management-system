@@ -381,7 +381,7 @@ export default function AgencyRegisterPage() {
     <AgencyAuthLayout>
       <div
         ref={topRef}
-        className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 md:p-8 max-w-xl w-full"
+        className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 md:p-8"
       >
         <div className="flex items-center gap-3 mb-4">
           <div className="h-10 w-10 rounded-xl bg-emerald-50 border border-emerald-100 grid place-items-center">
