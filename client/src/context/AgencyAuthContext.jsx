@@ -1,5 +1,10 @@
+// client/src/context/AgencyAuthContext.jsx
 import { createContext, useContext, useEffect, useState } from "react";
-import { agencyLogin as loginApi, agencyMe as meApi } from "../api/agencyAuthApi";
+import {
+  agencyLogin as loginApi,
+  agencyMe as meApi,
+  agencyRegister as registerApi,
+} from "../api/agencyAuthApi";
 
 const AgencyAuthContext = createContext(null);
 
@@ -37,7 +42,11 @@ export function AgencyAuthProvider({ children }) {
       return;
     }
 
-    setAuth({ agency: parsed.agency || null, token: parsed.token, loading: true });
+    setAuth({
+      agency: parsed.agency || null,
+      token: parsed.token,
+      loading: true,
+    });
 
     (async () => {
       try {
@@ -61,7 +70,10 @@ export function AgencyAuthProvider({ children }) {
     setAuth(next);
 
     if (typeof window !== "undefined") {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ agency: data.agency, token: data.token }));
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ agency: data.agency, token: data.token })
+      );
     }
   };
 
@@ -69,6 +81,13 @@ export function AgencyAuthProvider({ children }) {
     const res = await loginApi(email, password); // { token, agency }
     saveAuth(res);
   };
+
+const register = async (payload) => {
+  const res = await registerApi(payload); // { token, agency }
+  if (res?.token) saveAuth(res);
+  return res;
+};
+
 
   const logout = () => {
     setAuth({ agency: null, token: null, loading: false });
@@ -83,6 +102,7 @@ export function AgencyAuthProvider({ children }) {
         loading: auth.loading,
         isAuthenticated: !!auth.token,
         login,
+        register,
         logout,
       }}
     >
