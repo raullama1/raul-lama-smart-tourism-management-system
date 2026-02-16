@@ -1,4 +1,3 @@
-// client/src/context/AgencyAuthContext.jsx
 import { createContext, useContext, useEffect, useState } from "react";
 import {
   agencyLogin as loginApi,
@@ -30,7 +29,7 @@ export function AgencyAuthProvider({ children }) {
     let parsed;
     try {
       parsed = JSON.parse(stored);
-    } catch (e) {
+    } catch {
       localStorage.removeItem(STORAGE_KEY);
       setAuth({ agency: null, token: null, loading: false });
       return;
@@ -58,7 +57,7 @@ export function AgencyAuthProvider({ children }) {
           STORAGE_KEY,
           JSON.stringify({ agency: res.agency, token: parsed.token })
         );
-      } catch (err) {
+      } catch {
         localStorage.removeItem(STORAGE_KEY);
         setAuth({ agency: null, token: null, loading: false });
       }
@@ -82,12 +81,11 @@ export function AgencyAuthProvider({ children }) {
     saveAuth(res);
   };
 
-const register = async (payload) => {
-  const res = await registerApi(payload); // { token, agency }
-  if (res?.token) saveAuth(res);
-  return res;
-};
-
+  // IMPORTANT: do NOT auto-login on register
+  const register = async (payload) => {
+    const res = await registerApi(payload); // might return token; we ignore it here
+    return res;
+  };
 
   const logout = () => {
     setAuth({ agency: null, token: null, loading: false });

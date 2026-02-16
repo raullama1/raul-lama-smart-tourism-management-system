@@ -103,7 +103,7 @@ export default function AgencyRegisterPage() {
       { test: /[0-9]/, message: "At least one number (0-9)" },
       { test: /[^A-Za-z0-9]/, message: "At least one special character" },
     ],
-    [],
+    []
   );
 
   const passwordChecks = passwordRules.map((r) => ({
@@ -152,7 +152,7 @@ export default function AgencyRegisterPage() {
       addFieldError(
         f,
         "phoneDigits",
-        "Contact Number must be exactly 10 digits.",
+        "Contact Number must be exactly 10 digits."
       );
     }
 
@@ -283,19 +283,19 @@ export default function AgencyRegisterPage() {
       key === "name"
         ? form.name.trim()
         : key === "email"
-          ? form.email.trim()
-          : key === "phoneDigits"
-            ? form.phoneDigits.trim()
-            : form.pan_vat.trim();
+        ? form.email.trim()
+        : key === "phoneDigits"
+        ? form.phoneDigits.trim()
+        : form.pan_vat.trim();
 
     const formatOk =
       key === "name"
         ? val.length >= 2
         : key === "email"
-          ? /^\S+@\S+\.\S+$/.test(val)
-          : key === "phoneDigits"
-            ? val.length === 10
-            : val.length === 9;
+        ? /^\S+@\S+\.\S+$/.test(val)
+        : key === "phoneDigits"
+        ? val.length === 10
+        : val.length === 9;
 
     if (!val || !formatOk) return null;
 
@@ -346,7 +346,7 @@ export default function AgencyRegisterPage() {
       setCodeSent(true);
       setTimeLeft(60);
       setTopMessage(
-        res?.message || "Verification code sent. Code is valid for 60 seconds.",
+        res?.message || "Verification code sent. Code is valid for 60 seconds."
       );
       scrollToTop();
     } catch (err) {
@@ -382,11 +382,7 @@ export default function AgencyRegisterPage() {
     if (availability.checked.email && availability.taken.email)
       addFieldError(errs, "email", "Email is already registered.");
     if (availability.checked.phone && availability.taken.phone)
-      addFieldError(
-        errs,
-        "phoneDigits",
-        "Contact Number is already registered.",
-      );
+      addFieldError(errs, "phoneDigits", "Contact Number is already registered.");
     if (availability.checked.pan_vat && availability.taken.pan_vat)
       addFieldError(errs, "pan_vat", "PAN/VAT is already registered.");
 
@@ -411,7 +407,14 @@ export default function AgencyRegisterPage() {
         verificationCode: form.verificationCode.trim(),
       });
 
-      navigate("/agency/login");
+      navigate("/agency/login", {
+        state: {
+          toast: {
+            type: "success",
+            message: "Agency registered successfully. Please login to continue.",
+          },
+        },
+      });
     } catch (err) {
       const msg =
         err?.response?.data?.message || "Failed to create agency account.";
@@ -503,10 +506,10 @@ export default function AgencyRegisterPage() {
                 {sendingCode
                   ? "Sending..."
                   : timeLeft > 0
-                    ? `Wait ${timeLeft}s`
-                    : codeSent
-                      ? "Resend"
-                      : "Send Code"}
+                  ? `Wait ${timeLeft}s`
+                  : codeSent
+                  ? "Resend"
+                  : "Send Code"}
               </button>
             </div>
             {getFieldError("email") && (
@@ -693,7 +696,6 @@ export default function AgencyRegisterPage() {
             )}
           </div>
 
-          {/* Make link smaller + green, and button match public gradient */}
           <div className="flex items-center justify-between pt-1">
             <p className="text-[11px] md:text-xs text-gray-600">
               Already have account?{" "}

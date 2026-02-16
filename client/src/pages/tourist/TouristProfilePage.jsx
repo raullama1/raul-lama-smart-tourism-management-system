@@ -81,21 +81,22 @@ export default function TouristProfilePage() {
 
   const [name, setName] = useState("");
 
-  // phone split into country code + number (but saved as one string)
   const [countryCode, setCountryCode] = useState("+977");
   const [phoneNumber, setPhoneNumber] = useState("");
 
-  // toast state
+  // baseline values to detect changes
+  const [initial, setInitial] = useState({
+    name: "",
+    phone: "",
+  });
+
   const [toast, setToast] = useState({
     open: false,
     type: "success",
     message: "",
   });
 
-  // confirm remove avatar modal
   const [confirmRemove, setConfirmRemove] = useState(false);
-
-  // ✅ change password modal
   const [changePwdOpen, setChangePwdOpen] = useState(false);
 
   const showToast = (type, message) => {
@@ -122,16 +123,19 @@ export default function TouristProfilePage() {
     const s = String(full || "").trim();
     if (!s) return { code: "+977", num: "" };
 
-    // supports formats like "+9779812345678" or "+977 9812345678"
     const cleaned = s.replace(/\s+/g, "");
     const m = cleaned.match(/^(\+\d{1,4})(\d+)$/);
     if (m) return { code: m[1], num: m[2] };
 
-    // if user saved only digits, keep default code
     if (/^\d+$/.test(cleaned)) return { code: "+977", num: cleaned };
 
-    // fallback
     return { code: "+977", num: cleaned.replace(/\D/g, "") };
+  };
+
+  const normalizePhone = (code, num) => {
+    const n = String(num || "").trim().replace(/\D/g, "");
+    const c = String(code || "").trim();
+    return n ? `${c}${n}` : "";
   };
 
   const load = async () => {
@@ -140,12 +144,23 @@ export default function TouristProfilePage() {
       setLoading(true);
       const res = await fetchMyProfile(token);
       const u = res?.data?.user;
+
       setUser(u || null);
+
+      const nextName = (u?.name || "").trim();
       setName(u?.name || "");
 
       const { code, num } = splitPhone(u?.phone || "");
       setCountryCode(code);
       setPhoneNumber(num);
+
+      const nextPhone = normalizePhone(code, num);
+
+      // set baseline (so button is disabled until changes)
+      setInitial({
+        name: nextName,
+        phone: nextPhone,
+      });
     } catch (e) {
       console.error("load profile", e);
       showToast("error", "Failed to load profile");
@@ -198,18 +213,32 @@ export default function TouristProfilePage() {
     }
   };
 
+  // detect changes
+  const currentPhone = useMemo(
+    () => normalizePhone(countryCode, phoneNumber),
+    [countryCode, phoneNumber]
+  );
+
+  const isDirty = useMemo(() => {
+    const currentName = name.trim();
+    return currentName !== initial.name || currentPhone !== initial.phone;
+  }, [name, currentPhone, initial]);
+
   const onSave = async () => {
     if (!token) return;
+
     const n = name.trim();
     if (!n) {
       showToast("error", "Name is required.");
       return;
     }
 
-    // save as one string: +CODE + NUMBER (or empty string if user cleared)
-    const fullPhone = phoneNumber.trim()
-      ? `${countryCode}${phoneNumber.trim()}`
-      : "";
+    if (!isDirty) {
+      showToast("error", "No changes to update.");
+      return;
+    }
+
+    const fullPhone = currentPhone;
 
     try {
       setSaving(true);
@@ -218,10 +247,18 @@ export default function TouristProfilePage() {
       const u = res?.data?.user;
       setUser(u || null);
 
-      // keep UI synced if backend returns updated phone
       const { code, num } = splitPhone(u?.phone || fullPhone);
       setCountryCode(code);
       setPhoneNumber(num);
+
+      const syncedName = (u?.name || n).trim();
+      const syncedPhone = normalizePhone(code, num);
+
+      // update baseline after successful save
+      setInitial({
+        name: syncedName,
+        phone: syncedPhone,
+      });
 
       showToast("success", "Profile updated");
     } catch (e) {
@@ -256,7 +293,6 @@ export default function TouristProfilePage() {
               </div>
             </div>
 
-            {/* avatar */}
             <div className="mt-6 flex items-start gap-4">
               <div className="w-20 h-20 rounded-full bg-emerald-100 border border-gray-100 overflow-hidden flex items-center justify-center">
                 {avatarUrl ? (
@@ -316,11 +352,12 @@ export default function TouristProfilePage() {
                   )}
                 </div>
 
-                <div className="text-xs text-gray-500">PNG/JPG/WEBP • max 2MB</div>
+                <div className="text-xs text-gray-500">
+                  PNG/JPG/WEBP • max 2MB
+                </div>
               </div>
             </div>
 
-            {/* form */}
             <div className="mt-6 space-y-4">
               <div>
                 <div className="text-sm font-semibold text-emerald-900/70">
@@ -353,7 +390,6 @@ export default function TouristProfilePage() {
                     Phone
                   </div>
 
-                  {/* same design area, just split into dropdown + input */}
                   <div className="mt-2 flex gap-2">
                     <select
                       value={countryCode}
@@ -375,7 +411,6 @@ export default function TouristProfilePage() {
                     <input
                       value={phoneNumber}
                       onChange={(e) => {
-                        // numbers only
                         const onlyDigits = e.target.value.replace(/\D/g, "");
                         setPhoneNumber(onlyDigits);
                       }}
@@ -393,8 +428,8 @@ export default function TouristProfilePage() {
                 <button
                   type="button"
                   onClick={onSave}
-                  disabled={saving || loading}
-                  className="rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white px-5 py-3 text-sm font-semibold disabled:opacity-60"
+                  disabled={saving || loading || !isDirty}
+                  className="rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white px-5 py-3 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? "Updating..." : "Update Profile"}
                 </button>

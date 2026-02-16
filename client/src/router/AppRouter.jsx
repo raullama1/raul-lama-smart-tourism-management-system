@@ -30,9 +30,14 @@ import AgencyRegisterPage from "../pages/agency/AgencyRegisterPage";
 import AgencyHelpPage from "../pages/agency/AgencyHelpPage";
 import AgencyForgotPasswordPage from "../pages/agency/AgencyForgotPasswordPage";
 import AgencyResetPasswordPage from "../pages/agency/AgencyResetPasswordPage";
+import AgencyDashboardPage from "../pages/agency/AgencyDashboardPage";
 
 import { useAuth } from "../context/AuthContext";
+import { useAgencyAuth } from "../context/AgencyAuthContext";
 
+/**
+ * Protect tourist routes (normal user login)
+ */
 function PrivateRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
 
@@ -47,6 +52,9 @@ function PrivateRoute({ children }) {
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 }
 
+/**
+ * Prevent showing login/signup when already logged in (normal user)
+ */
 function PublicRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
 
@@ -59,6 +67,23 @@ function PublicRoute({ children }) {
   }
 
   return isAuthenticated ? <Navigate to="/home" replace /> : children;
+}
+
+/**
+ * Protect agency routes (agency login)
+ */
+function AgencyPrivateRoute({ children }) {
+  const { isAuthenticated, loading } = useAgencyAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center text-gray-600">
+        Loading...
+      </div>
+    );
+  }
+
+  return isAuthenticated ? children : <Navigate to="/agency/login" replace />;
 }
 
 export default function AppRouter() {
@@ -120,7 +145,6 @@ export default function AppRouter() {
             </PrivateRoute>
           }
         />
-
         <Route
           path="/map"
           element={
@@ -129,7 +153,6 @@ export default function AppRouter() {
             </PrivateRoute>
           }
         />
-
         <Route
           path="/wishlist"
           element={
@@ -138,7 +161,6 @@ export default function AppRouter() {
             </PrivateRoute>
           }
         />
-
         <Route
           path="/bookings"
           element={
@@ -147,7 +169,6 @@ export default function AppRouter() {
             </PrivateRoute>
           }
         />
-
         <Route
           path="/bookings/confirm"
           element={
@@ -156,7 +177,6 @@ export default function AppRouter() {
             </PrivateRoute>
           }
         />
-
         <Route
           path="/payment/:bookingId"
           element={
@@ -165,7 +185,6 @@ export default function AppRouter() {
             </PrivateRoute>
           }
         />
-
         <Route
           path="/payment/success/:bookingId"
           element={
@@ -182,7 +201,6 @@ export default function AppRouter() {
             </PrivateRoute>
           }
         />
-
         <Route
           path="/review/:bookingId"
           element={
@@ -191,7 +209,6 @@ export default function AppRouter() {
             </PrivateRoute>
           }
         />
-
         <Route
           path="/review"
           element={
@@ -227,6 +244,15 @@ export default function AppRouter() {
         <Route path="/agency/help" element={<AgencyHelpPage />} />
         <Route path="/agency/forgot-password" element={<AgencyForgotPasswordPage />} />
         <Route path="/agency/reset-password" element={<AgencyResetPasswordPage />} />
+
+        <Route
+          path="/agency/dashboard"
+          element={
+            <AgencyPrivateRoute>
+              <AgencyDashboardPage />
+            </AgencyPrivateRoute>
+          }
+        />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
