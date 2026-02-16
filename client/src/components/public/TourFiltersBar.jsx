@@ -1,3 +1,4 @@
+// client/src/components/public/TourFiltersBar.jsx
 import { useState, useEffect } from "react";
 import { FaSearch } from "react-icons/fa";
 import { Range, getTrackBackground } from "react-range";
@@ -17,13 +18,8 @@ export default function TourFiltersBar({
     filters.maxPrice || MAX,
   ]);
 
-  // 🔁 Whenever filters.minPrice / maxPrice change (e.g. Reset),
-  // sync the slider back to the correct values
   useEffect(() => {
-    setPriceValues([
-      filters.minPrice || MIN,
-      filters.maxPrice || MAX,
-    ]);
+    setPriceValues([filters.minPrice || MIN, filters.maxPrice || MAX]);
   }, [filters.minPrice, filters.maxPrice]);
 
   const handlePriceChange = (values) => {
@@ -37,7 +33,6 @@ export default function TourFiltersBar({
 
   return (
     <div className="mb-6 space-y-3">
-      {/* Search */}
       <div className="flex items-center gap-2">
         <div className="flex-1 relative">
           <input
@@ -60,9 +55,7 @@ export default function TourFiltersBar({
         </button>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-wrap gap-3 items-center">
-        {/* Location */}
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-gray-600">Location:</span>
           <select
@@ -86,7 +79,6 @@ export default function TourFiltersBar({
           </select>
         </div>
 
-        {/* Price */}
         <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
           <span className="text-xs font-medium text-gray-600">Price Range</span>
 
@@ -117,12 +109,16 @@ export default function TourFiltersBar({
                   {children}
                 </div>
               )}
-              renderThumb={({ props }) => (
-                <div
-                  {...props}
-                  className="h-4 w-4 rounded-full bg-emerald-600 shadow"
-                />
-              )}
+              renderThumb={({ props }) => {
+                const { key, ...rest } = props;
+                return (
+                  <div
+                    key={key}
+                    {...rest}
+                    className="h-4 w-4 rounded-full bg-emerald-600 shadow"
+                  />
+                );
+              }}
             />
             <div className="flex justify-between text-[10px] text-gray-500 mt-1">
               <span>Rs {priceValues[0].toLocaleString()}</span>
@@ -131,7 +127,6 @@ export default function TourFiltersBar({
           </div>
         </div>
 
-        {/* Type */}
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-gray-600">Type:</span>
           <select
@@ -152,11 +147,10 @@ export default function TourFiltersBar({
           </select>
         </div>
 
-        {/* Sort */}
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-gray-600">Sort:</span>
           <select
-            value={filters.sort || ""} // "" = Default (random)
+            value={filters.sort || ""}
             onChange={(e) =>
               onFiltersChange({ ...filters, sort: e.target.value })
             }
@@ -169,7 +163,6 @@ export default function TourFiltersBar({
           </select>
         </div>
 
-        {/* Clear */}
         <button
           onClick={onClearFilters}
           className="ml-auto px-3 py-2 rounded-xl border border-gray-300 text-xs md:text-sm text-gray-700 hover:bg-gray-50"

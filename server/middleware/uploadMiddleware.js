@@ -52,3 +52,25 @@ export const uploadAvatar = multer({
     fileSize: 2 * 1024 * 1024, // 2MB
   },
 });
+
+const toursDir = path.join(process.cwd(), "server", "uploads", "tours");
+fs.mkdirSync(toursDir, { recursive: true });
+
+const tourStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, toursDir),
+  filename: (req, file, cb) => {
+    if (!req.user?.id) return cb(new Error("Unauthorized upload attempt"));
+
+    const ext = path.extname(file.originalname || "").toLowerCase();
+    const safeExt = [".png", ".jpg", ".jpeg", ".webp"].includes(ext) ? ext : ".jpg";
+
+    const filename = `a${req.user.id}-${Date.now()}${safeExt}`;
+    cb(null, filename);
+  },
+});
+
+export const uploadTourImage = multer({
+  storage: tourStorage,
+  fileFilter,
+  limits: { fileSize: 2 * 1024 * 1024 },
+});

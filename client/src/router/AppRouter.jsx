@@ -25,15 +25,16 @@ import WriteReviewPage from "../pages/tourist/WriteReviewPage";
 import TouristChatPage from "../pages/tourist/TouristChatPage";
 import TouristProfilePage from "../pages/tourist/TouristProfilePage";
 
+import { useAuth } from "../context/AuthContext";
+import { useAgencyAuth } from "../context/AgencyAuthContext";
+
 import AgencyLoginPage from "../pages/agency/AgencyLoginPage";
 import AgencyRegisterPage from "../pages/agency/AgencyRegisterPage";
 import AgencyHelpPage from "../pages/agency/AgencyHelpPage";
 import AgencyForgotPasswordPage from "../pages/agency/AgencyForgotPasswordPage";
 import AgencyResetPasswordPage from "../pages/agency/AgencyResetPasswordPage";
 import AgencyDashboardPage from "../pages/agency/AgencyDashboardPage";
-
-import { useAuth } from "../context/AuthContext";
-import { useAgencyAuth } from "../context/AgencyAuthContext";
+import AgencyAddTourPage from "../pages/agency/AgencyAddTourPage";
 
 /**
  * Protect tourist routes (normal user login)
@@ -242,14 +243,31 @@ export default function AppRouter() {
         <Route path="/agency/login" element={<AgencyLoginPage />} />
         <Route path="/agency/register" element={<AgencyRegisterPage />} />
         <Route path="/agency/help" element={<AgencyHelpPage />} />
-        <Route path="/agency/forgot-password" element={<AgencyForgotPasswordPage />} />
-        <Route path="/agency/reset-password" element={<AgencyResetPasswordPage />} />
+        <Route
+          path="/agency/forgot-password"
+          element={<AgencyForgotPasswordPage />}
+        />
+        <Route
+          path="/agency/reset-password"
+          element={<AgencyResetPasswordPage />}
+        />
 
+        {/* Protected agency routes */}
         <Route
           path="/agency/dashboard"
           element={
             <AgencyPrivateRoute>
               <AgencyDashboardPage />
+            </AgencyPrivateRoute>
+          }
+        />
+
+        {/* New tour creation for agency */}
+        <Route
+          path="/agency/tours/new"
+          element={
+            <AgencyPrivateRoute>
+              <AgencyAddTourPage />
             </AgencyPrivateRoute>
           }
         />

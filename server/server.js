@@ -23,6 +23,7 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 import agencyAuthRoutes from "./routes/agencyAuthRoutes.js";
 import agencySupportRoutes from "./routes/agencySupportRoutes.js";
 import agencyDashboardRoutes from "./routes/agencyDashboardRoutes.js";
+import agencyToursRoutes from "./routes/agencyToursRoutes.js";
 
 import { initChatSocket } from "./sockets/chatSocket.js";
 
@@ -72,7 +73,7 @@ app.use("/api/profile", profileRoutes);
 // Notifications
 app.use("/api/notifications", notificationRoutes);
 
-// Agency Auth (MUST be before server starts)
+// Agency Auth
 app.use("/api/agency/auth", agencyAuthRoutes);
 
 // Agency Support
@@ -80,6 +81,9 @@ app.use("/api/agency/support", agencySupportRoutes);
 
 // Agency Dashboard
 app.use("/api/agency/dashboard", agencyDashboardRoutes);
+
+// Agency Tours
+app.use("/api/agency/tours", agencyToursRoutes);
 
 // Socket.IO
 const server = http.createServer(app);
@@ -92,7 +96,6 @@ const io = new SocketIOServer(server, {
   },
 });
 
-// Make io available to controllers if you need it later
 app.set("io", io);
 
 initChatSocket(io);

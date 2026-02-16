@@ -11,7 +11,6 @@ export async function getPublicTours(filters) {
     type = "",
     minPrice = "",
     maxPrice = "",
-    // "" | "popular" | "price-asc" | "price-desc"
     sort = "",
     page = 1,
     limit = 6,
@@ -32,31 +31,22 @@ export async function getPublicTours(filters) {
     whereParts.push("t.type = ?");
     params.push(type);
   }
-  if (minPrice) {
+  if (minPrice !== "" && minPrice !== null && minPrice !== undefined) {
     whereParts.push("t.starting_price >= ?");
     params.push(Number(minPrice));
   }
-  if (maxPrice) {
+  if (maxPrice !== "" && maxPrice !== null && maxPrice !== undefined) {
     whereParts.push("t.starting_price <= ?");
     params.push(Number(maxPrice));
   }
 
-  const whereClause = whereParts.length
-    ? `WHERE ${whereParts.join(" AND ")}`
-    : "";
+  const whereClause = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
 
-  // 🔥 sort logic
   let orderBy;
-  if (sort === "price-asc") {
-    orderBy = "ORDER BY t.starting_price ASC";
-  } else if (sort === "price-desc") {
-    orderBy = "ORDER BY t.starting_price DESC";
-  } else if (sort === "popular") {
-    orderBy = "ORDER BY t.popularity_score DESC, t.created_at DESC";
-  } else {
-    // Default → random tours
-    orderBy = "ORDER BY RAND()";
-  }
+  if (sort === "price-asc") orderBy = "ORDER BY t.starting_price ASC";
+  else if (sort === "price-desc") orderBy = "ORDER BY t.starting_price DESC";
+  else if (sort === "popular") orderBy = "ORDER BY t.popularity_score DESC, t.created_at DESC";
+  else orderBy = "ORDER BY RAND()";
 
   const pageNum = Number(page) || 1;
   const limitNum = Number(limit) || 6;
@@ -67,7 +57,7 @@ export async function getPublicTours(filters) {
       SELECT
         t.id,
         t.title,
-        t.short_description,
+        SUBSTRING(COALESCE(t.long_description, ''), 1, 140) AS short_description,
         t.location,
         t.latitude,
         t.longitude,
@@ -107,7 +97,7 @@ export async function getPopularTours(limit = 6) {
       SELECT
         id,
         title,
-        short_description,
+        SUBSTRING(COALESCE(long_description, ''), 1, 140) AS short_description,
         location,
         latitude,
         longitude,
@@ -128,20 +118,20 @@ export async function getPopularTours(limit = 6) {
 // Get Single Tour + Agencies (Details Page)
 // --------------------------------------------------
 export async function getPublicTourDetails(tourId) {
-  // 1) Get the tour itself
   const [tourRows] = await db.query(
     `
       SELECT
         t.id,
         t.title,
-        t.short_description,
+        SUBSTRING(COALESCE(t.long_description, ''), 1, 140) AS short_description,
         t.long_description,
         t.location,
         t.latitude,
         t.longitude,
         t.type,
         t.starting_price,
-        t.image_url
+        t.image_url,
+        t.max_capacity
       FROM tours t
       WHERE t.id = ?
       LIMIT 1
@@ -149,16 +139,11 @@ export async function getPublicTourDetails(tourId) {
     [tourId]
   );
 
-  if (tourRows.length === 0) {
-    return null; // no tour
-  }
+  if (tourRows.length === 0) return null;
 
   const tour = tourRows[0];
-
-  // Make sure front-end always has "description"
   tour.description = tour.long_description || tour.short_description || "";
 
-  // 2) Get agencies offering this tour
   const [agencyRows] = await db.query(
     `
       SELECT
@@ -174,8 +159,5 @@ export async function getPublicTourDetails(tourId) {
     [tourId]
   );
 
-  return {
-    tour,
-    agencies: agencyRows,
-  };
+  return { tour, agencies: agencyRows };
 }

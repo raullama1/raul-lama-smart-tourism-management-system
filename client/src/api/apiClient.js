@@ -1,3 +1,4 @@
+// client/src/api/apiClient.js
 import axios from "axios";
 
 const apiClient = axios.create({
@@ -5,24 +6,28 @@ const apiClient = axios.create({
   timeout: 10000,
 });
 
-// Attach JWT token automatically
+function readTokenFrom(storageKey) {
+  try {
+    const stored = localStorage.getItem(storageKey);
+    if (!stored) return null;
+    const parsed = JSON.parse(stored);
+    return parsed?.token || null;
+  } catch {
+    return null;
+  }
+}
+
 apiClient.interceptors.request.use((config) => {
   if (typeof window === "undefined") return config;
 
   const url = String(config?.url || "");
-  const isAgencyRequest = url.startsWith("/agency/") || url.includes("/agency/");
+  const isAgencyCall = url.startsWith("/agency/");
 
-  const key = isAgencyRequest ? "tn_agency_auth" : "tn_auth";
-  const stored = localStorage.getItem(key);
+  const token = isAgencyCall
+    ? readTokenFrom("tn_agency_auth")
+    : readTokenFrom("tn_auth");
 
-  if (stored) {
-    try {
-      const { token } = JSON.parse(stored);
-      if (token) config.headers.Authorization = `Bearer ${token}`;
-    } catch {
-      // ignore parse error
-    }
-  }
+  if (token) config.headers.Authorization = `Bearer ${token}`;
 
   return config;
 });

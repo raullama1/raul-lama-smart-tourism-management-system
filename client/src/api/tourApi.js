@@ -1,3 +1,4 @@
+// client/src/api/tourApi.js
 import apiClient from "./apiClient";
 
 // GET /api/public/tours
