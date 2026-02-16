@@ -10,6 +10,9 @@ import {
   createUser,
   updateUserPasswordHash,
 } from "../models/userModel.js";
+
+import { findAgencyByEmail } from "../models/agencyModel.js";
+
 import {
   createEmailVerification,
   findValidEmailVerification,
@@ -73,6 +76,14 @@ export async function sendSignupVerificationCodeController(req, res) {
         .json({ message: "Email is required to send verification code." });
     }
 
+    // Block if email already used by agency
+    const agencyExisting = await findAgencyByEmail(email);
+    if (agencyExisting) {
+      return res.status(400).json({
+        message: "This email is already registered as an agency. Please use a different email for user.",
+      });
+    }
+
     // If user already exists, do not allow signup
     const existing = await findUserByEmail(email);
     if (existing) {
@@ -112,6 +123,14 @@ export async function signupController(req, res) {
     if (!name || !email || !password || !verificationCode) {
       return res.status(400).json({
         message: "Name, email, password, and verification code are required.",
+      });
+    }
+
+    // Block if email already used by agency
+    const agencyExisting = await findAgencyByEmail(email);
+    if (agencyExisting) {
+      return res.status(400).json({
+        message: "This email is already registered as an agency. Please use a different email for user.",
       });
     }
 

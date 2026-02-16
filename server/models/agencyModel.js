@@ -80,6 +80,11 @@ export async function createAgency({
   };
 }
 
+/**
+ * Checks uniqueness across BOTH:
+ * - agencies table
+ * - users table (for email, and optionally phone if your users table has phone)
+ */
 export async function checkAgencyUniqueness({ name, email, phone, pan_vat }) {
   const taken = {
     name: false,
@@ -88,23 +93,51 @@ export async function checkAgencyUniqueness({ name, email, phone, pan_vat }) {
     pan_vat: false,
   };
 
+  // Email: agencies OR users
   if (email) {
-    const [rows] = await db.query(`SELECT id FROM agencies WHERE email = ? LIMIT 1`, [email]);
-    taken.email = rows.length > 0;
+    const [aRows] = await db.query(
+      `SELECT id FROM agencies WHERE email = ? LIMIT 1`,
+      [email]
+    );
+    const [uRows] = await db.query(
+      `SELECT id FROM users WHERE email = ? LIMIT 1`,
+      [email]
+    );
+    taken.email = aRows.length > 0 || uRows.length > 0;
   }
 
+  // Phone: agencies only (safe default)
+  // If you ALSO want to block same phone used by a user, uncomment the users query below
   if (phone) {
-    const [rows] = await db.query(`SELECT id FROM agencies WHERE phone = ? LIMIT 1`, [phone]);
-    taken.phone = rows.length > 0;
+    const [aRows] = await db.query(
+      `SELECT id FROM agencies WHERE phone = ? LIMIT 1`,
+      [phone]
+    );
+
+    // Uncomment ONLY if your users table has a phone column
+    // const [uRows] = await db.query(
+    //   `SELECT id FROM users WHERE phone = ? LIMIT 1`,
+    //   [phone]
+    // );
+
+    taken.phone = aRows.length > 0; // || uRows.length > 0;
   }
 
+  // PAN/VAT: agencies only
   if (pan_vat) {
-    const [rows] = await db.query(`SELECT id FROM agencies WHERE pan_vat = ? LIMIT 1`, [pan_vat]);
+    const [rows] = await db.query(
+      `SELECT id FROM agencies WHERE pan_vat = ? LIMIT 1`,
+      [pan_vat]
+    );
     taken.pan_vat = rows.length > 0;
   }
 
+  // Name: agencies only
   if (name) {
-    const [rows] = await db.query(`SELECT id FROM agencies WHERE name = ? LIMIT 1`, [name]);
+    const [rows] = await db.query(
+      `SELECT id FROM agencies WHERE name = ? LIMIT 1`,
+      [name]
+    );
     taken.name = rows.length > 0;
   }
 

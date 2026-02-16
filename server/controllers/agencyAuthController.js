@@ -16,13 +16,18 @@ import {
   updateAgencyPasswordHash,
 } from "../models/agencyModel.js";
 
+import { findUserByEmail } from "../models/userModel.js";
+
 import {
   createAgencyEmailVerification,
   findValidAgencyEmailVerification,
   markAgencyEmailVerificationUsed,
 } from "../models/agencyEmailVerificationModel.js";
 
-import { sendSignupVerificationEmail, sendPasswordResetEmail } from "../utils/mailer.js";
+import {
+  sendSignupVerificationEmail,
+  sendPasswordResetEmail,
+} from "../utils/mailer.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 const JWT_EXPIRES_IN = "7d";
@@ -125,6 +130,15 @@ export async function sendAgencyRegisterCodeController(req, res) {
         .json({ message: "Email is required to send verification code." });
     }
 
+    // Block if email already used by a normal user
+    const userExisting = await findUserByEmail(email);
+    if (userExisting) {
+      return res.status(400).json({
+        message: "Duplicate details found. Please use unique information.",
+        errors: ["This email is already registered as a user. Please use a different email for agency."],
+      });
+    }
+
     const existing = await findAgencyByEmail(email);
     if (existing) {
       return res.status(400).json({
@@ -192,6 +206,15 @@ export async function agencyRegisterController(req, res) {
 
     if (!panVatNormalized) {
       return res.status(400).json({ message: "PAN/VAT must be exactly 9 digits." });
+    }
+
+    // Block if email already used by a normal user
+    const userExisting = await findUserByEmail(email);
+    if (userExisting) {
+      return res.status(400).json({
+        message: "Duplicate details found. Please use unique information.",
+        errors: ["This email is already registered as a user. Please use a different email for agency."],
+      });
     }
 
     const pwdErrors = validatePasswordStrength(password);
