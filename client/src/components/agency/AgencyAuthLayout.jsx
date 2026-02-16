@@ -10,7 +10,7 @@ export default function AgencyAuthLayout({ children }) {
 
       {/* Equal left/right space next to sidebar */}
       <section className="flex-1 px-6 py-10 flex justify-center">
-        <div className="w-full max-w-3xl">
+        <div className="w-full max-w-4xl">
           {children}
         </div>
       </section>

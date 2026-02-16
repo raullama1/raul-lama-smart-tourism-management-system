@@ -182,7 +182,7 @@ export default function AgencySidebar() {
 
       <div className="px-4 py-4 border-t border-emerald-50/10">
         <p className="text-xs text-emerald-100/70 px-2">
-          Smart Tourism Nepal — Manage your agency
+          Tourism Nepal — Manage your agency
         </p>
       </div>
     </aside>

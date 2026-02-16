@@ -40,7 +40,11 @@ export default function AgencyLoginPage() {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const [toast, setToast] = useState({ open: false, type: "success", message: "" });
+  const [toast, setToast] = useState({
+    open: false,
+    type: "success",
+    message: "",
+  });
 
   useEffect(() => {
     const t = location.state?.toast;
@@ -87,97 +91,105 @@ export default function AgencyLoginPage() {
   return (
     <>
       <AgencyAuthLayout>
-        <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6 md:p-8">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-emerald-50 border border-emerald-100 grid place-items-center">
-              <span className="text-xl">✨</span>
-            </div>
-            <h1 className="text-xl md:text-2xl font-semibold text-gray-900">
-              Tourism Nepal
-            </h1>
-          </div>
-
-          {error && (
-            <div className="mt-4 text-xs md:text-sm text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-            <div className="space-y-1">
-              <label className="text-xs md:text-sm font-medium text-gray-700">
-                Email
-              </label>
-              <input
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (error) setError("");
-                }}
-                className="w-full h-11 px-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                placeholder="Enter your email"
-              />
+        <div className="w-full flex items-center justify-center min-h-[calc(100vh-80px)]">
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-md border border-gray-100 p-6 md:p-8">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-emerald-50 border border-emerald-100 grid place-items-center">
+                <span className="text-xl">✨</span>
+              </div>
+              <h1 className="text-xl md:text-2xl font-semibold text-gray-900">
+                Tourism Nepal
+              </h1>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-xs md:text-sm font-medium text-gray-700">
-                Password
-              </label>
+            {error && (
+              <div className="mt-4 text-xs md:text-sm text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                {error}
+              </div>
+            )}
 
-              <div className="relative">
+            <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+              <div className="space-y-1">
+                <label className="text-xs md:text-sm font-medium text-gray-700">
+                  Email
+                </label>
                 <input
-                  type={showPassword ? "text" : "password"}
-                  autoComplete="current-password"
-                  value={password}
+                  type="email"
+                  autoComplete="email"
+                  value={email}
                   onChange={(e) => {
-                    setPassword(e.target.value);
+                    setEmail(e.target.value);
                     if (error) setError("");
                   }}
-                  className="w-full h-11 px-3 pr-10 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  placeholder="Enter your password"
+                  className="w-full h-11 px-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  placeholder="Enter your email"
                 />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs md:text-sm font-medium text-gray-700">
+                  Password
+                </label>
+
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (error) setError("");
+                    }}
+                    className="w-full h-11 px-3 pr-10 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    placeholder="Enter your password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((p) => !p)}
+                    className="absolute inset-y-0 right-2 flex items-center text-gray-500 hover:text-gray-700"
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
+                  >
+                    {showPassword ? (
+                      <FiEyeOff size={18} />
+                    ) : (
+                      <FiEye size={18} />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-1">
                 <button
                   type="button"
-                  onClick={() => setShowPassword((p) => !p)}
-                  className="absolute inset-y-0 right-2 flex items-center text-gray-500 hover:text-gray-700"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="text-[11px] md:text-xs text-emerald-700 hover:underline"
+                  onClick={() => navigate("/agency/forgot-password")}
                 >
-                  {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+                  Forgot password?
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md hover:scale-[1.02] active:scale-100 transition-transform disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  <FiLogIn size={18} />
+                  {submitting ? "Logging in..." : "Login"}
                 </button>
               </div>
-            </div>
 
-            <div className="flex items-center justify-between pt-1">
-              <button
-                type="button"
-                className="text-[11px] md:text-xs text-emerald-700 hover:underline"
-                onClick={() => navigate("/agency/forgot-password")}
-              >
-                Forgot password?
-              </button>
-
-              <button
-                type="submit"
-                disabled={submitting}
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md hover:scale-[1.02] active:scale-100 transition-transform disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                <FiLogIn size={18} />
-                {submitting ? "Logging in..." : "Login"}
-              </button>
-            </div>
-
-            <p className="pt-2 text-center text-[11px] md:text-xs text-gray-600">
-              Don&apos;t have an account?{" "}
-              <Link
-                to="/agency/register"
-                className="text-emerald-700 font-medium hover:underline"
-              >
-                Create Agency Account
-              </Link>
-            </p>
-          </form>
+              <p className="pt-2 text-center text-[11px] md:text-xs text-gray-600">
+                Don&apos;t have an account?{" "}
+                <Link
+                  to="/agency/register"
+                  className="text-emerald-700 font-medium hover:underline"
+                >
+                  Create Agency Account
+                </Link>
+              </p>
+            </form>
+          </div>
         </div>
       </AgencyAuthLayout>
 
