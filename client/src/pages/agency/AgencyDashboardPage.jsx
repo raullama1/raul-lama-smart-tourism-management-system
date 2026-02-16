@@ -1,7 +1,7 @@
 // client/src/pages/agency/AgencyDashboardPage.jsx
 import { useEffect, useMemo, useState } from "react";
 import { FiBell, FiRefreshCw, FiPlus } from "react-icons/fi";
-import AgencyAuthLayout from "../../components/agency/AgencyAuthLayout";
+import AgencyLayout from "../../components/agency/AgencyLayout";
 import { useAgencyAuth } from "../../context/AgencyAuthContext";
 import { getAgencyDashboard } from "../../api/agencyDashboardApi";
 
@@ -104,7 +104,7 @@ export default function AgencyDashboardPage() {
   };
 
   return (
-    <AgencyAuthLayout>
+    <AgencyLayout>
       <div className="bg-white rounded-2xl shadow-sm border border-emerald-100 p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -241,6 +241,6 @@ export default function AgencyDashboardPage() {
           </div>
         </div>
       </div>
-    </AgencyAuthLayout>
+    </AgencyLayout>
   );
 }
