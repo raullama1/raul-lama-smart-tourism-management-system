@@ -10,13 +10,15 @@ function Pill({ children, tone = "neutral" }) {
     tone === "pending"
       ? "bg-amber-50 text-amber-700 border-amber-100"
       : tone === "docs"
-      ? "bg-sky-50 text-sky-700 border-sky-100"
-      : tone === "confirmed"
-      ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-      : "bg-gray-50 text-gray-700 border-gray-100";
+        ? "bg-sky-50 text-sky-700 border-sky-100"
+        : tone === "confirmed"
+          ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+          : "bg-gray-50 text-gray-700 border-gray-100";
 
   return (
-    <span className={`inline-flex items-center rounded-lg border px-2.5 py-1 text-[11px] font-semibold ${cls}`}>
+    <span
+      className={`inline-flex items-center rounded-lg border px-2.5 py-1 text-[11px] font-semibold ${cls}`}
+    >
       {children}
     </span>
   );
@@ -47,6 +49,18 @@ function Stars({ value }) {
           ★
         </span>
       ))}
+    </div>
+  );
+}
+
+function Panel({ title, children }) {
+  return (
+    <div className="rounded-2xl border border-emerald-100 bg-white p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-sm font-semibold text-gray-900">{title}</div>
+      </div>
+
+      <div className="mt-3">{children}</div>
     </div>
   );
 }
@@ -108,8 +122,12 @@ export default function AgencyDashboardPage() {
       <div className="bg-white rounded-2xl shadow-sm border border-emerald-100 p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-lg md:text-xl font-semibold text-gray-900">{title}</h1>
-            <p className="text-xs text-gray-500 mt-1">Overview of your tours, bookings and reviews</p>
+            <h1 className="text-lg md:text-xl font-semibold text-gray-900">
+              {title}
+            </h1>
+            <p className="text-xs text-gray-500 mt-1">
+              Overview of your tours, bookings and reviews
+            </p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -155,9 +173,21 @@ export default function AgencyDashboardPage() {
         )}
 
         <div className="mt-5 grid grid-cols-1 md:grid-cols-4 gap-3">
-          <KpiCard icon={<span>🧭</span>} label="Active Tours" value={data.stats.activeTours} />
-          <KpiCard icon={<span>📅</span>} label="Bookings" value={data.stats.bookings} />
-          <KpiCard icon={<span>⏳</span>} label="Pending Requests" value={data.stats.pendingRequests} />
+          <KpiCard
+            icon={<span>🧭</span>}
+            label="Active Tours"
+            value={data.stats.activeTours}
+          />
+          <KpiCard
+            icon={<span>📅</span>}
+            label="Bookings"
+            value={data.stats.bookings}
+          />
+          <KpiCard
+            icon={<span>⏳</span>}
+            label="Pending Requests"
+            value={data.stats.pendingRequests}
+          />
           <KpiCard
             icon={<span>💳</span>}
             label="Earnings (NPR)"
@@ -166,79 +196,88 @@ export default function AgencyDashboardPage() {
         </div>
 
         <div className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="rounded-2xl border border-emerald-100 bg-white p-4">
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-semibold text-gray-900">Recent Bookings</div>
-              <button type="button" className="text-xs font-semibold text-emerald-700 hover:underline">
-                View More
-              </button>
-            </div>
-
-            <div className="mt-3 space-y-2">
-              {loading ? (
-                <div className="text-sm text-gray-500">Loading...</div>
-              ) : data.recentBookings.length === 0 ? (
-                <div className="text-sm text-gray-500">No bookings yet.</div>
-              ) : (
-                data.recentBookings.map((b) => (
-                  <div key={b.id} className="rounded-xl border border-gray-100 bg-white px-3 py-2">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="text-sm font-semibold text-gray-900">
-                          {b.tour_title} • {b.travelers} {b.travelers === 1 ? "Guest" : "Guests"}
-                        </div>
-                        <div className="text-[11px] text-gray-500 mt-0.5">
-                          by {b.user_name} • {b.booking_date_label} • {b.payment_label}
+          <Panel title="Recent Bookings">
+            <div className="rounded-xl border border-gray-100 bg-white">
+              {/* Increased height here */}
+              <div className="max-h-[400px] overflow-y-auto p-3">
+                {loading ? (
+                  <div className="min-h-[320px] flex items-center justify-center text-sm text-gray-500">
+                    Loading...
+                  </div>
+                ) : data.recentBookings.length === 0 ? (
+                  <div className="min-h-[320px] flex items-center justify-center text-sm text-gray-500">
+                    No bookings yet.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {data.recentBookings.map((b) => (
+                      <div
+                        key={b.id}
+                        className="rounded-xl border border-gray-100 bg-white px-3 py-2"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="text-sm font-semibold text-gray-900">
+                              {b.tour_title} • {b.travelers}{" "}
+                              {b.travelers === 1 ? "Guest" : "Guests"}
+                            </div>
+                            <div className="text-[11px] text-gray-500 mt-0.5">
+                              by {b.user_name} • {b.booking_date_label} •{" "}
+                              {b.payment_label}
+                            </div>
+                          </div>
+                          <Pill tone={statusTone(b.booking_status)}>
+                            {b.booking_status}
+                          </Pill>
                         </div>
                       </div>
-                      <Pill tone={statusTone(b.booking_status)}>{b.booking_status}</Pill>
-                    </div>
+                    ))}
                   </div>
-                ))
-              )}
+                )}
+              </div>
             </div>
+          </Panel>
 
-            <div className="mt-3 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2 text-center text-xs text-gray-600">
-              View More or scrollable
-            </div>
-          </div>
+          <Panel title="Recent Reviews">
+            <div className="rounded-xl border border-gray-100 bg-white">
+              {/* Increased height here */}
+              <div className="max-h-[460px] overflow-y-auto p-3">
+                {loading ? (
+                  <div className="min-h-[320px] flex items-center justify-center text-sm text-gray-500">
+                    Loading...
+                  </div>
+                ) : data.recentReviews.length === 0 ? (
+                  <div className="min-h-[320px] flex items-center justify-center text-sm text-gray-500">
+                    No reviews yet.
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {data.recentReviews.map((r) => (
+                      <div
+                        key={r.id}
+                        className="rounded-xl border border-gray-100 bg-white px-3 py-2"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="w-full">
+                            <div className="flex items-center gap-2">
+                              <div className="text-sm font-semibold text-gray-900">
+                                {r.user_name}
+                              </div>
+                              <Stars value={r.rating} />
+                            </div>
 
-          <div className="rounded-2xl border border-emerald-100 bg-white p-4">
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-semibold text-gray-900">Recent Reviews</div>
-              <button type="button" className="text-xs font-semibold text-emerald-700 hover:underline">
-                View More
-              </button>
-            </div>
-
-            <div className="mt-3 space-y-2">
-              {loading ? (
-                <div className="text-sm text-gray-500">Loading...</div>
-              ) : data.recentReviews.length === 0 ? (
-                <div className="text-sm text-gray-500">No reviews yet.</div>
-              ) : (
-                data.recentReviews.map((r) => (
-                  <div key={r.id} className="rounded-xl border border-gray-100 bg-white px-3 py-2">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <div className="text-sm font-semibold text-gray-900">{r.user_name}</div>
-                          <Stars value={r.rating} />
-                        </div>
-                        <div className="mt-1 text-[12px] text-gray-700">
-                          “{r.comment}”
+                            <div className="mt-1 text-[12px] text-gray-700">
+                              “{r.comment}”
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    ))}
                   </div>
-                ))
-              )}
+                )}
+              </div>
             </div>
-
-            <div className="mt-3 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2 text-center text-xs text-gray-600">
-              View More or scrollable
-            </div>
-          </div>
+          </Panel>
         </div>
       </div>
     </AgencyLayout>
