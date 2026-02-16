@@ -23,11 +23,13 @@ import PaymentSuccessPage from "../pages/tourist/PaymentSuccessPage";
 import PaymentFailurePage from "../pages/tourist/PaymentFailurePage";
 import WriteReviewPage from "../pages/tourist/WriteReviewPage";
 import TouristChatPage from "../pages/tourist/TouristChatPage";
-import TouristProfilePage from "../pages/tourist/TouristProfilePage"; 
+import TouristProfilePage from "../pages/tourist/TouristProfilePage";
 
 import AgencyLoginPage from "../pages/agency/AgencyLoginPage";
 import AgencyRegisterPage from "../pages/agency/AgencyRegisterPage";
 import AgencyHelpPage from "../pages/agency/AgencyHelpPage";
+import AgencyForgotPasswordPage from "../pages/agency/AgencyForgotPasswordPage";
+import AgencyResetPasswordPage from "../pages/agency/AgencyResetPasswordPage";
 
 import { useAuth } from "../context/AuthContext";
 
@@ -220,11 +222,11 @@ export default function AppRouter() {
         />
 
         {/* Agency Portal */}
-        
         <Route path="/agency/login" element={<AgencyLoginPage />} />
         <Route path="/agency/register" element={<AgencyRegisterPage />} />
         <Route path="/agency/help" element={<AgencyHelpPage />} />
-
+        <Route path="/agency/forgot-password" element={<AgencyForgotPasswordPage />} />
+        <Route path="/agency/reset-password" element={<AgencyResetPasswordPage />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

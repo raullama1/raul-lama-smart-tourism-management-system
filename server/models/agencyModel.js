@@ -110,3 +110,13 @@ export async function checkAgencyUniqueness({ name, email, phone, pan_vat }) {
 
   return taken;
 }
+
+export async function updateAgencyPasswordHash(agencyId, passwordHash) {
+  await db.query(
+    `UPDATE agencies
+     SET password_hash = ?
+     WHERE id = ?
+     LIMIT 1`,
+    [passwordHash, agencyId]
+  );
+}

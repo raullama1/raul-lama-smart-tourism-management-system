@@ -1,6 +1,9 @@
 // server/controllers/agencyAuthController.js
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
+
+import { db } from "../db.js";
 
 import {
   findAgencyByEmail,
@@ -10,6 +13,7 @@ import {
   findAgencyByPanVat,
   findAgencyByName,
   checkAgencyUniqueness,
+  updateAgencyPasswordHash,
 } from "../models/agencyModel.js";
 
 import {
@@ -18,10 +22,13 @@ import {
   markAgencyEmailVerificationUsed,
 } from "../models/agencyEmailVerificationModel.js";
 
-import { sendSignupVerificationEmail } from "../utils/mailer.js";
+import { sendSignupVerificationEmail, sendPasswordResetEmail } from "../utils/mailer.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 const JWT_EXPIRES_IN = "7d";
+
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+const RESET_PASSWORD_TOKEN_EXP_MINUTES = 5;
 
 function signAgencyToken(agency) {
   return jwt.sign({ id: agency.id, role: "agency" }, JWT_SECRET, {
@@ -324,5 +331,118 @@ export async function agencyMeController(req, res) {
   } catch (err) {
     console.error("agencyMeController error", err);
     return res.status(500).json({ message: "Failed to load agency." });
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* FORGOT PASSWORD                                                    */
+/* ------------------------------------------------------------------ */
+export async function agencyForgotPasswordController(req, res) {
+  try {
+    const email = normalizeEmail(req.body?.email);
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required." });
+    }
+
+    const agency = await findAgencyByEmail(email);
+
+    // Do not reveal whether the email exists
+    if (!agency) {
+      return res.json({
+        message:
+          "If an account with that email exists, a reset link (valid for 5 minutes and one-time use) has been sent.",
+      });
+    }
+
+    const plainToken = crypto.randomBytes(32).toString("hex");
+    const tokenHash = crypto.createHash("sha256").update(plainToken).digest("hex");
+    const expiresAt = new Date(Date.now() + RESET_PASSWORD_TOKEN_EXP_MINUTES * 60 * 1000);
+
+    await db.query(
+      `INSERT INTO password_reset_tokens (agency_id, account_type, token_hash, expires_at)
+       VALUES (?, 'agency', ?, ?)`,
+      [agency.id, tokenHash, expiresAt]
+    );
+
+    const resetLink = `${FRONTEND_URL}/agency/reset-password?token=${plainToken}`;
+
+    try {
+      await sendPasswordResetEmail(email, resetLink);
+    } catch (mailErr) {
+      console.error("sendPasswordResetEmail error", mailErr);
+    }
+
+    return res.json({
+      message:
+        "If an account with that email exists, a reset link (valid for 5 minutes and one-time use) has been sent.",
+    });
+  } catch (err) {
+    console.error("agencyForgotPasswordController error", err);
+    return res.status(500).json({ message: "Failed to process request." });
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* RESET PASSWORD                                                     */
+/* ------------------------------------------------------------------ */
+export async function agencyResetPasswordController(req, res) {
+  try {
+    const token = String(req.body?.token || "").trim();
+    const password = String(req.body?.password || "");
+
+    if (!token || !password) {
+      return res.status(400).json({ message: "Token and new password are required." });
+    }
+
+    const pwdErrors = validatePasswordStrength(password);
+    if (pwdErrors.length > 0) {
+      return res.status(400).json({
+        message: "Password is too weak. Please follow the rules.",
+        errors: pwdErrors,
+      });
+    }
+
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+    const [rows] = await db.query(
+      `SELECT id, agency_id, expires_at, used_at
+       FROM password_reset_tokens
+       WHERE token_hash = ?
+         AND account_type = 'agency'
+       LIMIT 1`,
+      [tokenHash]
+    );
+
+    const record = rows[0];
+
+    if (!record) {
+      return res.status(400).json({
+        message: "This password reset link is invalid or has already been used.",
+      });
+    }
+
+    if (record.used_at) {
+      return res.status(400).json({ message: "This password reset link has already been used." });
+    }
+
+    if (new Date(record.expires_at) < new Date()) {
+      return res.status(400).json({ message: "This password reset link has expired." });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    await updateAgencyPasswordHash(record.agency_id, passwordHash);
+
+    await db.query(
+      `UPDATE password_reset_tokens
+       SET used_at = NOW()
+       WHERE id = ?`,
+      [record.id]
+    );
+
+    return res.json({ message: "Password has been reset successfully." });
+  } catch (err) {
+    console.error("agencyResetPasswordController error", err);
+    return res.status(500).json({ message: "Failed to reset password." });
   }
 }

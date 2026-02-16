@@ -1,3 +1,4 @@
+// client/src/pages/agency/AgencyLoginPage.jsx
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FiEye, FiEyeOff, FiLogIn } from "react-icons/fi";
@@ -114,7 +115,7 @@ export default function AgencyLoginPage() {
             <button
               type="button"
               className="text-sm font-semibold text-gray-800 hover:underline"
-              onClick={() => navigate("/agency/help")}
+              onClick={() => navigate("/agency/forgot-password")}
             >
               Forgot Password
             </button>

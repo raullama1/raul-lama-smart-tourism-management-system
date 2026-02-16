@@ -2,19 +2,19 @@
 import apiClient from "./apiClient";
 
 /**
- * Send agency register verification code to email
+ * Send agency register verification code
  */
 export async function requestAgencySignupCode(email) {
   const res = await apiClient.post("/agency/auth/register/send-code", { email });
-  return res.data; // { message }
+  return res.data;
 }
 
 /**
- * Register agency with verification code
+ * Register agency
  */
 export async function agencyRegister(payload) {
   const res = await apiClient.post("/agency/auth/register", payload);
-  return res.data; // { token, agency }
+  return res.data;
 }
 
 /**
@@ -22,21 +22,37 @@ export async function agencyRegister(payload) {
  */
 export async function agencyLogin(email, password) {
   const res = await apiClient.post("/agency/auth/login", { email, password });
-  return res.data; // { token, agency }
+  return res.data;
 }
 
 /**
- * Get current authenticated agency
+ * Get authenticated agency
  */
 export async function agencyMe() {
   const res = await apiClient.get("/agency/auth/me");
-  return res.data; // { agency }
+  return res.data;
 }
 
 /**
- * Check availability of agency fields (name/email/phone/pan)
+ * Check agency field availability
  */
 export async function checkAgencyAvailability(payload) {
   const res = await apiClient.post("/agency/auth/register/check", payload);
-  return res.data; // { taken: { email, phone, pan_vat, name } }
+  return res.data;
+}
+
+/**
+ * Request password reset email
+ */
+export async function agencyRequestPasswordReset(email) {
+  const res = await apiClient.post("/agency/auth/forgot-password", { email });
+  return res.data;
+}
+
+/**
+ * Reset password using token
+ */
+export async function agencyResetPassword(token, password) {
+  const res = await apiClient.post("/agency/auth/reset-password", { token, password });
+  return res.data;
 }

@@ -228,8 +228,8 @@ export async function forgotPasswordController(req, res) {
     );
 
     await db.query(
-      `INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
-       VALUES (?, ?, ?)`,
+      `INSERT INTO password_reset_tokens (user_id, account_type, token_hash, expires_at)
+       VALUES (?, 'user', ?, ?)`,
       [user.id, tokenHash, expiresAt]
     );
 
@@ -278,6 +278,7 @@ export async function resetPasswordController(req, res) {
       `SELECT id, user_id, expires_at, used_at
        FROM password_reset_tokens
        WHERE token_hash = ?
+         AND account_type = 'user'
        LIMIT 1`,
       [tokenHash]
     );
