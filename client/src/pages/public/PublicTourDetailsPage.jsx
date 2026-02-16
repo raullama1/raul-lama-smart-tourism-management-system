@@ -1,3 +1,4 @@
+// client/src/pages/public/PublicTourDetailsPage.jsx
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
@@ -14,6 +15,16 @@ import {
   addToWishlist,
   removeFromWishlist,
 } from "../../api/wishlistApi";
+
+const API_ORIGIN = "http://localhost:5001";
+
+function toPublicImageUrl(raw) {
+  const s = String(raw || "").trim();
+  if (!s) return "";
+  if (s.startsWith("http://") || s.startsWith("https://")) return s;
+  if (s.startsWith("/")) return `${API_ORIGIN}${s}`;
+  return `${API_ORIGIN}/${s}`;
+}
 
 export default function PublicTourDetailsPage() {
   const { tourId } = useParams();
@@ -145,6 +156,7 @@ export default function PublicTourDetailsPage() {
   }
 
   const inWishlist = wishlistIds.has(Number(tourId));
+  const bannerImg = toPublicImageUrl(tour.image_url);
 
   return (
     <>
@@ -155,9 +167,13 @@ export default function PublicTourDetailsPage() {
           {/* Banner */}
           <section className="bg-white rounded-3xl overflow-hidden shadow-sm">
             <img
-              src={tour.image_url}
+              src={bannerImg}
               alt={tour.title}
               className="w-full h-56 md:h-72 lg:h-80 object-cover"
+              onError={(e) => {
+                e.currentTarget.src =
+                  "https://via.placeholder.com/1200x600?text=Tour+Image";
+              }}
             />
           </section>
 
@@ -201,7 +217,9 @@ export default function PublicTourDetailsPage() {
               About this tour
             </h2>
             <p className="text-xs md:text-sm text-gray-700 leading-relaxed whitespace-pre-line">
-              {tour.long_description || tour.description || tour.short_description}
+              {tour.long_description ||
+                tour.description ||
+                tour.short_description}
             </p>
           </section>
 
@@ -211,10 +229,7 @@ export default function PublicTourDetailsPage() {
               All Agencies offering this Tour
             </h2>
 
-            <TourAgenciesList
-              agencies={agencies}
-              onLoginAlert={requireLogin}
-            />
+            <TourAgenciesList agencies={agencies} onLoginAlert={requireLogin} />
           </section>
         </div>
       </main>

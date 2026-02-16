@@ -1,3 +1,4 @@
+// client/src/pages/public/PublicToursPage.jsx
 import { useEffect, useState } from "react";
 import NavbarPublic from "../../components/public/NavbarPublic";
 import FooterPublic from "../../components/public/FooterPublic";

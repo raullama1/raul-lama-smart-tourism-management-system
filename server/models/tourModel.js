@@ -45,7 +45,8 @@ export async function getPublicTours(filters) {
   let orderBy;
   if (sort === "price-asc") orderBy = "ORDER BY t.starting_price ASC";
   else if (sort === "price-desc") orderBy = "ORDER BY t.starting_price DESC";
-  else if (sort === "popular") orderBy = "ORDER BY t.popularity_score DESC, t.created_at DESC";
+  else if (sort === "popular")
+    orderBy = "ORDER BY t.popularity_score DESC, t.created_at DESC";
   else orderBy = "ORDER BY RAND()";
 
   const pageNum = Number(page) || 1;
@@ -130,8 +131,7 @@ export async function getPublicTourDetails(tourId) {
         t.longitude,
         t.type,
         t.starting_price,
-        t.image_url,
-        t.max_capacity
+        t.image_url
       FROM tours t
       WHERE t.id = ?
       LIMIT 1

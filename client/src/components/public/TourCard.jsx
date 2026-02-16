@@ -21,6 +21,17 @@ import {
 
 gsap.registerPlugin(Draggable);
 
+const API_ORIGIN = "http://localhost:5001";
+const FALLBACK_IMG = "https://via.placeholder.com/600x400?text=Tour+Image";
+
+function toPublicImageUrl(raw) {
+  const s = String(raw || "").trim();
+  if (!s) return "";
+  if (s.startsWith("http://") || s.startsWith("https://")) return s;
+  if (s.startsWith("/")) return `${API_ORIGIN}${s}`;
+  return `${API_ORIGIN}/${s}`;
+}
+
 export default function TourCard({
   tours = [],
   showSectionHeader = false,
@@ -92,7 +103,6 @@ export default function TourCard({
 
     const already = wishlistIds.has(idNum);
 
-    // Optimistic UI update (instant button change)
     setWishlistIds((prev) => {
       const next = new Set(prev);
       if (already) next.delete(idNum);
@@ -111,7 +121,6 @@ export default function TourCard({
     } catch (e) {
       console.error("Wishlist update failed", e);
 
-      // rollback on error
       setWishlistIds((prev) => {
         const next = new Set(prev);
         if (already) next.add(idNum);
@@ -147,7 +156,6 @@ export default function TourCard({
   const wrapX = (x) => {
     const single = singleWidth();
     if (!single || !normalizedTours.length) return x;
-    // keep x always inside the middle copy range
     const wrap = gsap.utils.wrap(-2 * single, 0);
     return wrap(x);
   };
@@ -183,7 +191,6 @@ export default function TourCard({
         resizeObsRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [normalizedTours.length]);
 
   // init draggable after measure
@@ -194,8 +201,6 @@ export default function TourCard({
     destroyDraggable();
 
     const single = singleWidth();
-
-    // start in the middle copy (so you can drag both ways)
     gsap.set(container, { x: -single });
 
     draggableRef.current = Draggable.create(container, {
@@ -219,7 +224,6 @@ export default function TourCard({
       destroyDraggable();
       container.style.cursor = "";
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dims.ready, dims.itemW, dims.gap, normalizedTours.length]);
 
   const moveBy = (delta) => {
@@ -238,8 +242,6 @@ export default function TourCard({
   const scrollLeft = () => moveBy(dims.itemW + dims.gap);
   const scrollRight = () => moveBy(-(dims.itemW + dims.gap));
 
-  // --------------------------------------------------------------
-
   return (
     <div className="bg-[#e6f4ec] py-8 md:py-10 relative">
       <section className="max-w-6xl mx-auto px-4 md:px-6 relative">
@@ -251,7 +253,6 @@ export default function TourCard({
           </div>
         )}
 
-        {/* Arrows */}
         <button
           onClick={scrollLeft}
           className="absolute top-1/2 -left-4 transform -translate-y-1/2 z-10 p-2 bg-white rounded-full shadow hover:bg-gray-100 transition-all"
@@ -272,7 +273,6 @@ export default function TourCard({
           <FaChevronRight size={20} />
         </button>
 
-        {/* Cards */}
         <div className="overflow-hidden">
           <div
             ref={containerRef}
@@ -284,18 +284,23 @@ export default function TourCard({
               const inWishlist = wishlistIds.has(idNum);
               const isBusy = busyId === idNum;
 
+              const imgSrc = toPublicImageUrl(tour.image) || FALLBACK_IMG;
+
               return (
                 <div
-                  key={`${tour.id}-${idx}`} // must be unique in triple list
+                  key={`${tour.id}-${idx}`}
                   className={`flex-shrink-0 ${cardWidth}`}
                   data-tour-card="true"
                 >
                   <div className="bg-white rounded-xl shadow-md overflow-hidden flex flex-col hover:shadow-xl transition-shadow duration-300">
                     <img
-                      src={tour.image}
+                      src={imgSrc}
                       alt={tour.title}
                       className="h-40 w-full object-cover transition-transform duration-500 hover:scale-105"
                       draggable="false"
+                      onError={(e) => {
+                        e.currentTarget.src = FALLBACK_IMG;
+                      }}
                     />
 
                     <div className="p-4 flex-1 flex flex-col">
@@ -316,9 +321,7 @@ export default function TourCard({
                         </span>
                       </div>
 
-                      {/* ACTION BUTTONS */}
                       <div className="mt-4 grid grid-cols-2 gap-2">
-                        {/* View Details */}
                         <button
                           onClick={() => navigate(`/tours/${tour.id}`)}
                           className="w-full flex items-center justify-center gap-2 px-2 py-2 rounded-md bg-gradient-to-r from-emerald-600 to-emerald-500 text-white text-xs md:text-sm font-medium shadow hover:scale-105 transition-transform"
@@ -327,7 +330,6 @@ export default function TourCard({
                           <FaEye size={14} /> View Details
                         </button>
 
-                        {/* Wishlist */}
                         <button
                           disabled={isBusy}
                           onClick={() => toggleWishlist(tour.id)}
@@ -337,15 +339,22 @@ export default function TourCard({
                                 ? "bg-emerald-600 text-white hover:bg-emerald-700"
                                 : "bg-[#e6f4ed] text-emerald-700 hover:bg-gradient-to-r hover:from-emerald-600 hover:to-emerald-500 hover:text-white"
                             }
-                            ${isBusy ? "opacity-70 cursor-not-allowed" : "hover:scale-105"}
+                            ${
+                              isBusy
+                                ? "opacity-70 cursor-not-allowed"
+                                : "hover:scale-105"
+                            }
                           `}
                           type="button"
                         >
-                          {inWishlist ? <FaCheck size={14} /> : <FaHeart size={14} />}
+                          {inWishlist ? (
+                            <FaCheck size={14} />
+                          ) : (
+                            <FaHeart size={14} />
+                          )}
                           {inWishlist ? "Added to Wishlist" : "Add to Wishlist"}
                         </button>
 
-                        {/* Agencies */}
                         <button
                           onClick={() => navigate(`/tours/${tour.id}#agencies`)}
                           className="w-full flex items-center justify-center gap-2 px-2 py-2 rounded-md bg-[#e6f4ed] text-emerald-700 text-xs md:text-sm font-medium shadow hover:bg-gradient-to-r hover:from-emerald-600 hover:to-emerald-500 hover:text-white hover:scale-105 transition-all"
@@ -354,7 +363,6 @@ export default function TourCard({
                           <FaUsers size={14} /> Show All Agencies
                         </button>
 
-                        {/* Map */}
                         <button
                           onClick={() => {
                             if (!requireLogin()) return;
@@ -373,7 +381,9 @@ export default function TourCard({
             })}
 
             {normalizedTours.length === 0 && (
-              <div className="text-sm text-gray-500 p-4">No tours available.</div>
+              <div className="text-sm text-gray-500 p-4">
+                No tours available.
+              </div>
             )}
           </div>
         </div>

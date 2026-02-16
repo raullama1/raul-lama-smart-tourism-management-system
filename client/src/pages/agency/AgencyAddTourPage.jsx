@@ -121,7 +121,6 @@ export default function AgencyAddTourPage() {
   const [desc, setDesc] = useState("");
 
   const [price, setPrice] = useState("");
-  const [maxCapacity, setMaxCapacity] = useState("");
 
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -170,8 +169,7 @@ export default function AgencyAddTourPage() {
     syncCoordsToInputs(c);
   };
 
-  // allow only digits and ONE dot
-  const sanitizeDecimal = (raw) => {
+  function sanitizeDecimal(raw) {
     const s = String(raw || "");
     let out = "";
     let dotUsed = false;
@@ -189,7 +187,7 @@ export default function AgencyAddTourPage() {
 
     if (out.startsWith(".")) out = `0${out}`;
     return out;
-  };
+  }
 
   const onPickImage = (file) => {
     if (!file) return;
@@ -238,15 +236,14 @@ export default function AgencyAddTourPage() {
     }
 
     setCoordsBoth({ lat: la, lng: lo });
-    setShouldFly(true); // fly only for button action
+    setShouldFly(true);
   };
 
   const validate = () => {
     if (!title.trim()) return "Tour title is required.";
     if (!desc.trim()) return "Description is required.";
     if (!price || Number(price) <= 0) return "Price must be greater than 0.";
-    if (!maxCapacity || Number(maxCapacity) <= 0)
-      return "Max capacity must be greater than 0.";
+
     if (!startDate || !endDate) return "Start date and end date are required.";
     if (new Date(endDate) < new Date(startDate))
       return "End date must be after start date.";
@@ -282,7 +279,6 @@ export default function AgencyAddTourPage() {
       fd.append("title", title.trim());
       fd.append("description", desc.trim());
       fd.append("starting_price", String(price));
-      fd.append("max_capacity", String(maxCapacity));
       fd.append("location", location.trim());
       fd.append("type", type);
       fd.append("latitude", String(coords.lat));
@@ -298,7 +294,6 @@ export default function AgencyAddTourPage() {
       setTitle("");
       setDesc("");
       setPrice("");
-      setMaxCapacity("");
       setStartDate("");
       setEndDate("");
       setLocation("");
@@ -368,7 +363,7 @@ export default function AgencyAddTourPage() {
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
               <div className="text-sm font-semibold text-emerald-900/70">
                 Price (NPR)
@@ -378,21 +373,6 @@ export default function AgencyAddTourPage() {
                 onChange={(e) => setPrice(e.target.value.replace(/\D/g, ""))}
                 className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 placeholder="Enter price"
-                inputMode="numeric"
-              />
-            </div>
-
-            <div>
-              <div className="text-sm font-semibold text-emerald-900/70">
-                Max Capacity
-              </div>
-              <input
-                value={maxCapacity}
-                onChange={(e) =>
-                  setMaxCapacity(e.target.value.replace(/\D/g, ""))
-                }
-                className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                placeholder="Enter max capacity"
                 inputMode="numeric"
               />
             </div>
@@ -543,10 +523,7 @@ export default function AgencyAddTourPage() {
                         dragend: (e) => {
                           const p = e.target.getLatLng();
                           if (!isInsideNepal(p.lat, p.lng)) {
-                            showToast(
-                              "error",
-                              "Marker must stay inside Nepal."
-                            );
+                            showToast("error", "Marker must stay inside Nepal.");
                             return;
                           }
                           setCoordsBoth({ lat: p.lat, lng: p.lng });

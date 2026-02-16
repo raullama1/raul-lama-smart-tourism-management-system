@@ -7,7 +7,9 @@ export async function createAgencyTourController(req, res) {
     const role = req.user?.role;
 
     if (!agencyId || role !== "agency") {
-      return res.status(401).json({ message: "Agency authentication required." });
+      return res
+        .status(401)
+        .json({ message: "Agency authentication required." });
     }
 
     const {
@@ -18,7 +20,6 @@ export async function createAgencyTourController(req, res) {
       latitude,
       longitude,
       starting_price,
-      max_capacity,
       start_date,
       end_date,
     } = req.body;
@@ -28,37 +29,39 @@ export async function createAgencyTourController(req, res) {
     }
 
     if (!starting_price || Number(starting_price) <= 0) {
-      return res.status(400).json({ message: "Price must be greater than 0." });
-    }
-
-    if (!max_capacity || Number(max_capacity) <= 0) {
-      return res.status(400).json({ message: "Max capacity must be greater than 0." });
+      return res
+        .status(400)
+        .json({ message: "Price must be greater than 0." });
     }
 
     if (!start_date || !end_date) {
-      return res.status(400).json({ message: "Start date and end date are required." });
+      return res
+        .status(400)
+        .json({ message: "Start date and end date are required." });
+    }
+
+    if (new Date(end_date) < new Date(start_date)) {
+      return res
+        .status(400)
+        .json({ message: "End date must be after start date." });
     }
 
     const img = req.file ? `/uploads/tours/${req.file.filename}` : "";
     if (!img) return res.status(400).json({ message: "Cover image is required." });
 
-    const short = String(description).trim().slice(0, 200);
-
-    // 1) Create tour (global tours table)
+    // 1) Create tour (tours table)
     const [tourIns] = await db.query(
       `INSERT INTO tours
-        (title, short_description, long_description, location, latitude, longitude, type, starting_price, max_capacity, image_url)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (title, long_description, location, latitude, longitude, type, starting_price, image_url)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         String(title).trim(),
-        short,
         String(description).trim(),
         String(location).trim(),
         latitude ? Number(latitude) : null,
         longitude ? Number(longitude) : null,
         String(type).trim(),
         Number(starting_price),
-        Number(max_capacity),
         img,
       ]
     );

@@ -9,6 +9,16 @@ import {
 } from "../../api/wishlistApi";
 import { FaHeart, FaMapMarkerAlt, FaUsers, FaEye, FaCheck } from "react-icons/fa";
 
+const API_ORIGIN = "http://localhost:5001";
+
+function toPublicImageUrl(raw) {
+  const s = String(raw || "").trim();
+  if (!s) return "";
+  if (s.startsWith("http://") || s.startsWith("https://")) return s;
+  if (s.startsWith("/")) return `${API_ORIGIN}${s}`;
+  return `${API_ORIGIN}/${s}`;
+}
+
 export default function TourGrid({ tours }) {
   const navigate = useNavigate();
   const { token } = useAuth();
@@ -24,7 +34,6 @@ export default function TourGrid({ tours }) {
     return true;
   };
 
-  // Load wishlist ids
   useEffect(() => {
     const load = async () => {
       if (!token) {
@@ -33,7 +42,9 @@ export default function TourGrid({ tours }) {
       }
       try {
         const res = await fetchWishlistIds(token);
-        const ids = Array.isArray(res?.data) ? res.data : res?.ids || res?.data || [];
+        const ids = Array.isArray(res?.data)
+          ? res.data
+          : res?.ids || res?.data || [];
         setWishlistIds(new Set(ids.map((x) => Number(x))));
       } catch (e) {
         console.error("Failed to load wishlist ids", e);
@@ -92,6 +103,8 @@ export default function TourGrid({ tours }) {
           const inWishlist = wishlistIds.has(idNum);
           const isBusy = busyId === idNum;
 
+          const imgSrc = toPublicImageUrl(tour.image_url || tour.image);
+
           return (
             <article
               key={tour.id}
@@ -99,9 +112,13 @@ export default function TourGrid({ tours }) {
             >
               <div className="h-44 w-full overflow-hidden">
                 <img
-                  src={tour.image_url}
+                  src={imgSrc}
                   alt={tour.title}
                   className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                  onError={(e) => {
+                    e.currentTarget.src =
+                      "https://via.placeholder.com/800x500?text=Tour+Image";
+                  }}
                 />
               </div>
 
@@ -134,6 +151,7 @@ export default function TourGrid({ tours }) {
                   <button
                     onClick={() => navigate(`/tours/${tour.id}`)}
                     className="flex items-center justify-center gap-2 px-2 py-2 rounded-md bg-gradient-to-r from-emerald-600 to-emerald-500 text-white text-[11px] md:text-xs font-medium shadow hover:scale-105 transition-transform"
+                    type="button"
                   >
                     <FaEye size={14} /> View Details
                   </button>
@@ -149,6 +167,7 @@ export default function TourGrid({ tours }) {
                       }
                       ${isBusy ? "opacity-70 cursor-not-allowed" : "hover:scale-105"}
                     `}
+                    type="button"
                   >
                     {inWishlist ? <FaCheck size={14} /> : <FaHeart size={14} />}
                     {inWishlist ? "Added to Wishlist" : "Add to Wishlist"}
@@ -157,6 +176,7 @@ export default function TourGrid({ tours }) {
                   <button
                     onClick={() => navigate(`/tours/${tour.id}#agencies`)}
                     className="flex items-center justify-center gap-2 px-2 py-2 rounded-md bg-[#e6f4ed] text-emerald-700 text-[11px] md:text-xs font-medium shadow hover:bg-gradient-to-r hover:from-emerald-600 hover:to-emerald-500 hover:text-white hover:scale-105 transition-all"
+                    type="button"
                   >
                     <FaUsers size={14} /> Show All Agencies
                   </button>
@@ -167,6 +187,7 @@ export default function TourGrid({ tours }) {
                       navigate(`/map?tour=${tour.id}`);
                     }}
                     className="flex items-center justify-center gap-2 px-2 py-2 rounded-md bg-[#e6f4ed] text-emerald-700 text-[11px] md:text-xs font-medium shadow hover:bg-gradient-to-r hover:from-emerald-600 hover:to-emerald-500 hover:text-white hover:scale-105 transition-all"
+                    type="button"
                   >
                     <FaMapMarkerAlt size={14} /> View on Map
                   </button>
