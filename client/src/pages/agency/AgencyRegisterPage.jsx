@@ -5,7 +5,10 @@ import { FiEye, FiEyeOff, FiUserPlus } from "react-icons/fi";
 import { FiCheckCircle, FiXCircle } from "react-icons/fi";
 import AgencyAuthLayout from "../../components/agency/AgencyAuthLayout";
 import { useAgencyAuth } from "../../context/AgencyAuthContext";
-import { requestAgencySignupCode, checkAgencyAvailability } from "../../api/agencyAuthApi";
+import {
+  requestAgencySignupCode,
+  checkAgencyAvailability,
+} from "../../api/agencyAuthApi";
 
 function InlineSpinner() {
   return (
@@ -69,7 +72,12 @@ export default function AgencyRegisterPage() {
       return next;
     });
 
-    if (k === "name" || k === "email" || k === "phoneDigits" || k === "pan_vat") {
+    if (
+      k === "name" ||
+      k === "email" ||
+      k === "phoneDigits" ||
+      k === "pan_vat"
+    ) {
       setAvailability((p) => ({
         ...p,
         checked: { ...p.checked, [k === "phoneDigits" ? "phone" : k]: false },
@@ -95,7 +103,7 @@ export default function AgencyRegisterPage() {
       { test: /[0-9]/, message: "At least one number (0-9)" },
       { test: /[^A-Za-z0-9]/, message: "At least one special character" },
     ],
-    []
+    [],
   );
 
   const passwordChecks = passwordRules.map((r) => ({
@@ -103,7 +111,10 @@ export default function AgencyRegisterPage() {
     ok: r.test.test(form.password),
   }));
 
-  const missingPasswordRules = passwordChecks.filter((c) => !c.ok).map((c) => c.message);
+  const missingPasswordRules = passwordChecks
+    .filter((c) => !c.ok)
+    .map((c) => c.message);
+
   const isPasswordStrong = missingPasswordRules.length === 0;
 
   const setOneFieldError = (key, msg) => {
@@ -127,21 +138,31 @@ export default function AgencyRegisterPage() {
     if (!name) addFieldError(f, "name", "Agency Name is required.");
 
     if (!email) addFieldError(f, "email", "Email is required.");
-    if (email && !/^\S+@\S+\.\S+$/.test(email)) addFieldError(f, "email", "Enter a valid email.");
+    if (email && !/^\S+@\S+\.\S+$/.test(email))
+      addFieldError(f, "email", "Enter a valid email.");
 
-    if (!code) addFieldError(f, "verificationCode", "Verification Code is required.");
-    if (code && code.length !== 6) addFieldError(f, "verificationCode", "Code must be 6 digits.");
+    if (!code)
+      addFieldError(f, "verificationCode", "Verification Code is required.");
+    if (code && code.length !== 6)
+      addFieldError(f, "verificationCode", "Code must be 6 digits.");
 
-    if (!form.phoneDigits) addFieldError(f, "phoneDigits", "Contact Number is required.");
+    if (!form.phoneDigits)
+      addFieldError(f, "phoneDigits", "Contact Number is required.");
     if (form.phoneDigits && form.phoneDigits.length !== 10) {
-      addFieldError(f, "phoneDigits", "Contact Number must be exactly 10 digits.");
+      addFieldError(
+        f,
+        "phoneDigits",
+        "Contact Number must be exactly 10 digits.",
+      );
     }
 
     if (!address) addFieldError(f, "address", "Address is required.");
-    if (address && address.length < 5) addFieldError(f, "address", "Address is too short.");
+    if (address && address.length < 5)
+      addFieldError(f, "address", "Address is too short.");
 
     if (!panVat) addFieldError(f, "pan_vat", "PAN/VAT is required.");
-    if (panVat && panVat.length !== 9) addFieldError(f, "pan_vat", "PAN/VAT must be exactly 9 digits.");
+    if (panVat && panVat.length !== 9)
+      addFieldError(f, "pan_vat", "PAN/VAT must be exactly 9 digits.");
 
     if (!form.password) addFieldError(f, "password", "Password is required.");
     if (form.password && !isPasswordStrong) {
@@ -149,8 +170,13 @@ export default function AgencyRegisterPage() {
       missingPasswordRules.forEach((r) => addFieldError(f, "password", r));
     }
 
-    if (!form.confirmPassword) addFieldError(f, "confirmPassword", "Confirm Password is required.");
-    if (form.password && form.confirmPassword && form.password !== form.confirmPassword) {
+    if (!form.confirmPassword)
+      addFieldError(f, "confirmPassword", "Confirm Password is required.");
+    if (
+      form.password &&
+      form.confirmPassword &&
+      form.password !== form.confirmPassword
+    ) {
       addFieldError(f, "confirmPassword", "Passwords do not match.");
     }
 
@@ -200,7 +226,7 @@ export default function AgencyRegisterPage() {
 
         const res = await checkAgencyAvailability(payload);
 
-        setAvailability((p) => ({
+        setAvailability(() => ({
           loading: false,
           taken: {
             name: !!res?.taken?.name,
@@ -217,16 +243,28 @@ export default function AgencyRegisterPage() {
         }));
 
         if (okEmail && res?.taken?.email) {
-          setFieldErrors((prev) => ({ ...prev, email: ["Email is already registered."] }));
+          setFieldErrors((prev) => ({
+            ...prev,
+            email: ["Email is already registered."],
+          }));
         }
         if (okPhone && res?.taken?.phone) {
-          setFieldErrors((prev) => ({ ...prev, phoneDigits: ["Contact Number is already registered."] }));
+          setFieldErrors((prev) => ({
+            ...prev,
+            phoneDigits: ["Contact Number is already registered."],
+          }));
         }
         if (okPan && res?.taken?.pan_vat) {
-          setFieldErrors((prev) => ({ ...prev, pan_vat: ["PAN/VAT is already registered."] }));
+          setFieldErrors((prev) => ({
+            ...prev,
+            pan_vat: ["PAN/VAT is already registered."],
+          }));
         }
         if (okName && res?.taken?.name) {
-          setFieldErrors((prev) => ({ ...prev, name: ["Agency Name is already registered."] }));
+          setFieldErrors((prev) => ({
+            ...prev,
+            name: ["Agency Name is already registered."],
+          }));
         }
       } catch {
         setAvailability((p) => ({ ...p, loading: false }));
@@ -245,19 +283,19 @@ export default function AgencyRegisterPage() {
       key === "name"
         ? form.name.trim()
         : key === "email"
-        ? form.email.trim()
-        : key === "phoneDigits"
-        ? form.phoneDigits.trim()
-        : form.pan_vat.trim();
+          ? form.email.trim()
+          : key === "phoneDigits"
+            ? form.phoneDigits.trim()
+            : form.pan_vat.trim();
 
     const formatOk =
       key === "name"
         ? val.length >= 2
         : key === "email"
-        ? /^\S+@\S+\.\S+$/.test(val)
-        : key === "phoneDigits"
-        ? val.length === 10
-        : val.length === 9;
+          ? /^\S+@\S+\.\S+$/.test(val)
+          : key === "phoneDigits"
+            ? val.length === 10
+            : val.length === 9;
 
     if (!val || !formatOk) return null;
 
@@ -307,10 +345,13 @@ export default function AgencyRegisterPage() {
 
       setCodeSent(true);
       setTimeLeft(60);
-      setTopMessage(res?.message || "Verification code sent. Code is valid for 60 seconds.");
+      setTopMessage(
+        res?.message || "Verification code sent. Code is valid for 60 seconds.",
+      );
       scrollToTop();
     } catch (err) {
-      const msg = err?.response?.data?.message || "Failed to send verification code.";
+      const msg =
+        err?.response?.data?.message || "Failed to send verification code.";
       setOneFieldError("email", msg);
     } finally {
       setSendingCode(false);
@@ -336,10 +377,18 @@ export default function AgencyRegisterPage() {
 
     const errs = validateAll();
 
-    if (availability.checked.name && availability.taken.name) addFieldError(errs, "name", "Agency Name is already registered.");
-    if (availability.checked.email && availability.taken.email) addFieldError(errs, "email", "Email is already registered.");
-    if (availability.checked.phone && availability.taken.phone) addFieldError(errs, "phoneDigits", "Contact Number is already registered.");
-    if (availability.checked.pan_vat && availability.taken.pan_vat) addFieldError(errs, "pan_vat", "PAN/VAT is already registered.");
+    if (availability.checked.name && availability.taken.name)
+      addFieldError(errs, "name", "Agency Name is already registered.");
+    if (availability.checked.email && availability.taken.email)
+      addFieldError(errs, "email", "Email is already registered.");
+    if (availability.checked.phone && availability.taken.phone)
+      addFieldError(
+        errs,
+        "phoneDigits",
+        "Contact Number is already registered.",
+      );
+    if (availability.checked.pan_vat && availability.taken.pan_vat)
+      addFieldError(errs, "pan_vat", "PAN/VAT is already registered.");
 
     setFieldErrors(errs);
 
@@ -364,14 +413,10 @@ export default function AgencyRegisterPage() {
 
       navigate("/agency/login");
     } catch (err) {
-      const msg = err?.response?.data?.message || "Failed to create agency account.";
+      const msg =
+        err?.response?.data?.message || "Failed to create agency account.";
       setTopError(msg);
       scrollToTop();
-
-      const apiErrors = Array.isArray(err?.response?.data?.errors) ? err.response.data.errors : [];
-      if (apiErrors.length) {
-        setFieldErrors((prev) => ({ ...prev }));
-      }
     } finally {
       setSubmitting(false);
     }
@@ -388,8 +433,12 @@ export default function AgencyRegisterPage() {
             <FiUserPlus className="text-emerald-700" />
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-gray-900">Agency Registration</h1>
-            <p className="text-sm text-gray-500">Smart Tourism Nepal - National Wide</p>
+            <h1 className="text-xl font-semibold text-gray-900">
+              Agency Registration
+            </h1>
+            <p className="text-sm text-gray-500">
+              Smart Tourism Nepal - National Wide
+            </p>
           </div>
         </div>
 
@@ -407,7 +456,9 @@ export default function AgencyRegisterPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1">
-            <label className="text-sm font-medium text-gray-700">Agency Name</label>
+            <label className="text-sm font-medium text-gray-700">
+              Agency Name
+            </label>
             <div className="relative">
               <input
                 type="text"
@@ -421,7 +472,9 @@ export default function AgencyRegisterPage() {
                 {statusIcon("name")}
               </div>
             </div>
-            {getFieldError("name") && <p className="text-xs text-red-600">{getFieldError("name")}</p>}
+            {getFieldError("name") && (
+              <p className="text-xs text-red-600">{getFieldError("name")}</p>
+            )}
           </div>
 
           <div className="space-y-1">
@@ -450,18 +503,26 @@ export default function AgencyRegisterPage() {
                 {sendingCode
                   ? "Sending..."
                   : timeLeft > 0
-                  ? `Wait ${timeLeft}s`
-                  : codeSent
-                  ? "Resend"
-                  : "Send Code"}
+                    ? `Wait ${timeLeft}s`
+                    : codeSent
+                      ? "Resend"
+                      : "Send Code"}
               </button>
             </div>
-            {getFieldError("email") && <p className="text-xs text-red-600">{getFieldError("email")}</p>}
-            {codeSent && <p className="text-xs text-emerald-700">Code sent. Valid for 60 seconds.</p>}
+            {getFieldError("email") && (
+              <p className="text-xs text-red-600">{getFieldError("email")}</p>
+            )}
+            {codeSent && (
+              <p className="text-xs text-emerald-700">
+                Code sent. Valid for 60 seconds.
+              </p>
+            )}
           </div>
 
           <div className="space-y-1">
-            <label className="text-sm font-medium text-gray-700">Verification Code</label>
+            <label className="text-sm font-medium text-gray-700">
+              Verification Code
+            </label>
             <input
               type="text"
               value={form.verificationCode}
@@ -474,12 +535,16 @@ export default function AgencyRegisterPage() {
               placeholder="Enter 6-digit code"
             />
             {getFieldError("verificationCode") && (
-              <p className="text-xs text-red-600">{getFieldError("verificationCode")}</p>
+              <p className="text-xs text-red-600">
+                {getFieldError("verificationCode")}
+              </p>
             )}
           </div>
 
           <div className="space-y-1">
-            <label className="text-sm font-medium text-gray-700">Contact Number</label>
+            <label className="text-sm font-medium text-gray-700">
+              Contact Number
+            </label>
             <div className="flex">
               <div className="h-11 px-3 rounded-l-xl border border-gray-200 bg-gray-50 text-sm flex items-center text-gray-700">
                 +977
@@ -502,9 +567,13 @@ export default function AgencyRegisterPage() {
                 </div>
               </div>
             </div>
-            <p className="text-xs text-gray-500">Enter 10 digits only (no +977).</p>
+            <p className="text-xs text-gray-500">
+              Enter 10 digits only (no +977).
+            </p>
             {getFieldError("phoneDigits") && (
-              <p className="text-xs text-red-600">{getFieldError("phoneDigits")}</p>
+              <p className="text-xs text-red-600">
+                {getFieldError("phoneDigits")}
+              </p>
             )}
           </div>
 
@@ -518,7 +587,9 @@ export default function AgencyRegisterPage() {
               className="w-full h-11 px-3 rounded-xl border border-gray-200 text-sm"
               placeholder="Kathmandu Metropolitan City, Bagmati Province, Nepal"
             />
-            {getFieldError("address") && <p className="text-xs text-red-600">{getFieldError("address")}</p>}
+            {getFieldError("address") && (
+              <p className="text-xs text-red-600">{getFieldError("address")}</p>
+            )}
           </div>
 
           <div className="space-y-1">
@@ -540,11 +611,15 @@ export default function AgencyRegisterPage() {
                 {statusIcon("pan_vat")}
               </div>
             </div>
-            {getFieldError("pan_vat") && <p className="text-xs text-red-600">{getFieldError("pan_vat")}</p>}
+            {getFieldError("pan_vat") && (
+              <p className="text-xs text-red-600">{getFieldError("pan_vat")}</p>
+            )}
           </div>
 
           <div className="space-y-1">
-            <label className="text-sm font-medium text-gray-700">Password</label>
+            <label className="text-sm font-medium text-gray-700">
+              Password
+            </label>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
@@ -570,7 +645,9 @@ export default function AgencyRegisterPage() {
                 {passwordChecks.map((r, idx) => (
                   <li
                     key={idx}
-                    className={`flex items-center gap-1 text-xs ${r.ok ? "text-emerald-700" : "text-gray-500"}`}
+                    className={`flex items-center gap-1 text-xs ${
+                      r.ok ? "text-emerald-700" : "text-gray-500"
+                    }`}
                   >
                     <span>{r.ok ? "✔" : "•"}</span>
                     <span>{r.message}</span>
@@ -579,11 +656,17 @@ export default function AgencyRegisterPage() {
               </ul>
             </div>
 
-            {getFieldError("password") && <p className="text-xs text-red-600">{getFieldError("password")}</p>}
+            {getFieldError("password") && (
+              <p className="text-xs text-red-600">
+                {getFieldError("password")}
+              </p>
+            )}
           </div>
 
           <div className="space-y-1">
-            <label className="text-sm font-medium text-gray-700">Confirm Password</label>
+            <label className="text-sm font-medium text-gray-700">
+              Confirm Password
+            </label>
             <div className="relative">
               <input
                 type={showConfirm ? "text" : "password"}
@@ -604,14 +687,20 @@ export default function AgencyRegisterPage() {
             </div>
 
             {getFieldError("confirmPassword") && (
-              <p className="text-xs text-red-600">{getFieldError("confirmPassword")}</p>
+              <p className="text-xs text-red-600">
+                {getFieldError("confirmPassword")}
+              </p>
             )}
           </div>
 
+          {/* Make link smaller + green, and button match public gradient */}
           <div className="flex items-center justify-between pt-1">
-            <p className="text-sm text-gray-600">
+            <p className="text-[11px] md:text-xs text-gray-600">
               Already have account?{" "}
-              <Link to="/agency/login" className="font-semibold text-gray-900 hover:underline">
+              <Link
+                to="/agency/login"
+                className="text-emerald-700 font-medium hover:underline"
+              >
                 Login
               </Link>
             </p>
@@ -619,14 +708,19 @@ export default function AgencyRegisterPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md hover:scale-[1.02] active:scale-100 transition-transform disabled:opacity-60"
             >
               <FiUserPlus />
               {submitting ? "Creating..." : "Create Account"}
             </button>
           </div>
 
-          <div className="pt-2 text-xs text-gray-500">Nepal Only • NPR pricing • NPR invoices • Local support</div>
+          <div className="pt-2 text-[10px] md:text-[11px] text-gray-500 flex flex-wrap justify-center gap-4">
+            <span>• Nepal Only</span>
+            <span>• NPR pricing</span>
+            <span>• NPR invoices</span>
+            <span>• Local support</span>
+          </div>
         </form>
       </div>
     </AgencyAuthLayout>

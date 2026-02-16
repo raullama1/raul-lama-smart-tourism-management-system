@@ -131,7 +131,7 @@ export default function SignupPage() {
   };
 
   return (
-    <main className="h-screen bg-[#e6f4ec] flex justify-center items-center">
+     <main className="min-h-screen bg-[#e6f4ec] flex justify-center items-center py-10">
       <div className="w-full max-w-md mx-auto px-4">
         <div className="bg-white rounded-3xl shadow-md border border-gray-100 p-4 md:p-5">
           <h1 className="text-xl md:text-2xl font-semibold text-gray-900 text-center mb-4">

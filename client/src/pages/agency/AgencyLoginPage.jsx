@@ -9,7 +9,6 @@ export default function AgencyLoginPage() {
   const { login } = useAgencyAuth();
   const navigate = useNavigate();
 
-  // removed default demo values
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -34,8 +33,8 @@ export default function AgencyLoginPage() {
 
       await login(trimmedEmail, trimmedPassword);
 
-      // Later redirect to dashboard
-      navigate("/agency/login");
+      // redirect after successful login (change to your real dashboard route)
+      navigate("/agency/dashboard");
     } catch (err) {
       console.error("Agency login failed", err);
       const msg =
@@ -111,34 +110,36 @@ export default function AgencyLoginPage() {
             </div>
           </div>
 
+          {/* Match public LoginPage styling: smaller text + green links */}
           <div className="flex items-center justify-between pt-1">
             <button
               type="button"
-              className="text-sm font-semibold text-gray-800 hover:underline"
+              className="text-[11px] md:text-xs text-emerald-700 hover:underline"
               onClick={() => navigate("/agency/forgot-password")}
             >
-              Forgot Password
+              Forgot password?
             </button>
 
             <button
               type="submit"
               disabled={submitting}
-              className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-800 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md hover:scale-[1.02] active:scale-100 transition-transform disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <FiLogIn size={18} />
               {submitting ? "Logging in..." : "Login"}
             </button>
           </div>
 
-          <div className="pt-2 text-center text-sm text-gray-600">
-            <span className="text-gray-500">New here?</span>{" "}
+          {/* Smaller + green like public LoginPage */}
+          <p className="pt-2 text-center text-[11px] md:text-xs text-gray-600">
+            Don&apos;t have an account?{" "}
             <Link
               to="/agency/register"
-              className="font-semibold text-gray-900 hover:underline"
+              className="text-emerald-700 font-medium hover:underline"
             >
               Create Agency Account
             </Link>
-          </div>
+          </p>
         </form>
       </div>
     </AgencyAuthLayout>
