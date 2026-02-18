@@ -1,5 +1,5 @@
 // client/src/pages/tourist/BookingsPage.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import NavbarTourist from "../../components/tourist/NavbarTourist";
 import FooterTourist from "../../components/tourist/FooterTourist";
 import { useAuth } from "../../context/AuthContext";
@@ -14,6 +14,7 @@ import {
   FaInfoCircle,
 } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
+import { toPublicImageUrl, FALLBACK_TOUR_IMG } from "../../utils/publicImageUrl";
 
 export default function BookingsPage() {
   const { token } = useAuth();
@@ -29,7 +30,6 @@ export default function BookingsPage() {
 
   const [busyId, setBusyId] = useState(null);
 
-  // Cancel popup state
   const [cancelModal, setCancelModal] = useState({
     open: false,
     bookingId: null,
@@ -37,7 +37,6 @@ export default function BookingsPage() {
     refCode: "",
   });
 
-  // Simple info popup (for review rule)
   const [infoModal, setInfoModal] = useState({
     open: false,
     title: "Write Review",
@@ -50,6 +49,11 @@ export default function BookingsPage() {
   const closeInfoModal = () =>
     setInfoModal({ open: false, title: "Write Review", message: "" });
 
+  // Prevent double-fetch in React 18 dev StrictMode + prevent duplicate same request while in-flight
+  const inFlightRef = useRef(false);
+  const lastKeyRef = useRef("");
+  const draftFirstRunRef = useRef(true);
+
   const load = async (f = filters) => {
     if (!token) {
       setRows([]);
@@ -57,7 +61,13 @@ export default function BookingsPage() {
       return;
     }
 
+    const key = JSON.stringify(f);
+    if (inFlightRef.current && lastKeyRef.current === key) return;
+
     try {
+      inFlightRef.current = true;
+      lastKeyRef.current = key;
+
       setLoading(true);
       const res = await fetchMyBookings(f);
       const list = Array.isArray(res?.data) ? res.data : [];
@@ -67,36 +77,43 @@ export default function BookingsPage() {
       alert("Failed to load bookings.");
       setRows([]);
     } finally {
+      inFlightRef.current = false;
       setLoading(false);
     }
   };
 
+  // ✅ Debounce only updates filters (NO load here)
   useEffect(() => {
-    load(filters);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+    if (draftFirstRunRef.current) {
+      draftFirstRunRef.current = false;
+      return;
+    }
 
-  // auto-apply filters (debounce for search)
-  useEffect(() => {
     const id = setTimeout(() => {
       setFilters(draft);
-      load(draft);
     }, 350);
+
     return () => clearTimeout(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft.q, draft.date, draft.status]);
 
-  const STATUS_STEPS = useMemo(
-    () => ["Pending", "Approved", "Confirmed", "Completed"],
-    []
-  );
+  // ✅ Single source of truth: load when token/filters change
+  useEffect(() => {
+    if (!token) {
+      setRows([]);
+      setLoading(false);
+      return;
+    }
+    load(filters);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, filters]);
+
+  const STATUS_STEPS = useMemo(() => ["Pending", "Approved", "Confirmed", "Completed"], []);
 
   const stepIndex = (status) => {
     const idx = STATUS_STEPS.indexOf(status);
     return idx === -1 ? -1 : idx;
   };
 
-  // If Paid, show Confirmed (unless Completed/Cancelled)
   const displayStatus = (b) => {
     if (b.payment_status === "Paid" && b.booking_status !== "Cancelled") {
       return b.booking_status === "Completed" ? "Completed" : "Confirmed";
@@ -154,8 +171,7 @@ export default function BookingsPage() {
 
   const actionBase =
     "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200";
-  const lift =
-    "hover:-translate-y-[1px] hover:shadow-md active:translate-y-0 active:shadow-sm";
+  const lift = "hover:-translate-y-[1px] hover:shadow-md active:translate-y-0 active:shadow-sm";
 
   const handleReset = () => {
     setDraft(DEFAULT_FILTERS);
@@ -167,12 +183,7 @@ export default function BookingsPage() {
     try {
       setBusyId(bookingId);
       await payBooking(bookingId);
-
-      setRows((prev) =>
-        prev.map((r) =>
-          r.id === bookingId ? { ...r, payment_status: "Paid" } : r
-        )
-      );
+      setRows((prev) => prev.map((r) => (r.id === bookingId ? { ...r, payment_status: "Paid" } : r)));
     } catch (e) {
       console.error("Pay failed", e);
       alert(e?.response?.data?.message || "Payment failed. Please try again.");
@@ -202,12 +213,7 @@ export default function BookingsPage() {
       setBusyId(bookingId);
       await cancelBooking(bookingId);
 
-      setRows((prev) =>
-        prev.map((r) =>
-          r.id === bookingId ? { ...r, booking_status: "Cancelled" } : r
-        )
-      );
-
+      setRows((prev) => prev.map((r) => (r.id === bookingId ? { ...r, booking_status: "Cancelled" } : r)));
       closeCancelModal();
     } catch (e) {
       console.error("Cancel failed", e);
@@ -217,22 +223,50 @@ export default function BookingsPage() {
     }
   };
 
+  const SkeletonRow = ({ i }) => (
+    <tr key={`sk-${i}`} className="animate-pulse">
+      <td className="px-4 py-4">
+        <div className="flex gap-3 items-center">
+          <div className="h-12 w-16 rounded-xl bg-gray-200" />
+          <div className="space-y-2">
+            <div className="h-3 w-44 bg-gray-200 rounded" />
+            <div className="h-3 w-24 bg-gray-100 rounded" />
+          </div>
+        </div>
+      </td>
+      <td className="px-4 py-4">
+        <div className="h-3 w-32 bg-gray-200 rounded" />
+      </td>
+      <td className="px-4 py-4">
+        <div className="h-3 w-28 bg-gray-200 rounded" />
+      </td>
+      <td className="px-4 py-4">
+        <div className="h-6 w-28 bg-gray-200 rounded-full" />
+      </td>
+      <td className="px-4 py-4">
+        <div className="h-6 w-20 bg-gray-200 rounded-full" />
+      </td>
+      <td className="px-4 py-4">
+        <div className="flex gap-2 justify-end">
+          <div className="h-9 w-28 bg-gray-200 rounded-xl" />
+          <div className="h-9 w-28 bg-gray-100 rounded-xl" />
+        </div>
+      </td>
+    </tr>
+  );
+
   return (
     <>
       <NavbarTourist />
 
       <main className="bg-[#e6f4ec] min-h-screen pt-6 pb-10">
         <div className="max-w-6xl mx-auto px-4 md:px-6">
-          {/* Header */}
           <div className="bg-white border border-gray-100 rounded-2xl p-4 md:p-5 shadow-sm">
-            <h1 className="text-lg md:text-xl font-semibold text-gray-900">
-              Booking History
-            </h1>
+            <h1 className="text-lg md:text-xl font-semibold text-gray-900">Booking History</h1>
             <p className="text-xs md:text-sm text-emerald-700 mt-1">
               Your past and current bookings with status and payment details.
             </p>
 
-            {/* Filters (auto apply) */}
             <div className="mt-4 flex flex-col md:flex-row gap-2 md:items-center">
               <input
                 value={draft.q}
@@ -243,9 +277,7 @@ export default function BookingsPage() {
 
               <select
                 value={draft.date}
-                onChange={(e) =>
-                  setDraft((p) => ({ ...p, date: e.target.value }))
-                }
+                onChange={(e) => setDraft((p) => ({ ...p, date: e.target.value }))}
                 className="w-full md:w-[170px] px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm"
               >
                 <option value="All">Date: All</option>
@@ -255,9 +287,7 @@ export default function BookingsPage() {
 
               <select
                 value={draft.status}
-                onChange={(e) =>
-                  setDraft((p) => ({ ...p, status: e.target.value }))
-                }
+                onChange={(e) => setDraft((p) => ({ ...p, status: e.target.value }))}
                 className="w-full md:w-[200px] px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm"
               >
                 <option value="All">Status: All</option>
@@ -281,31 +311,16 @@ export default function BookingsPage() {
             </div>
           </div>
 
-          {/* Table */}
           <div className="mt-5 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            {loading ? (
-              <div className="p-10 text-center text-sm text-gray-500">
-                Loading bookings...
-              </div>
-            ) : !token ? (
+            {!token ? (
               <div className="p-10 text-center">
-                <div className="font-semibold text-gray-900">
-                  Please login to view bookings
-                </div>
+                <div className="font-semibold text-gray-900">Please login to view bookings</div>
                 <button
                   onClick={() => navigate("/login")}
-                  className={[
-                    actionBase,
-                    lift,
-                    "mt-4 bg-emerald-700 text-white hover:bg-emerald-800",
-                  ].join(" ")}
+                  className={[actionBase, lift, "mt-4 bg-emerald-700 text-white hover:bg-emerald-800"].join(" ")}
                 >
                   Go to Login
                 </button>
-              </div>
-            ) : rows.length === 0 ? (
-              <div className="p-10 text-center text-sm text-gray-500">
-                No bookings found.
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -314,9 +329,7 @@ export default function BookingsPage() {
                     <tr className="text-left text-xs uppercase tracking-wide">
                       <th className="px-4 py-3 font-bold">Tour</th>
                       <th className="px-4 py-3 font-bold">Agency</th>
-                      <th className="px-4 py-3 font-bold whitespace-nowrap">
-                        Booking Date
-                      </th>
+                      <th className="px-4 py-3 font-bold whitespace-nowrap">Booking Date</th>
                       <th className="px-4 py-3 font-bold">Status</th>
                       <th className="px-4 py-3 font-bold">Payment</th>
                       <th className="px-4 py-3 font-bold text-right">Actions</th>
@@ -324,151 +337,139 @@ export default function BookingsPage() {
                   </thead>
 
                   <tbody className="divide-y divide-gray-100">
-                    {rows.map((b) => {
-                      const cancelled = b.booking_status === "Cancelled";
-                      const paid = b.payment_status === "Paid";
-                      const unpaid = b.payment_status === "Unpaid";
+                    {loading ? (
+                      Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} i={i} />)
+                    ) : rows.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="p-10 text-center text-sm text-gray-500">
+                          No bookings found.
+                        </td>
+                      </tr>
+                    ) : (
+                      rows.map((b) => {
+                        const cancelled = b.booking_status === "Cancelled";
+                        const paid = b.payment_status === "Paid";
+                        const unpaid = b.payment_status === "Unpaid";
 
-                      const uiStatus = displayStatus(b);
-                      const completed = uiStatus === "Completed";
-                      const sIdx = stepIndex(uiStatus);
+                        const uiStatus = displayStatus(b);
+                        const completed = uiStatus === "Completed";
+                        const sIdx = stepIndex(uiStatus);
 
-                      const rowBusy = busyId === b.id;
+                        const rowBusy = busyId === b.id;
 
-                      return (
-                        <tr key={b.id} className="hover:bg-gray-50/50">
-                          {/* Tour */}
-                          <td className="px-4 py-4">
-                            <div className="flex gap-3 items-center">
-                              <img
-                                src={b.tour_image_url}
-                                alt={b.tour_title}
-                                className="h-12 w-16 rounded-xl object-cover border"
-                              />
-                              <div>
-                                <div className="font-semibold text-gray-900 leading-tight">
-                                  {b.tour_title}
-                                </div>
-                                <div className="text-xs text-gray-500 mt-1">
-                                  Ref. #{b.ref_code}
+                        return (
+                          <tr key={b.id} className="hover:bg-gray-50/50">
+                            <td className="px-4 py-4">
+                              <div className="flex gap-3 items-center">
+                                <img
+                                  src={toPublicImageUrl(b.tour_image_url) || FALLBACK_TOUR_IMG}
+                                  alt={b.tour_title}
+                                  className="h-12 w-16 rounded-xl object-cover border"
+                                  onError={(e) => (e.currentTarget.src = FALLBACK_TOUR_IMG)}
+                                />
+                                <div>
+                                  <div className="font-semibold text-gray-900 leading-tight">{b.tour_title}</div>
+                                  <div className="text-xs text-gray-500 mt-1">Ref. #{b.ref_code}</div>
                                 </div>
                               </div>
-                            </div>
-                          </td>
+                            </td>
 
-                          {/* Agency */}
-                          <td className="px-4 py-4">
-                            <div className="font-semibold text-gray-900">
-                              {b.agency_name}
-                            </div>
-                          </td>
+                            <td className="px-4 py-4">
+                              <div className="font-semibold text-gray-900">{b.agency_name}</div>
+                            </td>
 
-                          {/* Booking Date */}
-                          <td className="px-4 py-4 whitespace-nowrap">
-                            <div className="font-semibold text-gray-900">
-                              {new Date(b.booking_date).toLocaleDateString()}
-                            </div>
-                          </td>
-
-                          {/* Status */}
-                          <td className="px-4 py-4">
-                            <div className="flex flex-col gap-2">
-                              <div className="flex items-center gap-2">
-                                <span className="text-[11px] text-gray-500 font-semibold">
-                                  Current:
-                                </span>
-                                <StatusBadge status={uiStatus} />
+                            <td className="px-4 py-4 whitespace-nowrap">
+                              <div className="font-semibold text-gray-900">
+                                {new Date(b.booking_date).toLocaleDateString()}
                               </div>
+                            </td>
 
-                              {!cancelled && (
-                                <div className="flex flex-wrap gap-2">
-                                  {STATUS_STEPS.map((st, idx) => (
-                                    <StepChip key={st} active={sIdx >= idx}>
-                                      {st}
-                                    </StepChip>
-                                  ))}
+                            <td className="px-4 py-4">
+                              <div className="flex flex-col gap-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[11px] text-gray-500 font-semibold">Current:</span>
+                                  <StatusBadge status={uiStatus} />
                                 </div>
-                              )}
-                            </div>
-                          </td>
 
-                          {/* Payment */}
-                          <td className="px-4 py-4">
-                            <PaymentChip paid={paid} />
-                          </td>
+                                {!cancelled && (
+                                  <div className="flex flex-wrap gap-2">
+                                    {STATUS_STEPS.map((st, idx) => (
+                                      <StepChip key={st} active={sIdx >= idx}>
+                                        {st}
+                                      </StepChip>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
 
-                          {/* Actions */}
-                          <td className="px-4 py-4">
-                            <div className="flex gap-2 justify-end flex-nowrap">
-                              {/* Pay Now */}
-                              {unpaid && !cancelled && (
-                                <button
-                                  disabled={rowBusy}
-                                  onClick={() => navigate(`/payment/${b.id}`)}
-                                  className={[
-                                    actionBase,
-                                    lift,
-                                    rowBusy
-                                      ? "bg-emerald-300 text-white cursor-not-allowed animate-pulse"
-                                      : "bg-emerald-700 text-white hover:bg-emerald-800",
-                                  ].join(" ")}
-                                >
-                                  <FaCreditCard />
-                                  {rowBusy ? "Processing..." : "Pay Now"}
-                                </button>
-                              )}
+                            <td className="px-4 py-4">
+                              <PaymentChip paid={paid} />
+                            </td>
 
-                              {/* Write Review (only show after Paid) */}
-                              {paid && !cancelled && (
-                                <button
-                                  onClick={() => {
-                                    if (!completed) {
-                                      openInfoModal(
-                                        "You can write a review only after the tour is completed."
-                                      );
-                                      return;
-                                    }
-                                    navigate(`/review?booking=${b.id}`);
-                                  }}
-                                  className={[
-                                    actionBase,
-                                    lift,
-                                    completed
-                                      ? "bg-emerald-700 text-white hover:bg-emerald-800"
-                                      : "bg-white text-emerald-800 border border-emerald-200 hover:bg-emerald-50",
-                                  ].join(" ")}
-                                  title={
-                                    completed
-                                      ? "Write your review"
-                                      : "Available after tour completion"
-                                  }
-                                >
-                                  <FaPen /> Write Review
-                                </button>
-                              )}
+                            <td className="px-4 py-4">
+                              <div className="flex gap-2 justify-end flex-nowrap">
+                                {unpaid && !cancelled && (
+                                  <button
+                                    disabled={rowBusy}
+                                    onClick={() => navigate(`/payment/${b.id}`)}
+                                    className={[
+                                      actionBase,
+                                      lift,
+                                      rowBusy
+                                        ? "bg-emerald-300 text-white cursor-not-allowed animate-pulse"
+                                        : "bg-emerald-700 text-white hover:bg-emerald-800",
+                                    ].join(" ")}
+                                  >
+                                    <FaCreditCard />
+                                    {rowBusy ? "Processing..." : "Pay Now"}
+                                  </button>
+                                )}
 
-                              {/* Cancel */}
-                              {!paid && !cancelled && (
-                                <button
-                                  disabled={rowBusy}
-                                  onClick={() => openCancelModal(b)}
-                                  className={[
-                                    actionBase,
-                                    lift,
-                                    rowBusy
-                                      ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
-                                      : "bg-white text-red-600 border border-red-200 hover:bg-red-50 hover:border-red-300",
-                                  ].join(" ")}
-                                >
-                                  <FaTimes />
-                                  {rowBusy ? "Cancelling..." : "Cancel"}
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                                {paid && !cancelled && (
+                                  <button
+                                    onClick={() => {
+                                      if (!completed) {
+                                        openInfoModal("You can write a review only after the tour is completed.");
+                                        return;
+                                      }
+                                      navigate(`/review?booking=${b.id}`);
+                                    }}
+                                    className={[
+                                      actionBase,
+                                      lift,
+                                      completed
+                                        ? "bg-emerald-700 text-white hover:bg-emerald-800"
+                                        : "bg-white text-emerald-800 border border-emerald-200 hover:bg-emerald-50",
+                                    ].join(" ")}
+                                    title={completed ? "Write your review" : "Available after tour completion"}
+                                  >
+                                    <FaPen /> Write Review
+                                  </button>
+                                )}
+
+                                {!paid && !cancelled && (
+                                  <button
+                                    disabled={rowBusy}
+                                    onClick={() => openCancelModal(b)}
+                                    className={[
+                                      actionBase,
+                                      lift,
+                                      rowBusy
+                                        ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
+                                        : "bg-white text-red-600 border border-red-200 hover:bg-red-50 hover:border-red-300",
+                                    ].join(" ")}
+                                  >
+                                    <FaTimes />
+                                    {rowBusy ? "Cancelling..." : "Cancel"}
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -476,7 +477,6 @@ export default function BookingsPage() {
           </div>
         </div>
 
-        {/* Cancel Popup Modal */}
         {cancelModal.open && (
           <div
             className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 px-4"
@@ -491,12 +491,8 @@ export default function BookingsPage() {
                     <FaExclamationTriangle />
                   </div>
                   <div>
-                    <div className="text-base font-bold text-gray-900">
-                      Cancel Booking?
-                    </div>
-                    <div className="text-xs text-gray-500 mt-0.5">
-                      This action cannot be undone.
-                    </div>
+                    <div className="text-base font-bold text-gray-900">Cancel Booking?</div>
+                    <div className="text-xs text-gray-500 mt-0.5">This action cannot be undone.</div>
                   </div>
                 </div>
 
@@ -521,11 +517,9 @@ export default function BookingsPage() {
               <div className="p-5 pt-0 flex gap-2 justify-end">
                 <button
                   onClick={closeCancelModal}
-                  className={[
-                    actionBase,
-                    lift,
-                    "border border-gray-200 bg-white text-gray-900 hover:bg-gray-50",
-                  ].join(" ")}
+                  className={[actionBase, lift, "border border-gray-200 bg-white text-gray-900 hover:bg-gray-50"].join(
+                    " "
+                  )}
                 >
                   Keep Booking
                 </button>
@@ -548,7 +542,6 @@ export default function BookingsPage() {
           </div>
         )}
 
-        {/* Info Popup Modal (review rule) */}
         {infoModal.open && (
           <div
             className="fixed inset-0 z-[85] flex items-center justify-center bg-black/40 px-4"
@@ -563,12 +556,8 @@ export default function BookingsPage() {
                     <FaInfoCircle />
                   </div>
                   <div>
-                    <div className="text-base font-bold text-gray-900">
-                      {infoModal.title}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-0.5">
-                      Quick info
-                    </div>
+                    <div className="text-base font-bold text-gray-900">{infoModal.title}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">Quick info</div>
                   </div>
                 </div>
 
@@ -588,11 +577,7 @@ export default function BookingsPage() {
               <div className="p-5 pt-0 flex justify-end">
                 <button
                   onClick={closeInfoModal}
-                  className={[
-                    actionBase,
-                    lift,
-                    "bg-emerald-700 text-white hover:bg-emerald-800",
-                  ].join(" ")}
+                  className={[actionBase, lift, "bg-emerald-700 text-white hover:bg-emerald-800"].join(" ")}
                 >
                   Okay
                 </button>

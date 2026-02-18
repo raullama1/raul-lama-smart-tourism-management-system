@@ -8,16 +8,7 @@ import {
   removeFromWishlist,
 } from "../../api/wishlistApi";
 import { FaHeart, FaMapMarkerAlt, FaUsers, FaEye, FaCheck } from "react-icons/fa";
-
-const API_ORIGIN = "http://localhost:5001";
-
-function toPublicImageUrl(raw) {
-  const s = String(raw || "").trim();
-  if (!s) return "";
-  if (s.startsWith("http://") || s.startsWith("https://")) return s;
-  if (s.startsWith("/")) return `${API_ORIGIN}${s}`;
-  return `${API_ORIGIN}/${s}`;
-}
+import { toPublicImageUrl, FALLBACK_TOUR_IMG } from "../../utils/publicImageUrl";
 
 export default function TourGrid({ tours }) {
   const navigate = useNavigate();
@@ -103,7 +94,8 @@ export default function TourGrid({ tours }) {
           const inWishlist = wishlistIds.has(idNum);
           const isBusy = busyId === idNum;
 
-          const imgSrc = toPublicImageUrl(tour.image_url || tour.image);
+          // IMPORTANT: list endpoint may return image_url OR image
+          const imgSrc = toPublicImageUrl(tour.image_url || tour.image) || FALLBACK_TOUR_IMG;
 
           return (
             <article
@@ -116,8 +108,7 @@ export default function TourGrid({ tours }) {
                   alt={tour.title}
                   className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
                   onError={(e) => {
-                    e.currentTarget.src =
-                      "https://via.placeholder.com/800x500?text=Tour+Image";
+                    e.currentTarget.src = FALLBACK_TOUR_IMG;
                   }}
                 />
               </div>

@@ -18,19 +18,9 @@ import {
   addToWishlist,
   removeFromWishlist,
 } from "../../api/wishlistApi";
+import { toPublicImageUrl, FALLBACK_TOUR_IMG } from "../../utils/publicImageUrl";
 
 gsap.registerPlugin(Draggable);
-
-const API_ORIGIN = "http://localhost:5001";
-const FALLBACK_IMG = "https://via.placeholder.com/600x400?text=Tour+Image";
-
-function toPublicImageUrl(raw) {
-  const s = String(raw || "").trim();
-  if (!s) return "";
-  if (s.startsWith("http://") || s.startsWith("https://")) return s;
-  if (s.startsWith("/")) return `${API_ORIGIN}${s}`;
-  return `${API_ORIGIN}/${s}`;
-}
 
 export default function TourCard({
   tours = [],
@@ -84,9 +74,7 @@ export default function TourCard({
       }
       try {
         const res = await fetchWishlistIds(token);
-        const ids = Array.isArray(res?.data)
-          ? res.data
-          : res?.ids || res?.data || [];
+        const ids = Array.isArray(res?.data) ? res.data : res?.ids || res?.data || [];
         setWishlistIds(new Set(ids.map((x) => Number(x))));
       } catch (e) {
         console.error("Failed to load wishlist ids", e);
@@ -247,9 +235,7 @@ export default function TourCard({
       <section className="max-w-6xl mx-auto px-4 md:px-6 relative">
         {showSectionHeader && (
           <div className="flex items-center justify-between mb-4 md:mb-6">
-            <h2 className="text-lg md:text-xl font-semibold text-gray-900">
-              Popular Tours
-            </h2>
+            <h2 className="text-lg md:text-xl font-semibold text-gray-900">Popular Tours</h2>
           </div>
         )}
 
@@ -284,7 +270,7 @@ export default function TourCard({
               const inWishlist = wishlistIds.has(idNum);
               const isBusy = busyId === idNum;
 
-              const imgSrc = toPublicImageUrl(tour.image) || FALLBACK_IMG;
+              const imgSrc = toPublicImageUrl(tour.image) || FALLBACK_TOUR_IMG;
 
               return (
                 <div
@@ -298,9 +284,7 @@ export default function TourCard({
                       alt={tour.title}
                       className="h-40 w-full object-cover transition-transform duration-500 hover:scale-105"
                       draggable="false"
-                      onError={(e) => {
-                        e.currentTarget.src = FALLBACK_IMG;
-                      }}
+                      onError={(e) => (e.currentTarget.src = FALLBACK_TOUR_IMG)}
                     />
 
                     <div className="p-4 flex-1 flex flex-col">
@@ -339,19 +323,11 @@ export default function TourCard({
                                 ? "bg-emerald-600 text-white hover:bg-emerald-700"
                                 : "bg-[#e6f4ed] text-emerald-700 hover:bg-gradient-to-r hover:from-emerald-600 hover:to-emerald-500 hover:text-white"
                             }
-                            ${
-                              isBusy
-                                ? "opacity-70 cursor-not-allowed"
-                                : "hover:scale-105"
-                            }
+                            ${isBusy ? "opacity-70 cursor-not-allowed" : "hover:scale-105"}
                           `}
                           type="button"
                         >
-                          {inWishlist ? (
-                            <FaCheck size={14} />
-                          ) : (
-                            <FaHeart size={14} />
-                          )}
+                          {inWishlist ? <FaCheck size={14} /> : <FaHeart size={14} />}
                           {inWishlist ? "Added to Wishlist" : "Add to Wishlist"}
                         </button>
 
@@ -381,9 +357,7 @@ export default function TourCard({
             })}
 
             {normalizedTours.length === 0 && (
-              <div className="text-sm text-gray-500 p-4">
-                No tours available.
-              </div>
+              <div className="text-sm text-gray-500 p-4">No tours available.</div>
             )}
           </div>
         </div>

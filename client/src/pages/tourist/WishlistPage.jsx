@@ -1,3 +1,4 @@
+// client/src/pages/tourist/WishlistPage.jsx
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import NavbarTourist from "../../components/tourist/NavbarTourist";
@@ -6,6 +7,7 @@ import { fetchWishlist } from "../../api/wishlistApi";
 import { useWishlist } from "../../context/WishlistContext";
 import { useAuth } from "../../context/AuthContext";
 import { FaEye, FaTrash, FaUsers, FaMapMarkerAlt } from "react-icons/fa";
+import { toPublicImageUrl, FALLBACK_TOUR_IMG } from "../../utils/publicImageUrl";
 
 export default function WishlistPage() {
   const navigate = useNavigate();
@@ -15,13 +17,11 @@ export default function WishlistPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Shared button animation styling to keep UI consistent across actions.
   const btnBase =
     "inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm font-medium " +
     "transition-all duration-300 ease-out transform hover:scale-105 active:scale-95 " +
     "shadow-sm hover:shadow-md";
 
-  // Loads wishlist items for authenticated users and resets on logout.
   const load = useCallback(async () => {
     try {
       setLoading(true);
@@ -44,7 +44,6 @@ export default function WishlistPage() {
     load();
   }, [load]);
 
-  // Removes an item only if the API call succeeds to avoid UI desync.
   const handleRemove = async (tourId) => {
     const result = await remove(tourId);
     if (!result?.ok) return;
@@ -59,9 +58,7 @@ export default function WishlistPage() {
       <main className="bg-[#e6f4ec] min-h-screen pt-6 pb-10">
         <div className="max-w-6xl mx-auto px-4 md:px-6">
           <div className="bg-white border border-gray-100 rounded-2xl p-4 md:p-5 shadow-sm">
-            <h1 className="text-lg md:text-xl font-semibold text-gray-900">
-              Wishlist
-            </h1>
+            <h1 className="text-lg md:text-xl font-semibold text-gray-900">Wishlist</h1>
             <p className="text-xs md:text-sm text-emerald-700 mt-1">
               Saved experiences across Nepal: mountains, jungles, heritage cities.
             </p>
@@ -74,12 +71,8 @@ export default function WishlistPage() {
               </div>
             ) : !token ? (
               <div className="bg-white rounded-2xl border border-gray-100 p-10 text-center">
-                <div className="text-gray-900 font-semibold">
-                  Please login to view your wishlist
-                </div>
-                <div className="text-sm text-gray-500 mt-1">
-                  Your wishlist is saved in your account.
-                </div>
+                <div className="text-gray-900 font-semibold">Please login to view your wishlist</div>
+                <div className="text-sm text-gray-500 mt-1">Your wishlist is saved in your account.</div>
                 <button
                   onClick={() => navigate("/login")}
                   className="mt-4 px-5 py-2 rounded-xl bg-emerald-600 text-white text-sm hover:bg-emerald-700 transition-all duration-300 hover:scale-105 active:scale-95 shadow-sm hover:shadow-md"
@@ -113,9 +106,10 @@ export default function WishlistPage() {
                     >
                       <div className="h-44 w-full overflow-hidden">
                         <img
-                          src={tour.image_url}
+                          src={toPublicImageUrl(tour.image_url) || FALLBACK_TOUR_IMG}
                           alt={tour.title}
                           className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                          onError={(e) => (e.currentTarget.src = FALLBACK_TOUR_IMG)}
                         />
                       </div>
 
