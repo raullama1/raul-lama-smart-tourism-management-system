@@ -1,6 +1,29 @@
 // client/src/components/tourist/chat/ChatSidebar.jsx
 import { useMemo } from "react";
 
+function formatLastTime(ts) {
+  if (!ts) return "";
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return "";
+
+  const now = new Date();
+  const sameDay =
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate();
+
+  if (sameDay) {
+    return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  }
+
+  return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+}
+
+function safePreview(c) {
+  const raw = String(c?.last_message || "").trim();
+  return raw; // Do not show placeholder text in sidebar
+}
+
 export default function ChatSidebar({
   search,
   onSearch,
@@ -14,8 +37,8 @@ export default function ChatSidebar({
     if (!q) return conversations;
 
     return (conversations || []).filter((c) => {
-      const name = String(c.agency_name || "").toLowerCase();
-      const last = String(c.last_message || "").toLowerCase();
+      const name = String(c?.agency_name || c?.name || "").toLowerCase();
+      const last = String(c?.last_message || "").toLowerCase();
       return name.includes(q) || last.includes(q);
     });
   }, [conversations, search]);
@@ -42,15 +65,20 @@ export default function ChatSidebar({
           </div>
         ) : (
           filtered.map((c) => {
-            const active = Number(selectedId) === Number(c.conversation_id);
-            const unread = Number(c.unread_count || 0);
+            const convoId = c?.conversation_id;
+            const active = Number(selectedId) === Number(convoId);
+            const unread = Number(c?.unread_count || 0);
+
+            const name = c?.agency_name || c?.name || "Agency";
+            const preview = safePreview(c);
+            const when = formatLastTime(c?.last_message_at);
 
             return (
               <button
-                key={c.conversation_id}
+                key={convoId}
                 onClick={() => onSelect(c)}
                 type="button"
-                className={`w-full text-left rounded-xl p-3 border transition
+                className={`w-full text-left rounded-xl p-3 border transition outline-none
                   ${
                     active
                       ? "bg-emerald-700 border-emerald-500"
@@ -58,9 +86,7 @@ export default function ChatSidebar({
                   }`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <div className="font-semibold text-sm line-clamp-1">
-                    {c.agency_name}
-                  </div>
+                  <div className="font-semibold text-sm line-clamp-1">{name}</div>
 
                   <div className="flex items-center gap-2">
                     {unread > 0 && (
@@ -69,20 +95,15 @@ export default function ChatSidebar({
                       </span>
                     )}
 
-                    <span className="text-[11px] opacity-80">
-                      {c.last_message_at
-                        ? new Date(c.last_message_at).toLocaleDateString("en-GB", {
-                            day: "2-digit",
-                            month: "short",
-                          })
-                        : ""}
-                    </span>
+                    <span className="text-[11px] opacity-80">{when}</span>
                   </div>
                 </div>
 
-                <div className="mt-1 text-[11px] opacity-90 line-clamp-1">
-                  {c.last_message || "Start conversation..."}
-                </div>
+                {preview ? (
+                  <div className="mt-1 text-[11px] opacity-90 line-clamp-1">
+                    {preview}
+                  </div>
+                ) : null}
               </button>
             );
           })

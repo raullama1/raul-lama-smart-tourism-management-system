@@ -1,10 +1,10 @@
-// server/routes/chatRoutes.js
 import express from "express";
 import { authRequired } from "../middleware/authMiddleware.js";
 import {
   listChatAgenciesController,
   getMyConversationsController,
   startConversationController,
+  deleteConversationController,
   getConversationDetailsController,
   getMessagesController,
   postMessageController,
@@ -22,6 +22,10 @@ router.get("/conversations", authRequired, getMyConversationsController);
 
 // Tourist: start new chat (agencyId)
 router.post("/conversations", authRequired, startConversationController);
+
+// ✅ Delete whole conversation (Messenger-style)
+// optional query: ?onlyIfEmpty=1
+router.delete("/conversations/:conversationId", authRequired, deleteConversationController);
 
 // Delete message for all (soft delete)
 router.delete(

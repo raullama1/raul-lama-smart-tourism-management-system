@@ -1,4 +1,3 @@
-// client/src/components/tourist/chat/NewChatModal.jsx
 import { useEffect, useMemo, useState } from "react";
 import { FaPaperPlane } from "react-icons/fa";
 import { fetchChatAgencies } from "../../../api/chatApi";
@@ -13,13 +12,22 @@ function Avatar({ name }) {
   );
 }
 
-export default function NewChatModal({ open, onClose, onPickAgency }) {
+export default function NewChatModal({ open, onClose, onPickAgency, excludeAgencyIds = [] }) {
   const { token } = useAuth();
 
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [agencies, setAgencies] = useState([]);
   const [startingId, setStartingId] = useState(null);
+
+  const excludeSet = useMemo(() => {
+    const s = new Set();
+    (excludeAgencyIds || []).forEach((x) => {
+      const n = Number(x);
+      if (Number.isFinite(n)) s.add(n);
+    });
+    return s;
+  }, [excludeAgencyIds]);
 
   const loadAgencies = async (q) => {
     if (!token) return;
@@ -56,7 +64,10 @@ export default function NewChatModal({ open, onClose, onPickAgency }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  const shown = useMemo(() => agencies || [], [agencies]);
+  const shown = useMemo(() => {
+    const list = agencies || [];
+    return list.filter((a) => !excludeSet.has(Number(a.id)));
+  }, [agencies, excludeSet]);
 
   if (!open) return null;
 
@@ -66,9 +77,7 @@ export default function NewChatModal({ open, onClose, onPickAgency }) {
 
       <div className="absolute right-0 top-0 h-full w-full max-w-[520px] bg-white shadow-2xl border-l border-gray-200 flex flex-col">
         <div className="px-5 py-4 flex items-center justify-between border-b border-gray-200">
-          <div className="text-lg font-semibold text-gray-900">
-            Start New Chat
-          </div>
+          <div className="text-lg font-semibold text-gray-900">Start New Chat</div>
 
           <button
             onClick={onClose}
@@ -92,7 +101,9 @@ export default function NewChatModal({ open, onClose, onPickAgency }) {
           {loading ? (
             <div className="text-sm text-gray-500">Loading agencies...</div>
           ) : shown.length === 0 ? (
-            <div className="text-sm text-gray-500">No agencies found.</div>
+            <div className="text-sm text-gray-500">
+              No agencies found (or you already have chats with them).
+            </div>
           ) : (
             shown.map((a) => {
               const id = Number(a.id);
@@ -122,7 +133,7 @@ export default function NewChatModal({ open, onClose, onPickAgency }) {
                     onClick={async () => {
                       try {
                         setStartingId(id);
-                        await onPickAgency?.(id);
+                        await onPickAgency?.(a); // pass full agency object
                       } finally {
                         setStartingId(null);
                       }

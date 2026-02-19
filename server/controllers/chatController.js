@@ -1,4 +1,3 @@
-// server/controllers/chatController.js
 import {
   getChatAgencies,
   getMyConversations,
@@ -7,7 +6,8 @@ import {
   getMessages,
   addMessage,
   markAgencyMessagesRead,
-  deleteMessageForAll, // ✅ new
+  deleteMessageForAll,
+  deleteConversationForTourist,
 } from "../models/chatModel.js";
 
 export async function listChatAgenciesController(req, res) {
@@ -58,6 +58,38 @@ export async function startConversationController(req, res) {
   } catch (err) {
     console.error("startConversationController error", err);
     res.status(500).json({ message: "Failed to start conversation." });
+  }
+}
+
+export async function deleteConversationController(req, res) {
+  try {
+    const userId = req.user?.id;
+    const role = req.user?.role;
+    const { conversationId } = req.params;
+
+    if (role !== "tourist") {
+      return res.status(403).json({ message: "Tourist access only." });
+    }
+
+    const onlyIfEmpty = String(req.query.onlyIfEmpty || "") === "1";
+
+    const result = await deleteConversationForTourist({
+      conversationId: Number(conversationId),
+      touristId: Number(userId),
+      onlyIfEmpty,
+    });
+
+    if (!result.ok) {
+      if (result.reason === "not_found") return res.status(404).json({ message: "Conversation not found." });
+      if (result.reason === "not_allowed") return res.status(403).json({ message: "Not allowed." });
+      if (result.reason === "not_empty") return res.status(200).json({ ok: false, reason: "not_empty" });
+      return res.status(400).json({ message: "Delete failed." });
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("deleteConversationController error", err);
+    res.status(500).json({ message: "Failed to delete conversation." });
   }
 }
 
@@ -153,7 +185,6 @@ export async function markReadController(req, res) {
   }
 }
 
-// ✅ NEW: DELETE MESSAGE (REST fallback)
 export async function deleteMessageController(req, res) {
   try {
     const userId = req.user?.id;

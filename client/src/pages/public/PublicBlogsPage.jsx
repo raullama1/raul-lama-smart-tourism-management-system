@@ -1,5 +1,4 @@
-// client/src/pages/public/PublicBlogsPage.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import NavbarPublic from "../../components/public/NavbarPublic";
 import FooterPublic from "../../components/public/FooterPublic";
@@ -13,7 +12,8 @@ import { useAuth } from "../../context/AuthContext";
 function makePreviewText(text, max = 140) {
   if (!text) return "";
 
-  const firstLine = String(text).split(/\r?\n/).find((l) => l.trim().length > 0) || "";
+  const firstLine =
+    String(text).split(/\r?\n/).find((l) => l.trim().length > 0) || "";
   const clean = firstLine.replace(/\s+/g, " ").trim();
 
   if (clean.length <= max) return clean;
@@ -41,30 +41,54 @@ export default function PublicBlogsPage() {
   const [commentsByBlog, setCommentsByBlog] = useState({});
   const [loadingComments, setLoadingComments] = useState(false);
 
-  const loadBlogs = async ({ page, append }) => {
-    try {
-      setLoading(true);
+  // Smooth fade (content list only)
+  const [fadeState, setFadeState] = useState("out"); // start hidden
+  const firstLoadRef = useRef(true);
 
-      const res = await fetchPublicBlogs({
-        ...filters,
-        page,
-      });
+  useEffect(() => {
+    const t = setTimeout(() => setFadeState("in"), 40);
+    return () => clearTimeout(t);
+  }, []);
 
-      if (append) {
-        setBlogs((prev) => [...prev, ...(res.data || [])]);
-      } else {
-        setBlogs(res.data || []);
+  const fadeWrapClass = fadeState === "in" ? "opacity-100" : "opacity-0";
+  const transitionClass =
+    "transition-opacity duration-700 ease-[cubic-bezier(.22,1,.36,1)]";
+
+  const loadBlogs = useCallback(
+    async ({ page, append, smoothSwap }) => {
+      try {
+        if (smoothSwap && !append) setFadeState("out");
+        setLoading(true);
+
+        const res = await fetchPublicBlogs({
+          ...filters,
+          page,
+        });
+
+        // tiny delay ONLY for swap (not for append / not for first load)
+        if (smoothSwap && !append) await new Promise((r) => setTimeout(r, 140));
+
+        if (append) {
+          setBlogs((prev) => [...prev, ...(res.data || [])]);
+        } else {
+          setBlogs(res.data || []);
+        }
+
+        setPagination(res.pagination || { total: 0, hasMore: false });
+
+        requestAnimationFrame(() => setFadeState("in"));
+      } catch (err) {
+        console.error("Failed to load blogs", err);
+        requestAnimationFrame(() => setFadeState("in"));
+      } finally {
+        setLoading(false);
+        firstLoadRef.current = false;
       }
+    },
+    [filters]
+  );
 
-      setPagination(res.pagination || { total: 0, hasMore: false });
-    } catch (err) {
-      console.error("Failed to load blogs", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadCommentsPreview = async (list) => {
+  const loadCommentsPreview = useCallback(async (list) => {
     try {
       setLoadingComments(true);
 
@@ -91,24 +115,28 @@ export default function PublicBlogsPage() {
     } finally {
       setLoadingComments(false);
     }
-  };
+  }, []);
 
+  // Reload list when search/sort changes (smooth swap after first load)
   useEffect(() => {
     setFilters((prev) => ({ ...prev, page: 1 }));
-    loadBlogs({ page: 1, append: false });
+
+    const smooth = !firstLoadRef.current;
+    loadBlogs({ page: 1, append: false, smoothSwap: smooth });
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.search, filters.sort]);
 
+  // When blogs change, refresh comment previews
   useEffect(() => {
     if (blogs.length > 0) loadCommentsPreview(blogs);
     else setCommentsByBlog({});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blogs]);
+  }, [blogs, loadCommentsPreview]);
 
+  // When coming back to page via navigation, refresh comment previews
   useEffect(() => {
     if (blogs.length > 0) loadCommentsPreview(blogs);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.key]);
+  }, [location.key, blogs.length, loadCommentsPreview]);
 
   const handleSidebarChange = (next) => {
     setFilters((prev) => ({ ...prev, ...next, page: 1 }));
@@ -129,7 +157,7 @@ export default function PublicBlogsPage() {
     const nextPage = (filters.page || 1) + 1;
 
     setFilters((prev) => ({ ...prev, page: nextPage }));
-    await loadBlogs({ page: nextPage, append: true });
+    await loadBlogs({ page: nextPage, append: true, smoothSwap: false });
   };
 
   const mappedBlogs = useMemo(() => {
@@ -146,7 +174,6 @@ export default function PublicBlogsPage() {
       return {
         ...b,
         formattedDate,
-        // ✅ force list preview to match full blog text
         excerpt: makePreviewText(b.content || b.excerpt, 140),
         commentCount: count,
         commentsPreview: preview,
@@ -157,6 +184,7 @@ export default function PublicBlogsPage() {
   return (
     <>
       <Navbar />
+
       <main className="bg-[#e6f4ec] min-h-screen pt-6 pb-10">
         <div className="max-w-6xl mx-auto px-4 md:px-6 flex flex-col md:flex-row gap-4">
           <BlogSidebarFilters
@@ -175,46 +203,54 @@ export default function PublicBlogsPage() {
               </p>
             </header>
 
-            {loading ? (
-              <div className="bg-white rounded-2xl border border-gray-100 p-6 text-sm text-gray-500">
-                Loading blogs...
-              </div>
-            ) : mappedBlogs.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-gray-100 p-6 text-sm text-gray-500">
-                No blogs found. Try different keywords.
-              </div>
-            ) : (
-              <>
-                {loadingComments && (
-                  <div className="mb-2 text-xs text-gray-500">
-                    Updating comments...
-                  </div>
-                )}
+            {/* Fade ONLY the content area (not sidebar/header) */}
+            <div className={`${transitionClass} ${fadeWrapClass}`}>
+              {loading && blogs.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-gray-100 p-6 text-sm text-gray-500">
+                  Loading blogs...
+                </div>
+              ) : mappedBlogs.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-gray-100 p-6 text-sm text-gray-500">
+                  No blogs found. Try different keywords.
+                </div>
+              ) : (
+                <>
+                  {loadingComments && (
+                    <div className="mb-2 text-xs text-gray-500">
+                      Updating comments...
+                    </div>
+                  )}
 
-                {mappedBlogs.map((blog) => (
-                  <BlogListItem
-                    key={blog.id}
-                    blog={blog}
-                    isAuthenticated={isAuthenticated}
-                  />
-                ))}
+                  {mappedBlogs.map((blog) => (
+                    <BlogListItem
+                      key={blog.id}
+                      blog={blog}
+                      isAuthenticated={isAuthenticated}
+                    />
+                  ))}
 
-                {pagination.hasMore && (
-                  <div className="mt-4 flex justify-center">
-                    <button
-                      onClick={handleLoadMore}
-                      className="px-5 py-2.5 rounded-full border border-gray-300 bg-white text-sm text-gray-800 hover:bg-gray-50"
-                      type="button"
-                    >
-                      Load More
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
+                  {pagination.hasMore && (
+                    <div className="mt-4 flex justify-center">
+                      <button
+                        onClick={handleLoadMore}
+                        disabled={loading}
+                        className={[
+                          "px-5 py-2.5 rounded-full border border-gray-300 bg-white text-sm text-gray-800 hover:bg-gray-50",
+                          loading ? "opacity-60 cursor-not-allowed" : "",
+                        ].join(" ")}
+                        type="button"
+                      >
+                        {loading ? "Loading..." : "Load More"}
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </section>
         </div>
       </main>
+
       <Footer />
     </>
   );

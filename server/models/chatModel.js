@@ -1,4 +1,3 @@
-// server/models/chatModel.js
 import { db } from "../db.js";
 
 export async function getChatAgencies({ search = "", limit = 50 } = {}) {
@@ -15,10 +14,7 @@ export async function getChatAgencies({ search = "", limit = 50 } = {}) {
 
   const [rows] = await db.query(
     `
-    SELECT 
-      id,
-      name,
-      address
+    SELECT id, name, address
     FROM agencies
     ${where}
     ORDER BY name ASC
@@ -186,9 +182,7 @@ export async function markAgencyMessagesRead(conversationId) {
   );
 }
 
-// ✅ NEW: Unsend (soft delete)
 export async function deleteMessageForAll(conversationId, messageId, userId, role) {
-  // Only allow deleting own message
   const [rows] = await db.query(
     `
     SELECT id, sender_id, sender_role
@@ -216,4 +210,53 @@ export async function deleteMessageForAll(conversationId, messageId, userId, rol
   );
 
   return { ok: true };
+}
+
+export async function deleteConversationForTourist({ conversationId, touristId, onlyIfEmpty }) {
+  if (!conversationId || !touristId) return { ok: false, reason: "bad_request" };
+
+  const [convos] = await db.query(
+    `
+    SELECT id, tourist_id
+    FROM chat_conversations
+    WHERE id = ?
+    LIMIT 1
+    `,
+    [conversationId]
+  );
+
+  const convo = convos[0];
+  if (!convo) return { ok: false, reason: "not_found" };
+  if (Number(convo.tourist_id) !== Number(touristId)) return { ok: false, reason: "not_allowed" };
+
+  const [[{ total }]] = await db.query(
+    `
+    SELECT COUNT(*) AS total
+    FROM chat_messages
+    WHERE conversation_id = ?
+    `,
+    [conversationId]
+  );
+
+  if (onlyIfEmpty && Number(total) > 0) return { ok: false, reason: "not_empty" };
+
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    await conn.query(`DELETE FROM chat_messages WHERE conversation_id = ?`, [conversationId]);
+    await conn.query(`DELETE FROM chat_conversations WHERE id = ?`, [conversationId]);
+
+    await conn.commit();
+    return { ok: true };
+  } catch (e) {
+    try {
+      await conn.rollback();
+    } catch {
+      // ignore
+    }
+    throw e;
+  } finally {
+    conn.release();
+  }
 }

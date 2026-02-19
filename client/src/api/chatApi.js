@@ -1,4 +1,3 @@
-// client/src/api/chatApi.js
 import apiClient from "./apiClient";
 
 export async function fetchMyConversations(token) {
@@ -77,4 +76,24 @@ export async function deleteMessage(token, conversationId, messageId) {
     { headers: { Authorization: `Bearer ${token}` } }
   );
   return res.data; // { ok: true }
+}
+
+/**
+ * Delete a whole conversation (Messenger-style).
+ * If onlyIfEmpty=true, backend deletes ONLY when it has 0 messages.
+ */
+export async function deleteConversation(token, conversationId, { onlyIfEmpty = false } = {}) {
+  const sp = new URLSearchParams();
+  if (onlyIfEmpty) sp.set("onlyIfEmpty", "1");
+
+  const qs = sp.toString();
+  const url = qs
+    ? `/chat/conversations/${conversationId}?${qs}`
+    : `/chat/conversations/${conversationId}`;
+
+  const res = await apiClient.delete(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  return res.data; // { ok: true } OR { ok:false, reason:"not_empty" }
 }

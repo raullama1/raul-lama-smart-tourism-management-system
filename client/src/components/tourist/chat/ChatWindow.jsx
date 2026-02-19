@@ -1,7 +1,6 @@
-// client/src/components/tourist/chat/ChatWindow.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 
-function ConfirmModal({ open, title, message, onCancel, onConfirm }) {
+function ConfirmModal({ open, title, message, dangerText = "Delete", onCancel, onConfirm }) {
   if (!open) return null;
 
   return (
@@ -24,7 +23,7 @@ function ConfirmModal({ open, title, message, onCancel, onConfirm }) {
             onClick={onConfirm}
             className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
           >
-            Unsend
+            {dangerText}
           </button>
         </div>
       </div>
@@ -43,34 +42,32 @@ export default function ChatWindow({
   onTyping,
   onStopTyping,
   onDeleteMessage,
+  onDeleteConversation,
 }) {
   const [text, setText] = useState("");
 
-  // Menu + confirm
   const [openMenuId, setOpenMenuId] = useState(null);
-  const [confirm, setConfirm] = useState({ open: false, messageId: null });
+  const [confirmUnsend, setConfirmUnsend] = useState({ open: false, messageId: null });
 
-  // Scrollable messages container
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  const [confirmDeleteChat, setConfirmDeleteChat] = useState(false);
+
   const listRef = useRef(null);
 
   const typingTimerRef = useRef(null);
   const typingActiveRef = useRef(false);
 
-  // Menu close delay timer
   const menuCloseTimerRef = useRef(null);
 
   const scheduleCloseMenu = () => {
     if (menuCloseTimerRef.current) clearTimeout(menuCloseTimerRef.current);
-    menuCloseTimerRef.current = setTimeout(() => {
-      setOpenMenuId(null);
-    }, 350);
+    menuCloseTimerRef.current = setTimeout(() => setOpenMenuId(null), 350);
   };
 
   const cancelCloseMenu = () => {
     if (menuCloseTimerRef.current) clearTimeout(menuCloseTimerRef.current);
   };
 
-  // Scroll refs
   const prevCountRef = useRef(0);
   const prevFirstIdRef = useRef(null);
   const prevLastIdRef = useRef(null);
@@ -83,16 +80,17 @@ export default function ChatWindow({
     return addr ? `Nepal • ${addr}` : "Nepal";
   }, [selected]);
 
-  // Close menu only when clicking outside / Esc
   useEffect(() => {
     const onDoc = (e) => {
-      // If click is not inside any menu/button wrapper => close
       if (!e.target.closest?.("[data-msgmenu]")) setOpenMenuId(null);
+      if (!e.target.closest?.("[data-headmenu]")) setHeaderMenuOpen(false);
     };
     const onKey = (e) => {
       if (e.key === "Escape") {
         setOpenMenuId(null);
-        setConfirm({ open: false, messageId: null });
+        setConfirmUnsend({ open: false, messageId: null });
+        setHeaderMenuOpen(false);
+        setConfirmDeleteChat(false);
       }
     };
     document.addEventListener("mousedown", onDoc);
@@ -104,10 +102,6 @@ export default function ChatWindow({
     };
   }, []);
 
-  // Keep scroll inside chat
-  // - First load of chat: go bottom
-  // - New message: go bottom
-  // - Load older (prepend): preserve position
   useEffect(() => {
     const box = listRef.current;
     if (!box) return;
@@ -143,7 +137,6 @@ export default function ChatWindow({
     prevScrollHeightRef.current = box.scrollHeight;
   }, [messages, typingText, selected?.conversation_id]);
 
-  // When switching chat, reset + scroll to bottom (latest) once messages arrive
   useEffect(() => {
     prevCountRef.current = 0;
     prevFirstIdRef.current = null;
@@ -152,7 +145,9 @@ export default function ChatWindow({
 
     typingActiveRef.current = false;
     setOpenMenuId(null);
-    setConfirm({ open: false, messageId: null });
+    setConfirmUnsend({ open: false, messageId: null });
+    setHeaderMenuOpen(false);
+    setConfirmDeleteChat(false);
 
     if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
     if (menuCloseTimerRef.current) clearTimeout(menuCloseTimerRef.current);
@@ -221,9 +216,7 @@ export default function ChatWindow({
             {title?.[0]?.toUpperCase() || "A"}
           </div>
           <div>
-            <div className="font-semibold text-gray-900 text-sm md:text-base">
-              {title}
-            </div>
+            <div className="font-semibold text-gray-900 text-sm md:text-base">{title}</div>
             <div className="text-[11px] text-gray-500">
               {new Date().toLocaleDateString("en-GB", {
                 weekday: "short",
@@ -235,14 +228,39 @@ export default function ChatWindow({
           </div>
         </div>
 
-        <div className="text-[11px] text-emerald-900/70">{subtitle}</div>
+        <div className="flex items-center gap-3">
+          <div className="text-[11px] text-emerald-900/70">{subtitle}</div>
+
+          <div className="relative" data-headmenu>
+            <button
+              type="button"
+              onClick={() => setHeaderMenuOpen((v) => !v)}
+              className="h-9 w-9 rounded-full border border-emerald-200 bg-white text-emerald-900 hover:bg-emerald-50 flex items-center justify-center"
+              title="Menu"
+            >
+              ⋯
+            </button>
+
+            {headerMenuOpen && (
+              <div className="absolute right-0 mt-2 w-44 rounded-xl border border-gray-100 bg-white shadow-lg overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHeaderMenuOpen(false);
+                    setConfirmDeleteChat(true);
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                >
+                  Delete chat
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Messages */}
-      <div
-        ref={listRef}
-        className="flex-1 overflow-y-auto px-4 md:px-5 py-4 space-y-3 bg-white"
-      >
+      <div ref={listRef} className="flex-1 overflow-y-auto px-4 md:px-5 py-4 space-y-3 bg-white">
         {hasMore && (
           <div className="flex justify-center">
             <button
@@ -256,7 +274,8 @@ export default function ChatWindow({
         )}
 
         {loading ? (
-          <div className="text-sm text-gray-500">Loading messages...</div>
+          // <div className="text-sm text-gray-500">Loading messages...</div>
+          <div className="text-sm text-gray-500">No messages yet. Say hello</div>
         ) : messages.length === 0 ? (
           <div className="text-sm text-gray-500">No messages yet. Say hello</div>
         ) : (
@@ -265,12 +284,8 @@ export default function ChatWindow({
             const isDeleted = Number(m.is_deleted || 0) === 1;
 
             return (
-              <div
-                key={m.id}
-                className={`flex ${mine ? "justify-end" : "justify-start"}`}
-              >
+              <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                 <div className="relative group max-w-[80%]">
-                  {/* Bubble */}
                   <div
                     className={`rounded-2xl px-4 py-3 text-sm leading-relaxed
                       ${
@@ -279,8 +294,7 @@ export default function ChatWindow({
                           : mine
                           ? "bg-emerald-700 text-white"
                           : "bg-emerald-100 text-emerald-900"
-                      }
-                    `}
+                      }`}
                   >
                     <div className="whitespace-pre-line">
                       {isDeleted ? "This message was deleted" : m.message}
@@ -288,11 +302,7 @@ export default function ChatWindow({
 
                     <div
                       className={`mt-1 text-[10px] ${
-                        isDeleted
-                          ? "text-gray-400"
-                          : mine
-                          ? "text-white/70"
-                          : "text-emerald-900/60"
+                        isDeleted ? "text-gray-400" : mine ? "text-white/70" : "text-emerald-900/60"
                       }`}
                     >
                       {new Date(m.created_at).toLocaleTimeString("en-GB", {
@@ -302,7 +312,6 @@ export default function ChatWindow({
                     </div>
                   </div>
 
-                  {/* Three-dot menu (delayed close on hover out) */}
                   {mine && !isDeleted && !String(m.id).startsWith("tmp-") && (
                     <div
                       className="absolute -left-10 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition"
@@ -312,9 +321,7 @@ export default function ChatWindow({
                     >
                       <button
                         type="button"
-                        onClick={() =>
-                          setOpenMenuId((prev) => (prev === m.id ? null : m.id))
-                        }
+                        onClick={() => setOpenMenuId((prev) => (prev === m.id ? null : m.id))}
                         className="h-8 w-8 rounded-full border border-gray-100 bg-white text-gray-700 hover:bg-gray-50 flex items-center justify-center shadow-sm"
                         title="More"
                       >
@@ -327,7 +334,7 @@ export default function ChatWindow({
                             type="button"
                             onClick={() => {
                               setOpenMenuId(null);
-                              setConfirm({ open: true, messageId: m.id });
+                              setConfirmUnsend({ open: true, messageId: m.id });
                             }}
                             className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                           >
@@ -343,9 +350,7 @@ export default function ChatWindow({
           })
         )}
 
-        {typingText ? (
-          <div className="text-xs text-gray-500 italic">{typingText}</div>
-        ) : null}
+        {typingText ? <div className="text-xs text-gray-500 italic">{typingText}</div> : null}
       </div>
 
       {/* Input */}
@@ -380,16 +385,29 @@ export default function ChatWindow({
         </div>
       </div>
 
-      {/* Confirm modal */}
       <ConfirmModal
-        open={confirm.open}
+        open={confirmUnsend.open}
         title="Unsend message?"
         message="This will remove the message for everyone in this chat."
-        onCancel={() => setConfirm({ open: false, messageId: null })}
+        dangerText="Unsend"
+        onCancel={() => setConfirmUnsend({ open: false, messageId: null })}
         onConfirm={() => {
-          const id = confirm.messageId;
-          setConfirm({ open: false, messageId: null });
+          const id = confirmUnsend.messageId;
+          setConfirmUnsend({ open: false, messageId: null });
           if (id) onDeleteMessage?.(id);
+        }}
+      />
+
+      <ConfirmModal
+        open={confirmDeleteChat}
+        title="Delete this chat?"
+        message="This will permanently delete the whole conversation and all messages."
+        dangerText="Delete"
+        onCancel={() => setConfirmDeleteChat(false)}
+        onConfirm={() => {
+          setConfirmDeleteChat(false);
+          const convoId = selected?.conversation_id;
+          if (convoId) onDeleteConversation?.(convoId);
         }}
       />
     </section>

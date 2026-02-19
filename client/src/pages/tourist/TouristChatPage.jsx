@@ -1,4 +1,3 @@
-// client/src/pages/tourist/TouristChatPage.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import NavbarTourist from "../../components/tourist/NavbarTourist";
 import FooterTourist from "../../components/tourist/FooterTourist";
@@ -13,8 +12,29 @@ import {
   sendMessage,
   markRead,
   deleteMessage,
+  deleteConversation,
 } from "../../api/chatApi";
 import { getSocket } from "../../socket";
+
+const PAGE_LIMIT = 20;
+
+function getConvoId(c) {
+  const v = c?.conversation_id ?? c?.conversationId ?? c?.id;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function getAgencyIdFromConvo(c) {
+  const v = c?.agency_id ?? c?.agencyId ?? c?.agency?.id;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function hasAnyMessagePreview(c) {
+  const last = String(c?.last_message || "").trim();
+  const at = String(c?.last_message_at || "").trim();
+  return Boolean(last || at);
+}
 
 export default function TouristChatPage() {
   const { token } = useAuth();
@@ -23,13 +43,13 @@ export default function TouristChatPage() {
   const [convos, setConvos] = useState([]);
 
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState(null);
+  const [selectedId, setSelectedId] = useState(null);
 
   const [messages, setMessages] = useState([]);
   const [msgLoading, setMsgLoading] = useState(false);
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 20,
+    limit: PAGE_LIMIT,
     hasMore: false,
   });
 
@@ -37,62 +57,134 @@ export default function TouristChatPage() {
   const [typingText, setTypingText] = useState("");
 
   const socketRef = useRef(null);
-  const selectedRef = useRef(null);
+  const activeConvoReqRef = useRef(0);
 
+  const selectedIdRef = useRef(null);
   useEffect(() => {
-    selectedRef.current = selected;
-  }, [selected]);
+    selectedIdRef.current = selectedId ? Number(selectedId) : null;
+  }, [selectedId]);
 
-  const loadConvos = async () => {
+  const paginationRef = useRef(pagination);
+  useEffect(() => {
+    paginationRef.current = pagination;
+  }, [pagination]);
+
+  const messageCacheRef = useRef(new Map());
+
+  // Conversations created/opened but still empty (no message ever sent/received)
+  const pendingEmptyConvosRef = useRef(new Set());
+
+  const writeCache = (conversationId, nextMessages, nextPagination) => {
+    if (!conversationId) return;
+    messageCacheRef.current.set(Number(conversationId), {
+      messages: nextMessages || [],
+      pagination: nextPagination || { page: 1, limit: PAGE_LIMIT, hasMore: false },
+      lastUpdatedAt: Date.now(),
+    });
+  };
+
+  const readCache = (conversationId) => {
+    if (!conversationId) return null;
+    return messageCacheRef.current.get(Number(conversationId)) || null;
+  };
+
+  const clearCacheFor = (conversationId) => {
+    if (!conversationId) return;
+    messageCacheRef.current.delete(Number(conversationId));
+  };
+
+  const markConvoNotEmpty = (conversationId) => {
+    if (!conversationId) return;
+    pendingEmptyConvosRef.current.delete(Number(conversationId));
+  };
+
+  const loadConvos = async ({ silent = false } = {}) => {
     if (!token) return;
+
     try {
-      setLoadingConvos(true);
+      if (!silent) setLoadingConvos(true);
       const res = await fetchMyConversations(token);
-      setConvos(res.data || []);
+      const list = res.data || [];
+      setConvos(list);
     } catch (e) {
       console.error("loadConvos error", e);
       setConvos([]);
     } finally {
-      setLoadingConvos(false);
+      if (!silent) setLoadingConvos(false);
     }
   };
 
   useEffect(() => {
-    loadConvos();
+    loadConvos({ silent: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  const loadMessagesPage = async (conversationId, page) => {
+  const markConversationRead = async (conversationId) => {
     if (!token || !conversationId) return;
+
     try {
-      setMsgLoading(true);
-      const res = await fetchMessages(token, conversationId, { page, limit: 20 });
-
-      if (page > 1) {
-        setMessages((prev) => [...(res.messages || []), ...(prev || [])]);
-      } else {
-        setMessages(res.messages || []);
-      }
-
-      setPagination(res.pagination || { page, limit: 20, hasMore: false });
-
       if (socketRef.current?.connected) {
         socketRef.current.emit("chat:markRead", { conversationId });
       } else {
         await markRead(token, conversationId);
       }
+    } catch (e) {
+      console.error("markConversationRead error", e);
+    }
 
-      loadConvos();
+    setConvos((prev) =>
+      (prev || []).map((c) => {
+        const id = getConvoId(c);
+        return Number(id) === Number(conversationId) ? { ...c, unread_count: 0 } : c;
+      })
+    );
+  };
+
+  const loadMessagesPage = async (conversationId, page, { silent = false } = {}) => {
+    if (!token || !conversationId) return;
+
+    const reqId = ++activeConvoReqRef.current;
+
+    try {
+      if (!silent) setMsgLoading(true);
+
+      const res = await fetchMessages(token, conversationId, {
+        page,
+        limit: PAGE_LIMIT,
+      });
+
+      if (reqId !== activeConvoReqRef.current) return;
+
+      let nextMessages = [];
+      if (page > 1) {
+        nextMessages = [...(res.messages || []), ...(messages || [])];
+        setMessages(nextMessages);
+      } else {
+        nextMessages = res.messages || [];
+        setMessages(nextMessages);
+      }
+
+      const nextPagination = res.pagination || { page, limit: PAGE_LIMIT, hasMore: false };
+      setPagination(nextPagination);
+
+      writeCache(conversationId, nextMessages, nextPagination);
+
+      if ((nextMessages || []).length > 0) markConvoNotEmpty(conversationId);
+
+      await markConversationRead(conversationId);
     } catch (e) {
       console.error("loadMessagesPage error", e);
-      setMessages([]);
-      setPagination({ page: 1, limit: 20, hasMore: false });
+
+      if (reqId === activeConvoReqRef.current) {
+        setMessages([]);
+        setPagination({ page: 1, limit: PAGE_LIMIT, hasMore: false });
+        clearCacheFor(conversationId);
+      }
     } finally {
-      setMsgLoading(false);
+      if (!silent && reqId === activeConvoReqRef.current) setMsgLoading(false);
     }
   };
 
-  // Socket init (shared socket)
   useEffect(() => {
     if (!token) return;
 
@@ -104,48 +196,52 @@ export default function TouristChatPage() {
     };
 
     const onChatMessage = ({ conversationId, message }) => {
-      // Update sidebar preview
+      markConvoNotEmpty(conversationId);
+
       setConvos((prev) => {
         const next = [...(prev || [])];
-        const idx = next.findIndex(
-          (x) => Number(x.conversation_id) === Number(conversationId)
-        );
-
+        const idx = next.findIndex((x) => Number(getConvoId(x)) === Number(conversationId));
         if (idx >= 0) {
-          next[idx] = {
+          const updated = {
             ...next[idx],
-            last_message: message?.is_deleted
-              ? "This message was deleted"
-              : message?.message,
+            last_message: message?.is_deleted ? "This message was deleted" : message?.message,
             last_message_at: message?.created_at,
           };
+
+          const isOpen = Number(selectedIdRef.current) === Number(conversationId);
+          if (!isOpen && message?.sender_role !== "tourist") {
+            updated.unread_count = Number(updated.unread_count || 0) + 1;
+          }
+
+          next[idx] = updated;
           const [item] = next.splice(idx, 1);
           next.unshift(item);
         }
         return next;
       });
 
-      const cur = selectedRef.current;
-      const isOpen =
-        cur?.conversation_id &&
-        Number(cur.conversation_id) === Number(conversationId);
-
+      const isOpen = Number(selectedIdRef.current) === Number(conversationId);
       if (!isOpen) return;
 
-      // Prevent double append for my own message
       if (message?.sender_role === "tourist") return;
 
-      setMessages((prev) => [...(prev || []), message]);
+      setMessages((prev) => {
+        const next = [...(prev || []), message];
+        writeCache(conversationId, next, paginationRef.current);
+        return next;
+      });
+
+      markConversationRead(conversationId);
     };
 
     const onTyping = ({ conversationId, name }) => {
-      if (Number(selectedRef.current?.conversation_id) === Number(conversationId)) {
+      if (Number(selectedIdRef.current) === Number(conversationId)) {
         setTypingText(`${name || "Agency"} is typing...`);
       }
     };
 
     const onStopTyping = ({ conversationId }) => {
-      if (Number(selectedRef.current?.conversation_id) === Number(conversationId)) {
+      if (Number(selectedIdRef.current) === Number(conversationId)) {
         setTypingText("");
       }
     };
@@ -153,28 +249,39 @@ export default function TouristChatPage() {
     const onRead = ({ conversationId }) => {
       setConvos((prev) =>
         (prev || []).map((c) =>
-          Number(c.conversation_id) === Number(conversationId)
-            ? { ...c, unread_count: 0 }
-            : c
+          Number(getConvoId(c)) === Number(conversationId) ? { ...c, unread_count: 0 } : c
         )
       );
     };
 
     const onDeleted = ({ conversationId, messageId }) => {
-      const cur = selectedRef.current;
-      const isOpen =
-        cur?.conversation_id &&
-        Number(cur.conversation_id) === Number(conversationId);
+      const isOpen = Number(selectedIdRef.current) === Number(conversationId);
 
       if (isOpen) {
-        setMessages((prev) =>
-          (prev || []).map((m) =>
+        setMessages((prev) => {
+          const next = (prev || []).map((m) =>
             Number(m.id) === Number(messageId) ? { ...m, is_deleted: 1 } : m
-          )
-        );
+          );
+          writeCache(conversationId, next, paginationRef.current);
+          return next;
+        });
+      } else {
+        const cached = readCache(conversationId);
+        if (cached?.messages?.length) {
+          const next = cached.messages.map((m) =>
+            Number(m.id) === Number(messageId) ? { ...m, is_deleted: 1 } : m
+          );
+          writeCache(conversationId, next, cached.pagination);
+        }
       }
 
-      loadConvos();
+      setConvos((prev) =>
+        (prev || []).map((c) =>
+          Number(getConvoId(c)) === Number(conversationId)
+            ? { ...c, last_message: "This message was deleted" }
+            : c
+        )
+      );
     };
 
     s.on("auth_error", onAuthError);
@@ -184,7 +291,6 @@ export default function TouristChatPage() {
     s.on("chat:read", onRead);
     s.on("chat:deleted", onDeleted);
 
-    // IMPORTANT: do NOT disconnect shared socket
     return () => {
       try {
         s.off("auth_error", onAuthError);
@@ -198,30 +304,73 @@ export default function TouristChatPage() {
       }
       socketRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
+  const selected = useMemo(() => {
+    if (!selectedId) return null;
+    return (convos || []).find((c) => Number(getConvoId(c)) === Number(selectedId));
+  }, [convos, selectedId]);
+
+  const deleteEmptyIfPending = async (conversationId) => {
+    if (!token || !conversationId) return;
+
+    try {
+      const res = await deleteConversation(token, conversationId, { onlyIfEmpty: true });
+      if (res?.ok) {
+        pendingEmptyConvosRef.current.delete(Number(conversationId));
+        clearCacheFor(conversationId);
+      }
+    } catch (e) {
+      console.error("deleteEmptyIfPending error", e);
+    }
+  };
+
   const handleSelect = (c) => {
-    const prevId = selectedRef.current?.conversation_id;
+    const nextId = getConvoId(c);
+    if (!nextId) return;
+
+    const prevId = selectedIdRef.current;
+
+    if (prevId && pendingEmptyConvosRef.current.has(Number(prevId))) {
+      const prevItem = (convos || []).find((x) => Number(getConvoId(x)) === Number(prevId));
+      if (prevItem && !hasAnyMessagePreview(prevItem)) {
+        setConvos((prev) => (prev || []).filter((x) => Number(getConvoId(x)) !== Number(prevId)));
+        deleteEmptyIfPending(prevId);
+      } else {
+        pendingEmptyConvosRef.current.delete(Number(prevId));
+      }
+    }
+
     if (prevId && socketRef.current?.connected) {
       socketRef.current.emit("chat:leave", { conversationId: prevId });
     }
 
-    setSelected(c);
+    setSelectedId(nextId);
     setTypingText("");
-    setMessages([]);
 
-    if (socketRef.current?.connected) {
-      socketRef.current.emit("chat:join", { conversationId: c.conversation_id });
+    const cached = readCache(nextId);
+    if (cached) {
+      setMessages(cached.messages || []);
+      setPagination(cached.pagination || { page: 1, limit: PAGE_LIMIT, hasMore: false });
+      setMsgLoading(false);
+    } else {
+      setMessages([]);
+      setPagination({ page: 1, limit: PAGE_LIMIT, hasMore: false });
+      setMsgLoading(true);
     }
 
-    loadMessagesPage(c.conversation_id, 1);
+    if (socketRef.current?.connected) {
+      socketRef.current.emit("chat:join", { conversationId: nextId });
+    }
+
+    loadMessagesPage(nextId, 1, { silent: !!cached });
   };
 
   const handleSend = async (text) => {
-    if (!selected?.conversation_id || !token) return;
+    if (!selectedId || !token) return;
 
-    const conversationId = selected.conversation_id;
+    const conversationId = Number(selectedId);
+    markConvoNotEmpty(conversationId);
 
     const tempId = `tmp-${Date.now()}`;
     const optimistic = {
@@ -232,23 +381,47 @@ export default function TouristChatPage() {
       created_at: new Date().toISOString(),
       is_deleted: 0,
     };
-    setMessages((prev) => [...(prev || []), optimistic]);
+
+    setMessages((prev) => {
+      const next = [...(prev || []), optimistic];
+      writeCache(conversationId, next, paginationRef.current);
+      return next;
+    });
+
+    setConvos((prev) => {
+      const next = [...(prev || [])];
+      const idx = next.findIndex((x) => Number(getConvoId(x)) === Number(conversationId));
+      if (idx >= 0) {
+        next[idx] = {
+          ...next[idx],
+          last_message: text,
+          last_message_at: new Date().toISOString(),
+        };
+        const [item] = next.splice(idx, 1);
+        next.unshift(item);
+      }
+      return next;
+    });
 
     if (socketRef.current?.connected) {
-      socketRef.current.emit(
-        "chat:send",
-        { conversationId, message: text },
-        (ack) => {
-          if (!ack?.ok) {
-            setMessages((prev) => (prev || []).filter((m) => m.id !== tempId));
-            alert("Failed to send message.");
-            return;
-          }
-          const saved = ack.message;
-          setMessages((prev) => (prev || []).map((m) => (m.id === tempId ? saved : m)));
-          loadConvos();
+      socketRef.current.emit("chat:send", { conversationId, message: text }, (ack) => {
+        if (!ack?.ok) {
+          setMessages((prev) => {
+            const next = (prev || []).filter((m) => m.id !== tempId);
+            writeCache(conversationId, next, paginationRef.current);
+            return next;
+          });
+          alert("Failed to send message.");
+          return;
         }
-      );
+
+        const saved = ack.message;
+        setMessages((prev) => {
+          const next = (prev || []).map((m) => (m.id === tempId ? saved : m));
+          writeCache(conversationId, next, paginationRef.current);
+          return next;
+        });
+      });
       return;
     }
 
@@ -257,43 +430,50 @@ export default function TouristChatPage() {
       const saved = res.message;
 
       if (!saved) {
-        setMessages((prev) => (prev || []).filter((m) => m.id !== tempId));
+        setMessages((prev) => {
+          const next = (prev || []).filter((m) => m.id !== tempId);
+          writeCache(conversationId, next, paginationRef.current);
+          return next;
+        });
         alert("Failed to send message.");
         return;
       }
 
-      setMessages((prev) => (prev || []).map((m) => (m.id === tempId ? saved : m)));
-      loadConvos();
+      setMessages((prev) => {
+        const next = (prev || []).map((m) => (m.id === tempId ? saved : m));
+        writeCache(conversationId, next, paginationRef.current);
+        return next;
+      });
     } catch (e) {
       console.error("send message error", e);
-      setMessages((prev) => (prev || []).filter((m) => m.id !== tempId));
+      setMessages((prev) => {
+        const next = (prev || []).filter((m) => m.id !== tempId);
+        writeCache(conversationId, next, paginationRef.current);
+        return next;
+      });
       alert("Failed to send message.");
     }
   };
 
   const handleDeleteMessage = async (messageId) => {
-    const conversationId = selectedRef.current?.conversation_id;
+    const conversationId = selectedIdRef.current;
     if (!conversationId || !messageId || !token) return;
 
-    setMessages((prev) =>
-      (prev || []).map((m) =>
+    setMessages((prev) => {
+      const next = (prev || []).map((m) =>
         Number(m.id) === Number(messageId) ? { ...m, is_deleted: 1 } : m
-      )
-    );
+      );
+      writeCache(conversationId, next, paginationRef.current);
+      return next;
+    });
 
     if (socketRef.current?.connected) {
-      socketRef.current.emit(
-        "chat:delete",
-        { conversationId, messageId },
-        (ack) => {
-          if (!ack?.ok) {
-            alert("Failed to unsend message.");
-            loadMessagesPage(conversationId, 1);
-            return;
-          }
-          loadConvos();
+      socketRef.current.emit("chat:delete", { conversationId, messageId }, (ack) => {
+        if (!ack?.ok) {
+          alert("Failed to unsend message.");
+          loadMessagesPage(conversationId, 1);
         }
-      );
+      });
       return;
     }
 
@@ -302,9 +482,7 @@ export default function TouristChatPage() {
       if (!res?.ok) {
         alert("Failed to unsend message.");
         loadMessagesPage(conversationId, 1);
-        return;
       }
-      loadConvos();
     } catch (e) {
       console.error("delete message error", e);
       alert("Failed to unsend message.");
@@ -312,10 +490,43 @@ export default function TouristChatPage() {
     }
   };
 
+  const handleDeleteConversation = async (conversationId) => {
+    const cid = Number(conversationId);
+    if (!cid || !token) return;
+
+    const wasOpen = Number(selectedIdRef.current) === cid;
+
+    setConvos((prev) => (prev || []).filter((c) => Number(getConvoId(c)) !== cid));
+    pendingEmptyConvosRef.current.delete(cid);
+    clearCacheFor(cid);
+
+    if (wasOpen) {
+      if (socketRef.current?.connected) {
+        socketRef.current.emit("chat:leave", { conversationId: cid });
+      }
+      setSelectedId(null);
+      setMessages([]);
+      setPagination({ page: 1, limit: PAGE_LIMIT, hasMore: false });
+      setTypingText("");
+    }
+
+    try {
+      const res = await deleteConversation(token, cid);
+      if (!res?.ok) {
+        alert("Failed to delete chat.");
+        loadConvos({ silent: true });
+      }
+    } catch (e) {
+      console.error("delete conversation error", e);
+      alert("Failed to delete chat.");
+      loadConvos({ silent: true });
+    }
+  };
+
   const loadOlder = () => {
-    if (!selected?.conversation_id) return;
+    if (!selectedId) return;
     if (!pagination?.hasMore) return;
-    loadMessagesPage(selected.conversation_id, (pagination.page || 1) + 1);
+    loadMessagesPage(Number(selectedId), (pagination.page || 1) + 1);
   };
 
   const filteredConvos = useMemo(() => {
@@ -324,27 +535,82 @@ export default function TouristChatPage() {
     if (!q) return convos;
 
     return (convos || []).filter((c) => {
-      const name = (c.agency_name || c.name || "").toLowerCase();
-      const last = (c.last_message || "").toLowerCase();
+      const name = String(c.agency_name || c.name || "").toLowerCase();
+      const last = String(c.last_message || "").toLowerCase();
       return name.includes(q) || last.includes(q);
     });
   }, [convos, loadingConvos, search]);
 
-  const handlePickAgency = async (agencyId) => {
+  const excludeAgencyIds = useMemo(() => {
+    return (convos || [])
+      .map((c) => getAgencyIdFromConvo(c))
+      .filter((x) => Number.isFinite(Number(x)));
+  }, [convos]);
+
+  // ✅ UPDATED: receives full agency object from NewChatModal
+  const handlePickAgency = async (agency) => {
     try {
-      const res = await startConversation(token, agencyId);
       setShowNewChat(false);
 
-      await loadConvos();
+      const agencyId = Number(agency?.id);
+      const agencyName = String(agency?.name || "Agency");
+      const agencyAddress = String(agency?.address || "Nepal");
 
-      const convoId = res?.conversation?.id;
-      if (convoId) {
-        const fresh = await fetchMyConversations(token);
-        const list = fresh.data || [];
-        setConvos(list);
-        const found = list.find((x) => Number(x.conversation_id) === Number(convoId));
-        if (found) handleSelect(found);
+      if (!agencyId) {
+        alert("Invalid agency.");
+        return;
       }
+
+      // If chat already exists with this agency, open it
+      const existing = (convos || []).find(
+        (c) => Number(getAgencyIdFromConvo(c)) === Number(agencyId)
+      );
+      if (existing) {
+        handleSelect(existing);
+        return;
+      }
+
+      // Create on server
+      const res = await startConversation(token, agencyId);
+
+      const convoId =
+        Number(res?.conversation?.id) ||
+        Number(res?.conversation_id) ||
+        Number(res?.conversationId) ||
+        Number(res?.id);
+
+      if (!convoId) {
+        alert("Failed to start chat.");
+        return;
+      }
+
+      pendingEmptyConvosRef.current.add(Number(convoId));
+
+      // Insert locally using agency object (instant correct name/address)
+      const newConvo = {
+        conversation_id: convoId,
+        agency_id: Number(agencyId),
+        agency_name: agencyName,
+        agency_address: agencyAddress,
+        last_message: "",
+        last_message_at: "",
+        unread_count: 0,
+      };
+
+      setConvos((prev) => [newConvo, ...(prev || [])]);
+
+      // Open immediately
+      setSelectedId(convoId);
+      setTypingText("");
+      setMessages([]);
+      setPagination({ page: 1, limit: PAGE_LIMIT, hasMore: false });
+      setMsgLoading(true);
+
+      if (socketRef.current?.connected) {
+        socketRef.current.emit("chat:join", { conversationId: convoId });
+      }
+
+      loadMessagesPage(convoId, 1, { silent: true });
     } catch (e) {
       console.error("start chat error", e);
       alert("Failed to start chat.");
@@ -372,7 +638,7 @@ export default function TouristChatPage() {
               search={search}
               onSearch={setSearch}
               conversations={filteredConvos}
-              selectedId={selected?.conversation_id}
+              selectedId={selectedId}
               onSelect={handleSelect}
               onStartNew={() => setShowNewChat(true)}
             />
@@ -388,12 +654,11 @@ export default function TouristChatPage() {
               onTyping={handleTyping}
               onStopTyping={handleStopTyping}
               onDeleteMessage={handleDeleteMessage}
+              onDeleteConversation={handleDeleteConversation}
             />
           </div>
 
-          {loadingConvos && (
-            <div className="mt-3 text-xs text-gray-500">Loading chats...</div>
-          )}
+          {loadingConvos && <div className="mt-3 text-xs text-gray-500">Loading chats...</div>}
         </div>
       </main>
 
@@ -403,6 +668,7 @@ export default function TouristChatPage() {
         open={showNewChat}
         onClose={() => setShowNewChat(false)}
         onPickAgency={handlePickAgency}
+        excludeAgencyIds={excludeAgencyIds}
       />
     </>
   );

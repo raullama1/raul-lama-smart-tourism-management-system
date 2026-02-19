@@ -1,5 +1,4 @@
-// client/src/pages/tourist/BookingsPage.jsx
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import NavbarTourist from "../../components/tourist/NavbarTourist";
 import FooterTourist from "../../components/tourist/FooterTourist";
 import { useAuth } from "../../context/AuthContext";
@@ -16,11 +15,13 @@ import {
 import { useNavigate } from "react-router-dom";
 import { toPublicImageUrl, FALLBACK_TOUR_IMG } from "../../utils/publicImageUrl";
 
+const PAGE_SIZE = 5;
+
 export default function BookingsPage() {
   const { token } = useAuth();
   const navigate = useNavigate();
 
-  const DEFAULT_FILTERS = { q: "", date: "All", status: "All" };
+  const DEFAULT_FILTERS = { q: "", date: "All", status: "All", sort: "Latest" };
 
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const [draft, setDraft] = useState(DEFAULT_FILTERS);
@@ -54,35 +55,107 @@ export default function BookingsPage() {
   const lastKeyRef = useRef("");
   const draftFirstRunRef = useRef(true);
 
-  const load = async (f = filters) => {
+  // First load flag (avoid artificial delay on first load)
+  const firstLoadRef = useRef(true);
+
+  // Pagination + smooth scroll + fade
+  const userPagingRef = useRef(false);
+  const [page, setPage] = useState(1);
+
+  // Start hidden so first paint fades in (tbody only)
+  const [fadeState, setFadeState] = useState("out");
+
+  useEffect(() => {
+    const t = setTimeout(() => setFadeState("in"), 40);
+    return () => clearTimeout(t);
+  }, []);
+
+  const scrollFullTop = useCallback(() => {
+    const start = window.scrollY || window.pageYOffset;
+    const duration = 650;
+
+    const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+
+    let startTime = null;
+
+    const animate = (time) => {
+      if (!startTime) startTime = time;
+      const progress = Math.min((time - startTime) / duration, 1);
+      const eased = easeOutCubic(progress);
+
+      window.scrollTo(0, start * (1 - eased));
+
+      if (progress < 1) requestAnimationFrame(animate);
+    };
+
+    requestAnimationFrame(animate);
+  }, []);
+
+  useEffect(() => {
+    if (!userPagingRef.current) return;
+    if (loading) return;
+
+    scrollFullTop();
+    userPagingRef.current = false;
+  }, [page, loading, scrollFullTop]);
+
+  const displayStatus = (b) => {
+    if (b.payment_status === "Paid" && b.booking_status !== "Cancelled") {
+      return b.booking_status === "Completed" ? "Completed" : "Confirmed";
+    }
+    return b.booking_status;
+  };
+
+  const load = async (f = filters, { smoothSwap = false } = {}) => {
     if (!token) {
       setRows([]);
       setLoading(false);
+      requestAnimationFrame(() => setFadeState("in"));
       return;
     }
 
-    const key = JSON.stringify(f);
-    if (inFlightRef.current && lastKeyRef.current === key) return;
+    // Always fetch with status=All, because "Confirmed" is a UI-derived state.
+    const requestFilters = { ...f, status: "All" };
+    const key = JSON.stringify({
+      q: requestFilters.q,
+      date: requestFilters.date,
+      status: requestFilters.status,
+    });
+
+    if (inFlightRef.current) return;
+    if (lastKeyRef.current === key) return;
 
     try {
       inFlightRef.current = true;
       lastKeyRef.current = key;
 
+      if (smoothSwap) setFadeState("out");
       setLoading(true);
-      const res = await fetchMyBookings(f);
+
+      const res = await fetchMyBookings(requestFilters);
       const list = Array.isArray(res?.data) ? res.data : [];
+
+      // Only add delay for user-triggered smooth swap (NOT first load)
+      if (smoothSwap) await new Promise((r) => setTimeout(r, 140));
+
       setRows(list);
+      setPage(1);
+
+      requestAnimationFrame(() => setFadeState("in"));
     } catch (e) {
       console.error("Failed to load bookings", e);
       alert("Failed to load bookings.");
       setRows([]);
+      setPage(1);
+      requestAnimationFrame(() => setFadeState("in"));
     } finally {
       inFlightRef.current = false;
       setLoading(false);
+      firstLoadRef.current = false;
     }
   };
 
-  // ✅ Debounce only updates filters (NO load here)
+  // Debounce only updates filters (NO load here)
   useEffect(() => {
     if (draftFirstRunRef.current) {
       draftFirstRunRef.current = false;
@@ -91,35 +164,27 @@ export default function BookingsPage() {
 
     const id = setTimeout(() => {
       setFilters(draft);
+      setPage(1);
     }, 350);
 
     return () => clearTimeout(id);
-  }, [draft.q, draft.date, draft.status]);
+  }, [draft.q, draft.date, draft.status, draft.sort]);
 
-  // ✅ Single source of truth: load when token/filters change
+  // Load only when token / server-relevant filters change
   useEffect(() => {
     if (!token) {
       setRows([]);
       setLoading(false);
+      requestAnimationFrame(() => setFadeState("in"));
       return;
     }
-    load(filters);
+
+    // First load should be fast (no artificial delay)
+    const smooth = !firstLoadRef.current;
+    load(filters, { smoothSwap: smooth });
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, filters]);
-
-  const STATUS_STEPS = useMemo(() => ["Pending", "Approved", "Confirmed", "Completed"], []);
-
-  const stepIndex = (status) => {
-    const idx = STATUS_STEPS.indexOf(status);
-    return idx === -1 ? -1 : idx;
-  };
-
-  const displayStatus = (b) => {
-    if (b.payment_status === "Paid" && b.booking_status !== "Cancelled") {
-      return b.booking_status === "Completed" ? "Completed" : "Confirmed";
-    }
-    return b.booking_status;
-  };
+  }, [token, filters.q, filters.date]);
 
   const StatusBadge = ({ status }) => {
     const map = {
@@ -143,19 +208,6 @@ export default function BookingsPage() {
     );
   };
 
-  const StepChip = ({ active, children }) => (
-    <span
-      className={[
-        "inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold border",
-        active
-          ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-          : "bg-gray-50 text-gray-500 border-gray-200",
-      ].join(" ")}
-    >
-      {children}
-    </span>
-  );
-
   const PaymentChip = ({ paid }) => (
     <span
       className={[
@@ -171,7 +223,8 @@ export default function BookingsPage() {
 
   const actionBase =
     "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200";
-  const lift = "hover:-translate-y-[1px] hover:shadow-md active:translate-y-0 active:shadow-sm";
+  const lift =
+    "hover:-translate-y-[1px] hover:shadow-md active:translate-y-0 active:shadow-sm";
 
   const handleReset = () => {
     setDraft(DEFAULT_FILTERS);
@@ -183,7 +236,9 @@ export default function BookingsPage() {
     try {
       setBusyId(bookingId);
       await payBooking(bookingId);
-      setRows((prev) => prev.map((r) => (r.id === bookingId ? { ...r, payment_status: "Paid" } : r)));
+      setRows((prev) =>
+        prev.map((r) => (r.id === bookingId ? { ...r, payment_status: "Paid" } : r))
+      );
     } catch (e) {
       console.error("Pay failed", e);
       alert(e?.response?.data?.message || "Payment failed. Please try again.");
@@ -202,7 +257,12 @@ export default function BookingsPage() {
   };
 
   const closeCancelModal = () => {
-    setCancelModal({ open: false, bookingId: null, tourTitle: "", refCode: "" });
+    setCancelModal({
+      open: false,
+      bookingId: null,
+      tourTitle: "",
+      refCode: "",
+    });
   };
 
   const confirmCancel = async () => {
@@ -213,7 +273,9 @@ export default function BookingsPage() {
       setBusyId(bookingId);
       await cancelBooking(bookingId);
 
-      setRows((prev) => prev.map((r) => (r.id === bookingId ? { ...r, booking_status: "Cancelled" } : r)));
+      setRows((prev) =>
+        prev.map((r) => (r.id === bookingId ? { ...r, booking_status: "Cancelled" } : r))
+      );
       closeCancelModal();
     } catch (e) {
       console.error("Cancel failed", e);
@@ -225,7 +287,7 @@ export default function BookingsPage() {
 
   const SkeletonRow = ({ i }) => (
     <tr key={`sk-${i}`} className="animate-pulse">
-      <td className="px-4 py-4">
+      <td className="px-4 py-5">
         <div className="flex gap-3 items-center">
           <div className="h-12 w-16 rounded-xl bg-gray-200" />
           <div className="space-y-2">
@@ -234,19 +296,19 @@ export default function BookingsPage() {
           </div>
         </div>
       </td>
-      <td className="px-4 py-4">
+      <td className="px-4 py-5">
         <div className="h-3 w-32 bg-gray-200 rounded" />
       </td>
-      <td className="px-4 py-4">
+      <td className="px-4 py-5">
         <div className="h-3 w-28 bg-gray-200 rounded" />
       </td>
-      <td className="px-4 py-4">
+      <td className="px-4 py-5">
         <div className="h-6 w-28 bg-gray-200 rounded-full" />
       </td>
-      <td className="px-4 py-4">
+      <td className="px-4 py-5">
         <div className="h-6 w-20 bg-gray-200 rounded-full" />
       </td>
-      <td className="px-4 py-4">
+      <td className="px-4 py-5">
         <div className="flex gap-2 justify-end">
           <div className="h-9 w-28 bg-gray-200 rounded-xl" />
           <div className="h-9 w-28 bg-gray-100 rounded-xl" />
@@ -255,11 +317,105 @@ export default function BookingsPage() {
     </tr>
   );
 
+  const filteredRows = useMemo(() => {
+    const list = Array.isArray(rows) ? [...rows] : [];
+
+    const q = String(filters.q || "").trim().toLowerCase();
+    const status = filters.status;
+    const date = filters.date;
+
+    let out = list;
+
+    if (q) {
+      out = out.filter((b) => {
+        const t = String(b.tour_title || "").toLowerCase();
+        const a = String(b.agency_name || "").toLowerCase();
+        const r = String(b.ref_code || "").toLowerCase();
+        return t.includes(q) || a.includes(q) || r.includes(q);
+      });
+    }
+
+    if (date !== "All") {
+      const now = Date.now();
+      const days = date === "Last30" ? 30 : date === "Last90" ? 90 : 0;
+      if (days > 0) {
+        const since = now - days * 24 * 60 * 60 * 1000;
+        out = out.filter((b) => {
+          const ts = new Date(b.booking_date).getTime();
+          return Number.isFinite(ts) && ts >= since;
+        });
+      }
+    }
+
+    if (status !== "All") {
+      out = out.filter((b) => displayStatus(b) === status);
+    }
+
+    return out;
+  }, [rows, filters.q, filters.date, filters.status]);
+
+  const sortedRows = useMemo(() => {
+    const list = [...filteredRows];
+    const dir = filters.sort === "Oldest" ? 1 : -1;
+
+    list.sort((a, b) => {
+      const da = new Date(a.booking_date).getTime() || 0;
+      const db = new Date(b.booking_date).getTime() || 0;
+      return (da - db) * dir;
+    });
+
+    return list;
+  }, [filteredRows, filters.sort]);
+
+  const totalPages = useMemo(() => {
+    return Math.max(1, Math.ceil(sortedRows.length / PAGE_SIZE));
+  }, [sortedRows.length]);
+
+  const pageRows = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return sortedRows.slice(start, start + PAGE_SIZE);
+  }, [sortedRows, page]);
+
+  useEffect(() => {
+    setPage((p) => Math.min(p, totalPages));
+  }, [totalPages]);
+
+  const setSafePage = useCallback(
+    async (next, tp) => {
+      const n = Math.min(tp, Math.max(1, next));
+      if (n === page) return;
+
+      userPagingRef.current = true;
+
+      setFadeState("out");
+      await new Promise((r) => setTimeout(r, 140));
+
+      setPage(n);
+      requestAnimationFrame(() => setFadeState("in"));
+    },
+    [page]
+  );
+
+  const pagerBtn =
+    "px-4 py-2.5 rounded-2xl text-sm font-semibold border " +
+    "transition-all duration-300 ease-out transform active:scale-95 shadow-sm hover:shadow-md";
+
+  const pagerBtnEnabled =
+    "bg-white text-gray-900 border-gray-200 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-800 hover:-translate-y-0.5";
+
+  const pagerBtnDisabled =
+    "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed shadow-none";
+
+  // Fade ONLY body (keep header stable)
+  const fadeWrapClass = fadeState === "in" ? "opacity-100" : "opacity-0";
+  const transitionClass =
+    "transition-opacity duration-600 ease-[cubic-bezier(.22,1,.36,1)]";
+
   return (
     <>
       <NavbarTourist />
 
-      <main className="bg-[#e6f4ec] min-h-screen pt-6 pb-10">
+      <main className="bg-[#e6f4ec] pt-6 pb-6">
         <div className="max-w-6xl mx-auto px-4 md:px-6">
           <div className="bg-white border border-gray-100 rounded-2xl p-4 md:p-5 shadow-sm">
             <h1 className="text-lg md:text-xl font-semibold text-gray-900">Booking History</h1>
@@ -298,11 +454,20 @@ export default function BookingsPage() {
                 <option value="Cancelled">Cancelled</option>
               </select>
 
+              <select
+                value={draft.sort}
+                onChange={(e) => setDraft((p) => ({ ...p, sort: e.target.value }))}
+                className="w-full md:w-[170px] px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm"
+              >
+                <option value="Latest">Latest</option>
+                <option value="Oldest">Oldest</option>
+              </select>
+
               <button
                 onClick={handleReset}
                 className={[
-                  actionBase,
-                  lift,
+                  "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200",
+                  "hover:-translate-y-[1px] hover:shadow-md active:translate-y-0 active:shadow-sm",
                   "w-full md:w-auto justify-center border border-gray-200 bg-white text-gray-900 hover:bg-gray-50",
                 ].join(" ")}
               >
@@ -317,7 +482,11 @@ export default function BookingsPage() {
                 <div className="font-semibold text-gray-900">Please login to view bookings</div>
                 <button
                   onClick={() => navigate("/login")}
-                  className={[actionBase, lift, "mt-4 bg-emerald-700 text-white hover:bg-emerald-800"].join(" ")}
+                  className={[
+                    "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200",
+                    "hover:-translate-y-[1px] hover:shadow-md active:translate-y-0 active:shadow-sm",
+                    "mt-4 bg-emerald-700 text-white hover:bg-emerald-800",
+                  ].join(" ")}
                 >
                   Go to Login
                 </button>
@@ -336,30 +505,30 @@ export default function BookingsPage() {
                     </tr>
                   </thead>
 
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className={`divide-y divide-gray-100 ${transitionClass} ${fadeWrapClass}`}>
                     {loading ? (
-                      Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} i={i} />)
-                    ) : rows.length === 0 ? (
+                      Array.from({ length: PAGE_SIZE }).map((_, i) => <SkeletonRow key={i} i={i} />)
+                    ) : sortedRows.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="p-10 text-center text-sm text-gray-500">
                           No bookings found.
                         </td>
                       </tr>
                     ) : (
-                      rows.map((b) => {
+                      pageRows.map((b) => {
                         const cancelled = b.booking_status === "Cancelled";
                         const paid = b.payment_status === "Paid";
                         const unpaid = b.payment_status === "Unpaid";
 
                         const uiStatus = displayStatus(b);
                         const completed = uiStatus === "Completed";
-                        const sIdx = stepIndex(uiStatus);
-
                         const rowBusy = busyId === b.id;
 
+                        const canPay = unpaid && !cancelled && b.booking_status === "Approved";
+
                         return (
-                          <tr key={b.id} className="hover:bg-gray-50/50">
-                            <td className="px-4 py-4">
+                          <tr key={b.id} className="hover:bg-gray-50/60 transition-colors">
+                            <td className="px-4 py-5">
                               <div className="flex gap-3 items-center">
                                 <img
                                   src={toPublicImageUrl(b.tour_image_url) || FALLBACK_TOUR_IMG}
@@ -367,55 +536,41 @@ export default function BookingsPage() {
                                   className="h-12 w-16 rounded-xl object-cover border"
                                   onError={(e) => (e.currentTarget.src = FALLBACK_TOUR_IMG)}
                                 />
-                                <div>
-                                  <div className="font-semibold text-gray-900 leading-tight">{b.tour_title}</div>
-                                  <div className="text-xs text-gray-500 mt-1">Ref. #{b.ref_code}</div>
-                                </div>
-                              </div>
-                            </td>
-
-                            <td className="px-4 py-4">
-                              <div className="font-semibold text-gray-900">{b.agency_name}</div>
-                            </td>
-
-                            <td className="px-4 py-4 whitespace-nowrap">
-                              <div className="font-semibold text-gray-900">
-                                {new Date(b.booking_date).toLocaleDateString()}
-                              </div>
-                            </td>
-
-                            <td className="px-4 py-4">
-                              <div className="flex flex-col gap-2">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-[11px] text-gray-500 font-semibold">Current:</span>
-                                  <StatusBadge status={uiStatus} />
-                                </div>
-
-                                {!cancelled && (
-                                  <div className="flex flex-wrap gap-2">
-                                    {STATUS_STEPS.map((st, idx) => (
-                                      <StepChip key={st} active={sIdx >= idx}>
-                                        {st}
-                                      </StepChip>
-                                    ))}
+                                <div className="min-w-0">
+                                  <div className="font-semibold text-gray-900 leading-tight line-clamp-2">
+                                    {b.tour_title}
                                   </div>
-                                )}
+                                  <div className="text-xs text-gray-500 mt-1.5">Ref. #{b.ref_code}</div>
+                                </div>
                               </div>
                             </td>
 
-                            <td className="px-4 py-4">
+                            <td className="px-4 py-5 font-semibold text-gray-900">{b.agency_name}</td>
+
+                            <td className="px-4 py-5 whitespace-nowrap font-semibold text-gray-900">
+                              {new Date(b.booking_date).toLocaleDateString()}
+                            </td>
+
+                            <td className="px-4 py-5">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[11px] text-gray-500 font-semibold">Current:</span>
+                                <StatusBadge status={uiStatus} />
+                              </div>
+                            </td>
+
+                            <td className="px-4 py-5">
                               <PaymentChip paid={paid} />
                             </td>
 
-                            <td className="px-4 py-4">
+                            <td className="px-4 py-5">
                               <div className="flex gap-2 justify-end flex-nowrap">
-                                {unpaid && !cancelled && (
+                                {canPay && (
                                   <button
                                     disabled={rowBusy}
                                     onClick={() => navigate(`/payment/${b.id}`)}
                                     className={[
-                                      actionBase,
-                                      lift,
+                                      "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200",
+                                      "hover:-translate-y-[1px] hover:shadow-md active:translate-y-0 active:shadow-sm",
                                       rowBusy
                                         ? "bg-emerald-300 text-white cursor-not-allowed animate-pulse"
                                         : "bg-emerald-700 text-white hover:bg-emerald-800",
@@ -436,13 +591,12 @@ export default function BookingsPage() {
                                       navigate(`/review?booking=${b.id}`);
                                     }}
                                     className={[
-                                      actionBase,
-                                      lift,
+                                      "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200",
+                                      "hover:-translate-y-[1px] hover:shadow-md active:translate-y-0 active:shadow-sm",
                                       completed
                                         ? "bg-emerald-700 text-white hover:bg-emerald-800"
                                         : "bg-white text-emerald-800 border border-emerald-200 hover:bg-emerald-50",
                                     ].join(" ")}
-                                    title={completed ? "Write your review" : "Available after tour completion"}
                                   >
                                     <FaPen /> Write Review
                                   </button>
@@ -453,8 +607,8 @@ export default function BookingsPage() {
                                     disabled={rowBusy}
                                     onClick={() => openCancelModal(b)}
                                     className={[
-                                      actionBase,
-                                      lift,
+                                      "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200",
+                                      "hover:-translate-y-[1px] hover:shadow-md active:translate-y-0 active:shadow-sm",
                                       rowBusy
                                         ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
                                         : "bg-white text-red-600 border border-red-200 hover:bg-red-50 hover:border-red-300",
@@ -475,8 +629,33 @@ export default function BookingsPage() {
               </div>
             )}
           </div>
+
+          {!loading && token && sortedRows.length > PAGE_SIZE && (
+            <div className="mt-7 flex items-center justify-center gap-3">
+              <button
+                onClick={() => setSafePage(page - 1, totalPages)}
+                disabled={page === 1}
+                className={`${pagerBtn} ${page === 1 ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed shadow-none" : "bg-white text-gray-900 border-gray-200 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-800 hover:-translate-y-0.5"}`}
+              >
+                Prev
+              </button>
+
+              <div className="px-4 py-2.5 rounded-2xl text-sm font-semibold bg-emerald-50 text-emerald-900 border border-emerald-100 shadow-sm">
+                Page {page} / {totalPages}
+              </div>
+
+              <button
+                onClick={() => setSafePage(page + 1, totalPages)}
+                disabled={page === totalPages}
+                className={`${pagerBtn} ${page === totalPages ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed shadow-none" : "bg-white text-gray-900 border-gray-200 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-800 hover:-translate-y-0.5"}`}
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
 
+        {/* Modals unchanged */}
         {cancelModal.open && (
           <div
             className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 px-4"
@@ -496,11 +675,7 @@ export default function BookingsPage() {
                   </div>
                 </div>
 
-                <button
-                  onClick={closeCancelModal}
-                  className="text-gray-400 hover:text-gray-700 transition"
-                  title="Close"
-                >
+                <button onClick={closeCancelModal} className="text-gray-400 hover:text-gray-700 transition" title="Close">
                   <FaTimesCircle size={20} />
                 </button>
               </div>
@@ -517,9 +692,7 @@ export default function BookingsPage() {
               <div className="p-5 pt-0 flex gap-2 justify-end">
                 <button
                   onClick={closeCancelModal}
-                  className={[actionBase, lift, "border border-gray-200 bg-white text-gray-900 hover:bg-gray-50"].join(
-                    " "
-                  )}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200 border border-gray-200 bg-white text-gray-900 hover:bg-gray-50 hover:-translate-y-[1px] hover:shadow-md active:translate-y-0 active:shadow-sm"
                 >
                   Keep Booking
                 </button>
@@ -528,8 +701,8 @@ export default function BookingsPage() {
                   disabled={busyId === cancelModal.bookingId}
                   onClick={confirmCancel}
                   className={[
-                    actionBase,
-                    lift,
+                    "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200",
+                    "hover:-translate-y-[1px] hover:shadow-md active:translate-y-0 active:shadow-sm",
                     busyId === cancelModal.bookingId
                       ? "bg-red-300 text-white cursor-not-allowed animate-pulse"
                       : "bg-red-600 text-white hover:bg-red-700",
@@ -561,11 +734,7 @@ export default function BookingsPage() {
                   </div>
                 </div>
 
-                <button
-                  onClick={closeInfoModal}
-                  className="text-gray-400 hover:text-gray-700 transition"
-                  title="Close"
-                >
+                <button onClick={closeInfoModal} className="text-gray-400 hover:text-gray-700 transition" title="Close">
                   <FaTimesCircle size={20} />
                 </button>
               </div>
@@ -577,7 +746,7 @@ export default function BookingsPage() {
               <div className="p-5 pt-0 flex justify-end">
                 <button
                   onClick={closeInfoModal}
-                  className={[actionBase, lift, "bg-emerald-700 text-white hover:bg-emerald-800"].join(" ")}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200 bg-emerald-700 text-white hover:bg-emerald-800 hover:-translate-y-[1px] hover:shadow-md active:translate-y-0 active:shadow-sm"
                 >
                   Okay
                 </button>
