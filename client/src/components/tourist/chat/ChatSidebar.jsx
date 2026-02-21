@@ -20,8 +20,15 @@ function formatLastTime(ts) {
 }
 
 function safePreview(c) {
+  const deleted =
+    Number(c?.last_message_deleted) === 1 ||
+    Number(c?.last_message_is_deleted) === 1 ||
+    Number(c?.is_deleted) === 1;
+
+  if (deleted) return "This message was deleted";
+
   const raw = String(c?.last_message || "").trim();
-  return raw; // Do not show placeholder text in sidebar
+  return raw;
 }
 
 export default function ChatSidebar({
@@ -38,14 +45,14 @@ export default function ChatSidebar({
 
     return (conversations || []).filter((c) => {
       const name = String(c?.agency_name || c?.name || "").toLowerCase();
-      const last = String(c?.last_message || "").toLowerCase();
+      const last = String(safePreview(c) || "").toLowerCase();
       return name.includes(q) || last.includes(q);
     });
   }, [conversations, search]);
 
   return (
     <aside className="w-full md:w-[340px] bg-emerald-900 rounded-2xl p-4 text-white h-[570px] flex flex-col">
-      <div className="text-sm font-semibold mb-2 opacity-90">Agencies in Nepal</div>
+      <div className="text-sm font-semibold mb-2 opacity-90">Agencies</div>
 
       <div className="mb-3">
         <input
@@ -100,9 +107,7 @@ export default function ChatSidebar({
                 </div>
 
                 {preview ? (
-                  <div className="mt-1 text-[11px] opacity-90 line-clamp-1">
-                    {preview}
-                  </div>
+                  <div className="mt-1 text-[11px] opacity-90 line-clamp-1">{preview}</div>
                 ) : null}
               </button>
             );

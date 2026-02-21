@@ -1,3 +1,4 @@
+// client/src/api/chatApi.js
 import apiClient from "./apiClient";
 
 export async function fetchMyConversations(token) {

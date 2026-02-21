@@ -1,3 +1,4 @@
+// server/models/chatModel.js
 import { db } from "../db.js";
 
 export async function getChatAgencies({ search = "", limit = 50 } = {}) {
@@ -37,7 +38,12 @@ export async function getMyConversations(userId) {
       a.name AS agency_name,
       a.address AS agency_address,
 
-      lm.message AS last_message,
+      /* Persist deleted-preview after refresh */
+      CASE
+        WHEN lm.is_deleted = 1 THEN 'This message was deleted'
+        ELSE lm.message
+      END AS last_message,
+
       lm.created_at AS last_message_at,
       lm.is_deleted AS last_message_deleted,
 

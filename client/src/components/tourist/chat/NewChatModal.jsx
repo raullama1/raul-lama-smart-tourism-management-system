@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+// client/src/components/tourist/chat/NewChatModal.jsx
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FaPaperPlane } from "react-icons/fa";
 import { fetchChatAgencies } from "../../../api/chatApi";
 import { useAuth } from "../../../context/AuthContext";
@@ -12,13 +13,21 @@ function Avatar({ name }) {
   );
 }
 
-export default function NewChatModal({ open, onClose, onPickAgency, excludeAgencyIds = [] }) {
+export default function NewChatModal({
+  open,
+  onClose,
+  onPickAgency,
+  excludeAgencyIds = [],
+}) {
   const { token } = useAuth();
 
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // used for spinner label, but don't hide list
   const [agencies, setAgencies] = useState([]);
   const [startingId, setStartingId] = useState(null);
+
+  // prevents old slow responses from overriding latest search
+  const reqRef = useRef(0);
 
   const excludeSet = useMemo(() => {
     const s = new Set();
@@ -29,20 +38,39 @@ export default function NewChatModal({ open, onClose, onPickAgency, excludeAgenc
     return s;
   }, [excludeAgencyIds]);
 
+  const shown = useMemo(() => {
+    const list = agencies || [];
+    return list.filter((a) => !excludeSet.has(Number(a.id)));
+  }, [agencies, excludeSet]);
+
   const loadAgencies = async (q) => {
     if (!token) return;
+
+    const myReq = ++reqRef.current;
+
     try {
       setLoading(true);
       const res = await fetchChatAgencies(token, { search: q });
+
+      // ignore stale response
+      if (myReq !== reqRef.current) return;
+
+      // ✅ keep list stable; just replace with latest results
       setAgencies(res.data || []);
     } catch (e) {
+      // ignore stale response
+      if (myReq !== reqRef.current) return;
+
       console.error("fetchChatAgencies error", e);
-      setAgencies([]);
+
+      // ✅ IMPORTANT: do NOT clear agencies here (prevents flicker)
+      // keep previous list visible
     } finally {
-      setLoading(false);
+      if (myReq === reqRef.current) setLoading(false);
     }
   };
 
+  // On open: load once
   useEffect(() => {
     if (!open) return;
     setSearch("");
@@ -50,6 +78,7 @@ export default function NewChatModal({ open, onClose, onPickAgency, excludeAgenc
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  // Debounced search
   useEffect(() => {
     if (!open) return;
     const t = setTimeout(() => loadAgencies(search), 250);
@@ -57,6 +86,7 @@ export default function NewChatModal({ open, onClose, onPickAgency, excludeAgenc
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, open]);
 
+  // Esc close
   useEffect(() => {
     if (!open) return;
     const onKey = (e) => e.key === "Escape" && onClose?.();
@@ -64,12 +94,10 @@ export default function NewChatModal({ open, onClose, onPickAgency, excludeAgenc
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  const shown = useMemo(() => {
-    const list = agencies || [];
-    return list.filter((a) => !excludeSet.has(Number(a.id)));
-  }, [agencies, excludeSet]);
-
   if (!open) return null;
+
+  const showEmpty =
+    !loading && (shown?.length || 0) === 0; // show empty msg only when not loading
 
   return (
     <div className="fixed inset-0 z-[90]">
@@ -77,7 +105,12 @@ export default function NewChatModal({ open, onClose, onPickAgency, excludeAgenc
 
       <div className="absolute right-0 top-0 h-full w-full max-w-[520px] bg-white shadow-2xl border-l border-gray-200 flex flex-col">
         <div className="px-5 py-4 flex items-center justify-between border-b border-gray-200">
-          <div className="text-lg font-semibold text-gray-900">Start New Chat</div>
+          <div className="flex items-center gap-3">
+            <div className="text-lg font-semibold text-gray-900">Start New Chat</div>
+            {loading && (
+              <div className="text-xs text-gray-500">Searching...</div>
+            )}
+          </div>
 
           <button
             onClick={onClose}
@@ -98,9 +131,7 @@ export default function NewChatModal({ open, onClose, onPickAgency, excludeAgenc
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
-          {loading ? (
-            <div className="text-sm text-gray-500">Loading agencies...</div>
-          ) : shown.length === 0 ? (
+          {showEmpty ? (
             <div className="text-sm text-gray-500">
               No agencies found (or you already have chats with them).
             </div>

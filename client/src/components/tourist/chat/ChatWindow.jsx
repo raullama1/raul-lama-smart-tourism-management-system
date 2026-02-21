@@ -1,6 +1,14 @@
+// client/src/components/tourist/chat/ChatWindow.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 
-function ConfirmModal({ open, title, message, dangerText = "Delete", onCancel, onConfirm }) {
+function ConfirmModal({
+  open,
+  title,
+  message,
+  dangerText = "Delete",
+  onCancel,
+  onConfirm,
+}) {
   if (!open) return null;
 
   return (
@@ -26,6 +34,65 @@ function ConfirmModal({ open, title, message, dangerText = "Delete", onCancel, o
             {dangerText}
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+function ActionMenu({ open, onClose, onDelete }) {
+  if (!open) return null;
+
+  return (
+    <>
+      <div className="fixed inset-0 z-[115]" onClick={onClose} />
+
+      <div className="absolute right-0 top-full mt-2 z-[116]">
+        <div className="flex justify-end pr-3">
+          <div className="h-3 w-3 bg-white border-l border-t border-gray-100 rotate-45 translate-y-[6px]" />
+        </div>
+
+        <div className="w-56 rounded-2xl bg-white shadow-xl border border-gray-100 overflow-hidden origin-top-right animate-[menuIn_120ms_ease-out]">
+          <div className="px-4 py-3 border-b border-gray-100">
+            <div className="text-xs font-semibold text-gray-900">Chat options</div>
+            <div className="text-[11px] text-gray-500 mt-0.5">Manage this conversation</div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onDelete}
+            className="w-full text-left px-4 py-3 text-sm font-semibold text-red-600 hover:bg-red-50"
+          >
+            Delete chat
+          </button>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full text-left px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes menuIn {
+          from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
+    </>
+  );
+}
+
+function LoadingOverlay({ show }) {
+  if (!show) return null;
+
+  return (
+    <div className="absolute inset-0 z-[5] flex items-center justify-center">
+      <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px]" />
+      <div className="relative z-[6] rounded-2xl bg-white border border-gray-100 shadow-md px-4 py-2 text-xs font-semibold text-gray-700">
+        Start a new chat…
       </div>
     </div>
   );
@@ -64,10 +131,6 @@ export default function ChatWindow({
     menuCloseTimerRef.current = setTimeout(() => setOpenMenuId(null), 350);
   };
 
-  const cancelCloseMenu = () => {
-    if (menuCloseTimerRef.current) clearTimeout(menuCloseTimerRef.current);
-  };
-
   const prevCountRef = useRef(0);
   const prevFirstIdRef = useRef(null);
   const prevLastIdRef = useRef(null);
@@ -80,11 +143,30 @@ export default function ChatWindow({
     return addr ? `Nepal • ${addr}` : "Nepal";
   }, [selected]);
 
+  // Delay showing overlay to avoid blink on fast loads
+  const [showOverlay, setShowOverlay] = useState(false);
+  const overlayTimerRef = useRef(null);
+
+  useEffect(() => {
+    if (overlayTimerRef.current) clearTimeout(overlayTimerRef.current);
+
+    if (loading) {
+      overlayTimerRef.current = setTimeout(() => setShowOverlay(true), 160);
+    } else {
+      setShowOverlay(false);
+    }
+
+    return () => {
+      if (overlayTimerRef.current) clearTimeout(overlayTimerRef.current);
+    };
+  }, [loading]);
+
   useEffect(() => {
     const onDoc = (e) => {
       if (!e.target.closest?.("[data-msgmenu]")) setOpenMenuId(null);
       if (!e.target.closest?.("[data-headmenu]")) setHeaderMenuOpen(false);
     };
+
     const onKey = (e) => {
       if (e.key === "Escape") {
         setOpenMenuId(null);
@@ -93,6 +175,7 @@ export default function ChatWindow({
         setConfirmDeleteChat(false);
       }
     };
+
     document.addEventListener("mousedown", onDoc);
     window.addEventListener("keydown", onKey);
     return () => {
@@ -187,11 +270,6 @@ export default function ChatWindow({
 
     onSend(msg);
     setText("");
-
-    requestAnimationFrame(() => {
-      const box = listRef.current;
-      if (box) box.scrollTop = box.scrollHeight;
-    });
   };
 
   if (!selected) {
@@ -207,9 +285,10 @@ export default function ChatWindow({
     );
   }
 
+  const showEmpty = !loading && (messages?.length || 0) === 0;
+
   return (
     <section className="flex-1 bg-white rounded-2xl border border-gray-100 h-[570px] flex flex-col overflow-hidden">
-      {/* Header */}
       <div className="px-4 md:px-5 py-3 border-b border-gray-100 bg-emerald-50 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-full bg-emerald-200 flex items-center justify-center font-semibold text-emerald-900">
@@ -241,119 +320,118 @@ export default function ChatWindow({
               ⋯
             </button>
 
-            {headerMenuOpen && (
-              <div className="absolute right-0 mt-2 w-44 rounded-xl border border-gray-100 bg-white shadow-lg overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setHeaderMenuOpen(false);
-                    setConfirmDeleteChat(true);
-                  }}
-                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                >
-                  Delete chat
-                </button>
-              </div>
-            )}
+            <ActionMenu
+              open={headerMenuOpen}
+              onClose={() => setHeaderMenuOpen(false)}
+              onDelete={() => {
+                setHeaderMenuOpen(false);
+                setConfirmDeleteChat(true);
+              }}
+            />
           </div>
         </div>
       </div>
 
-      {/* Messages */}
-      <div ref={listRef} className="flex-1 overflow-y-auto px-4 md:px-5 py-4 space-y-3 bg-white">
-        {hasMore && (
-          <div className="flex justify-center">
-            <button
-              onClick={onLoadMore}
-              type="button"
-              className="px-4 py-2 rounded-full border border-gray-100 text-xs text-gray-700 hover:bg-gray-50"
-            >
-              Load older messages
-            </button>
-          </div>
-        )}
+      <div className="relative flex-1 bg-white">
+        <LoadingOverlay show={showOverlay} />
 
-        {loading ? (
-          // <div className="text-sm text-gray-500">Loading messages...</div>
-          <div className="text-sm text-gray-500">No messages yet. Say hello</div>
-        ) : messages.length === 0 ? (
-          <div className="text-sm text-gray-500">No messages yet. Say hello</div>
-        ) : (
-          messages.map((m) => {
-            const mine = m.sender_role === "tourist";
-            const isDeleted = Number(m.is_deleted || 0) === 1;
+        <div ref={listRef} className="h-full overflow-y-auto px-4 md:px-5 py-4 space-y-3">
+          {hasMore && !loading && (
+            <div className="flex justify-center">
+              <button
+                onClick={onLoadMore}
+                type="button"
+                className="px-4 py-2 rounded-full border border-gray-100 text-xs text-gray-700 hover:bg-gray-50"
+              >
+                Load older messages
+              </button>
+            </div>
+          )}
 
-            return (
-              <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                <div className="relative group max-w-[80%]">
-                  <div
-                    className={`rounded-2xl px-4 py-3 text-sm leading-relaxed
-                      ${
-                        isDeleted
-                          ? "bg-gray-50 text-gray-500 italic border border-gray-100"
-                          : mine
-                          ? "bg-emerald-700 text-white"
-                          : "bg-emerald-100 text-emerald-900"
-                      }`}
-                  >
-                    <div className="whitespace-pre-line">
-                      {isDeleted ? "This message was deleted" : m.message}
-                    </div>
+          {showEmpty ? (
+            <div className="text-sm text-gray-500">No messages yet. Say hello 👋</div>
+          ) : (
+            messages.map((m) => {
+              const mine = m.sender_role === "tourist";
+              const isDeleted = Number(m.is_deleted || 0) === 1;
 
+              return (
+                <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                  <div className="relative group max-w-[80%]">
                     <div
-                      className={`mt-1 text-[10px] ${
-                        isDeleted ? "text-gray-400" : mine ? "text-white/70" : "text-emerald-900/60"
-                      }`}
+                      className={`rounded-2xl px-4 py-3 text-sm leading-relaxed
+                        ${
+                          isDeleted
+                            ? "bg-gray-50 text-gray-500 italic border border-gray-100"
+                            : mine
+                            ? "bg-emerald-700 text-white"
+                            : "bg-emerald-100 text-emerald-900"
+                        }`}
                     >
-                      {new Date(m.created_at).toLocaleTimeString("en-GB", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </div>
-                  </div>
+                      <div className="whitespace-pre-line">
+                        {isDeleted ? "This message was deleted" : m.message}
+                      </div>
 
-                  {mine && !isDeleted && !String(m.id).startsWith("tmp-") && (
-                    <div
-                      className="absolute -left-10 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition"
-                      data-msgmenu
-                      onMouseEnter={cancelCloseMenu}
-                      onMouseLeave={scheduleCloseMenu}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => setOpenMenuId((prev) => (prev === m.id ? null : m.id))}
-                        className="h-8 w-8 rounded-full border border-gray-100 bg-white text-gray-700 hover:bg-gray-50 flex items-center justify-center shadow-sm"
-                        title="More"
+                      <div
+                        className={`mt-1 text-[10px] ${
+                          isDeleted
+                            ? "text-gray-400"
+                            : mine
+                            ? "text-white/70"
+                            : "text-emerald-900/60"
+                        }`}
                       >
-                        ⋯
-                      </button>
-
-                      {openMenuId === m.id && (
-                        <div className="absolute bottom-full mb-2 right-0 w-36 rounded-xl border border-gray-100 bg-white shadow-lg overflow-hidden">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOpenMenuId(null);
-                              setConfirmUnsend({ open: true, messageId: m.id });
-                            }}
-                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                          >
-                            Unsend
-                          </button>
-                        </div>
-                      )}
+                        {new Date(m.created_at).toLocaleTimeString("en-GB", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </div>
                     </div>
-                  )}
-                </div>
-              </div>
-            );
-          })
-        )}
 
-        {typingText ? <div className="text-xs text-gray-500 italic">{typingText}</div> : null}
+                    {mine && !isDeleted && !String(m.id).startsWith("tmp-") && (
+                      <div
+                        className="absolute -left-10 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition"
+                        data-msgmenu
+                        onMouseLeave={() => {
+                          if (menuCloseTimerRef.current) clearTimeout(menuCloseTimerRef.current);
+                          menuCloseTimerRef.current = setTimeout(() => setOpenMenuId(null), 350);
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setOpenMenuId((prev) => (prev === m.id ? null : m.id))}
+                          className="h-8 w-8 rounded-full border border-gray-100 bg-white text-gray-700 hover:bg-gray-50 flex items-center justify-center shadow-sm"
+                          title="More"
+                        >
+                          ⋯
+                        </button>
+
+                        {openMenuId === m.id && (
+                          <div className="absolute bottom-full mb-2 right-0 w-36 rounded-xl border border-gray-100 bg-white shadow-lg overflow-hidden">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenMenuId(null);
+                                setConfirmUnsend({ open: true, messageId: m.id });
+                              }}
+                              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                            >
+                              Unsend
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
+
+          {typingText ? <div className="text-xs text-gray-500 italic">{typingText}</div> : null}
+        </div>
       </div>
 
-      {/* Input */}
       <div className="p-3 md:p-4 border-t border-gray-100 bg-white">
         <div className="flex gap-2">
           <input

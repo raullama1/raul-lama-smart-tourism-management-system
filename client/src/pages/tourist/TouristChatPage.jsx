@@ -1,3 +1,4 @@
+// client/src/pages/tourist/TouristChatPage.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import NavbarTourist from "../../components/tourist/NavbarTourist";
 import FooterTourist from "../../components/tourist/FooterTourist";
@@ -30,6 +31,7 @@ function getAgencyIdFromConvo(c) {
   return Number.isFinite(n) ? n : null;
 }
 
+/** True when conversation has any "real" server-side message preview */
 function hasAnyMessagePreview(c) {
   const last = String(c?.last_message || "").trim();
   const at = String(c?.last_message_at || "").trim();
@@ -98,14 +100,57 @@ export default function TouristChatPage() {
     pendingEmptyConvosRef.current.delete(Number(conversationId));
   };
 
+  /**
+   * Cleanup empty conversations from DB so they don't reappear after refresh.
+   * Safe because backend deletes only when 0 messages (onlyIfEmpty=1).
+   */
+  const cleanupEmptyConvosOnServer = async (list) => {
+    if (!token) return list || [];
+
+    const empties = (list || []).filter((c) => !hasAnyMessagePreview(c));
+    if (empties.length === 0) return list || [];
+
+    // Optimistically hide from UI immediately
+    const keep = (list || []).filter((c) => hasAnyMessagePreview(c));
+
+    // If current selected is empty, close it
+    const curSelected = Number(selectedIdRef.current || 0);
+    const selectedWasEmpty = empties.some((c) => Number(getConvoId(c)) === curSelected);
+    if (selectedWasEmpty) {
+      setSelectedId(null);
+      setMessages([]);
+      setPagination({ page: 1, limit: PAGE_LIMIT, hasMore: false });
+      setTypingText("");
+    }
+
+    // Delete in background (sequential to avoid request spam)
+    for (const c of empties) {
+      const cid = getConvoId(c);
+      if (!cid) continue;
+      try {
+        await deleteConversation(token, cid, { onlyIfEmpty: true });
+      } catch (e) {
+        // If delete fails, ignore. It may not be empty anymore.
+        console.error("cleanup empty convo failed", cid, e);
+      }
+    }
+
+    return keep;
+  };
+
   const loadConvos = async ({ silent = false } = {}) => {
     if (!token) return;
 
     try {
       if (!silent) setLoadingConvos(true);
+
       const res = await fetchMyConversations(token);
       const list = res.data || [];
-      setConvos(list);
+
+      // ✅ KEY FIX: remove empty convos from UI + DB so refresh won't bring them back
+      const cleaned = await cleanupEmptyConvosOnServer(list);
+
+      setConvos(cleaned);
     } catch (e) {
       console.error("loadConvos error", e);
       setConvos([]);
@@ -354,9 +399,8 @@ export default function TouristChatPage() {
       setPagination(cached.pagination || { page: 1, limit: PAGE_LIMIT, hasMore: false });
       setMsgLoading(false);
     } else {
-      setMessages([]);
+      // Keep previous messages visible (ChatWindow overlay handles loading smoothly)
       setPagination({ page: 1, limit: PAGE_LIMIT, hasMore: false });
-      setMsgLoading(true);
     }
 
     if (socketRef.current?.connected) {
@@ -547,7 +591,6 @@ export default function TouristChatPage() {
       .filter((x) => Number.isFinite(Number(x)));
   }, [convos]);
 
-  // ✅ UPDATED: receives full agency object from NewChatModal
   const handlePickAgency = async (agency) => {
     try {
       setShowNewChat(false);
@@ -561,7 +604,6 @@ export default function TouristChatPage() {
         return;
       }
 
-      // If chat already exists with this agency, open it
       const existing = (convos || []).find(
         (c) => Number(getAgencyIdFromConvo(c)) === Number(agencyId)
       );
@@ -570,7 +612,6 @@ export default function TouristChatPage() {
         return;
       }
 
-      // Create on server
       const res = await startConversation(token, agencyId);
 
       const convoId =
@@ -586,7 +627,6 @@ export default function TouristChatPage() {
 
       pendingEmptyConvosRef.current.add(Number(convoId));
 
-      // Insert locally using agency object (instant correct name/address)
       const newConvo = {
         conversation_id: convoId,
         agency_id: Number(agencyId),
@@ -599,10 +639,10 @@ export default function TouristChatPage() {
 
       setConvos((prev) => [newConvo, ...(prev || [])]);
 
-      // Open immediately
       setSelectedId(convoId);
       setTypingText("");
-      setMessages([]);
+
+      // Keep UI stable (ChatWindow overlay handles "loading")
       setPagination({ page: 1, limit: PAGE_LIMIT, hasMore: false });
       setMsgLoading(true);
 
