@@ -14,24 +14,33 @@ import {
 
 /* Simple toast (no library) */
 function Toast({ open, type = "success", message, onClose }) {
-  if (!open) return null;
-
   const boxClass =
     type === "success"
       ? "border-emerald-200 bg-emerald-50 text-emerald-900"
       : "border-red-200 bg-red-50 text-red-900";
 
   return (
-    <div className="fixed top-5 right-5 z-[200]">
-      <div className={`rounded-2xl border px-4 py-3 shadow-lg ${boxClass}`}>
-        <div className="text-sm font-semibold">{message}</div>
+    <div className="fixed top-5 right-5 z-[200] pointer-events-none">
+      <div
+        className={[
+          "pointer-events-auto w-[320px] rounded-2xl border px-4 py-3 shadow-lg",
+          "transition-all duration-300 ease-out",
+          open ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2",
+          boxClass,
+        ].join(" ")}
+        role="status"
+        aria-live="polite"
+      >
         <button
           type="button"
           onClick={onClose}
-          className="mt-2 text-xs font-semibold opacity-80 hover:opacity-100"
+          className="absolute top-2 right-2 inline-flex h-7 w-7 items-center justify-center rounded-lg text-gray-700/70 hover:text-gray-900 hover:bg-black/5"
+          aria-label="Close notification"
         >
-          Close
+          ✕
         </button>
+
+        <div className="pr-8 text-sm font-semibold">{message}</div>
       </div>
     </div>
   );
@@ -99,6 +108,73 @@ export default function TouristProfilePage() {
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [changePwdOpen, setChangePwdOpen] = useState(false);
 
+  /* ---- Validation helpers ---- */
+
+  const PHONE_MAX_DIGITS = 10;
+
+  // Keep only digits and cap to max length
+  const sanitizePhoneDigits = (input) => {
+    const digits = String(input || "").replace(/\D/g, "");
+    return digits.slice(0, PHONE_MAX_DIGITS);
+  };
+
+  // Soft "realistic name" validation (can't prove real, but avoids junk)
+  const validateName = (raw) => {
+    const v = String(raw || "").trim();
+
+    if (!v) return { ok: false, message: "Name is required." };
+
+    if (v.length < 4) return { ok: false, message: "Name is too short." };
+    if (v.length > 40) return { ok: false, message: "Name is too long." };
+
+    // Allow letters + spaces + . ' -
+    const allowed = /^[A-Za-z\s.'-]+$/;
+    if (!allowed.test(v)) {
+      return {
+        ok: false,
+        message: "Name can contain only letters, spaces, . ' and -",
+      };
+    }
+
+    // Must have at least 2 letters total
+    const lettersCount = (v.match(/[A-Za-z]/g) || []).length;
+    if (lettersCount < 2) {
+      return { ok: false, message: "Please enter a valid full name." };
+    }
+
+    // Avoid junk like "aaaaaa" or "xxxxx"
+    if (/(.)\1\1/.test(v.replace(/\s+/g, ""))) {
+      return { ok: false, message: "Name looks invalid (too repetitive)." };
+    }
+
+    // Avoid single-letter spaced patterns like "x x x"
+    if (/^([A-Za-z]\s){2,}[A-Za-z]$/.test(v)) {
+      return { ok: false, message: "Please enter your full name." };
+    }
+
+    return { ok: true, value: v };
+  };
+
+  // Phone rule: if provided, must be exactly 10 digits
+  const validatePhone = (digits) => {
+    const d = sanitizePhoneDigits(digits);
+
+    if (!d) return { ok: true, value: "" }; // optional
+    if (d.length !== PHONE_MAX_DIGITS) {
+      return {
+        ok: false,
+        message: `Phone number must be ${PHONE_MAX_DIGITS} digits.`,
+      };
+    }
+
+    // basic sanity: disallow all same digits like 0000000000
+    if (/^(\d)\1+$/.test(d)) {
+      return { ok: false, message: "Phone number looks invalid." };
+    }
+
+    return { ok: true, value: d };
+  };
+
   const showToast = (type, message) => {
     setToast({ open: true, type, message });
     window.clearTimeout(showToast._t);
@@ -125,15 +201,16 @@ export default function TouristProfilePage() {
 
     const cleaned = s.replace(/\s+/g, "");
     const m = cleaned.match(/^(\+\d{1,4})(\d+)$/);
-    if (m) return { code: m[1], num: m[2] };
+    if (m) return { code: m[1], num: sanitizePhoneDigits(m[2]) };
 
-    if (/^\d+$/.test(cleaned)) return { code: "+977", num: cleaned };
+    if (/^\d+$/.test(cleaned))
+      return { code: "+977", num: sanitizePhoneDigits(cleaned) };
 
-    return { code: "+977", num: cleaned.replace(/\D/g, "") };
+    return { code: "+977", num: sanitizePhoneDigits(cleaned) };
   };
 
   const normalizePhone = (code, num) => {
-    const n = String(num || "").trim().replace(/\D/g, "");
+    const n = sanitizePhoneDigits(num);
     const c = String(code || "").trim();
     return n ? `${c}${n}` : "";
   };
@@ -147,8 +224,8 @@ export default function TouristProfilePage() {
 
       setUser(u || null);
 
-      const nextName = (u?.name || "").trim();
-      setName(u?.name || "");
+      const nextName = String(u?.name || "").trim();
+      setName(nextName);
 
       const { code, num } = splitPhone(u?.phone || "");
       setCountryCode(code);
@@ -227,9 +304,9 @@ export default function TouristProfilePage() {
   const onSave = async () => {
     if (!token) return;
 
-    const n = name.trim();
-    if (!n) {
-      showToast("error", "Name is required.");
+    const nameCheck = validateName(name);
+    if (!nameCheck.ok) {
+      showToast("error", nameCheck.message);
       return;
     }
 
@@ -238,11 +315,22 @@ export default function TouristProfilePage() {
       return;
     }
 
-    const fullPhone = currentPhone;
+    const phoneCheck = validatePhone(phoneNumber);
+    if (!phoneCheck.ok) {
+      showToast("error", phoneCheck.message);
+      return;
+    }
+
+    const fullPhone = phoneCheck.value
+      ? normalizePhone(countryCode, phoneCheck.value)
+      : "";
 
     try {
       setSaving(true);
-      const res = await updateMyProfile(token, { name: n, phone: fullPhone });
+      const res = await updateMyProfile(token, {
+        name: nameCheck.value,
+        phone: fullPhone,
+      });
 
       const u = res?.data?.user;
       setUser(u || null);
@@ -251,7 +339,7 @@ export default function TouristProfilePage() {
       setCountryCode(code);
       setPhoneNumber(num);
 
-      const syncedName = (u?.name || n).trim();
+      const syncedName = String(u?.name || nameCheck.value).trim();
       const syncedPhone = normalizePhone(code, num);
 
       // update baseline after successful save
@@ -268,6 +356,18 @@ export default function TouristProfilePage() {
       setSaving(false);
     }
   };
+
+  const nameHint = useMemo(() => {
+    if (!name.trim()) return "";
+    const r = validateName(name);
+    return r.ok ? "" : r.message;
+  }, [name]);
+
+  const phoneHint = useMemo(() => {
+    if (!phoneNumber) return "";
+    const r = validatePhone(phoneNumber);
+    return r.ok ? "" : r.message;
+  }, [phoneNumber]);
 
   return (
     <>
@@ -369,7 +469,14 @@ export default function TouristProfilePage() {
                   className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   placeholder="Your name"
                   disabled={loading}
+                  maxLength={40}
+                  autoComplete="name"
                 />
+                {nameHint && (
+                  <div className="mt-1 text-xs font-semibold text-red-600">
+                    {nameHint}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -410,16 +517,29 @@ export default function TouristProfilePage() {
 
                     <input
                       value={phoneNumber}
-                      onChange={(e) => {
-                        const onlyDigits = e.target.value.replace(/\D/g, "");
-                        setPhoneNumber(onlyDigits);
+                      onChange={(e) =>
+                        setPhoneNumber(sanitizePhoneDigits(e.target.value))
+                      }
+                      onPaste={(e) => {
+                        e.preventDefault();
+                        const text = e.clipboardData.getData("text");
+                        setPhoneNumber(sanitizePhoneDigits(text));
                       }}
                       className="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      placeholder="Phone number"
+                      placeholder="10 digit phone number"
                       disabled={loading}
                       inputMode="numeric"
                       autoComplete="tel"
+                      maxLength={PHONE_MAX_DIGITS}
                     />
+                  </div>
+
+                  <div className="mt-1 flex items-center justify-between">
+                    {phoneHint && (
+                      <div className="text-xs font-semibold text-red-600">
+                        {phoneHint}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
