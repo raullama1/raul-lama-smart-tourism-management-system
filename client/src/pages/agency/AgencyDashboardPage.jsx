@@ -1,6 +1,7 @@
 // client/src/pages/agency/AgencyDashboardPage.jsx
 import { useEffect, useMemo, useState } from "react";
-import { FiBell, FiRefreshCw, FiPlus } from "react-icons/fi";
+import { FiBell, FiPlus } from "react-icons/fi";
+import { useNavigate } from "react-router-dom";
 import AgencyLayout from "../../components/agency/AgencyLayout";
 import { useAgencyAuth } from "../../context/AgencyAuthContext";
 import { getAgencyDashboard } from "../../api/agencyDashboardApi";
@@ -66,10 +67,10 @@ function Panel({ title, children }) {
 }
 
 export default function AgencyDashboardPage() {
+  const navigate = useNavigate();
   const { agency } = useAgencyAuth();
 
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
 
   const [data, setData] = useState({
@@ -83,11 +84,9 @@ export default function AgencyDashboardPage() {
     return `Dashboard — ${n}`;
   }, [agency]);
 
-  const fetchData = async (mode = "load") => {
+  const fetchData = async () => {
     try {
-      if (mode === "refresh") setRefreshing(true);
-      else setLoading(true);
-
+      setLoading(true);
       setError("");
       const res = await getAgencyDashboard();
       setData(res);
@@ -96,12 +95,11 @@ export default function AgencyDashboardPage() {
       setError(err?.response?.data?.message || "Failed to load dashboard.");
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   };
 
   useEffect(() => {
-    fetchData("load");
+    fetchData();
   }, []);
 
   const fmtNpr = (n) => {
@@ -115,6 +113,11 @@ export default function AgencyDashboardPage() {
     if (s.includes("await")) return "docs";
     if (s === "confirmed" || s === "completed") return "confirmed";
     return "neutral";
+  };
+
+  const handleNewTour = () => {
+    // Navigate to the add-new-tour page
+    navigate("/agency/tours/new");
   };
 
   return (
@@ -144,18 +147,7 @@ export default function AgencyDashboardPage() {
 
             <button
               type="button"
-              onClick={() => fetchData("refresh")}
-              disabled={refreshing}
-              className="h-10 rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-60"
-            >
-              <span className="inline-flex items-center gap-2">
-                <FiRefreshCw />
-                {refreshing ? "Refreshing..." : "Refresh"}
-              </span>
-            </button>
-
-            <button
-              type="button"
+              onClick={handleNewTour}
               className="h-10 rounded-xl bg-emerald-800 px-4 text-sm font-semibold text-white hover:bg-emerald-900"
             >
               <span className="inline-flex items-center gap-2">
@@ -198,7 +190,6 @@ export default function AgencyDashboardPage() {
         <div className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Panel title="Recent Bookings">
             <div className="rounded-xl border border-gray-100 bg-white">
-              {/* Increased height here */}
               <div className="max-h-[400px] overflow-y-auto p-3">
                 {loading ? (
                   <div className="min-h-[320px] flex items-center justify-center text-sm text-gray-500">
@@ -240,7 +231,6 @@ export default function AgencyDashboardPage() {
 
           <Panel title="Recent Reviews">
             <div className="rounded-xl border border-gray-100 bg-white">
-              {/* Increased height here */}
               <div className="max-h-[460px] overflow-y-auto p-3">
                 {loading ? (
                   <div className="min-h-[320px] flex items-center justify-center text-sm text-gray-500">
