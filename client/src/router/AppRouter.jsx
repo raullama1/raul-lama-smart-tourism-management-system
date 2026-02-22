@@ -87,6 +87,46 @@ function AgencyPrivateRoute({ children }) {
   return isAuthenticated ? children : <Navigate to="/agency/login" replace />;
 }
 
+/**
+ * Prevent showing agency auth pages when already logged in (agency)
+ */
+function AgencyPublicRoute({ children }) {
+  const { isAuthenticated, loading } = useAgencyAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center text-gray-600">
+        Loading...
+      </div>
+    );
+  }
+
+  return isAuthenticated ? <Navigate to="/agency/dashboard" replace /> : children;
+}
+
+/**
+ * Handle /agency base path:
+ * - Not logged in => /agency/login
+ * - Logged in     => /agency/dashboard
+ */
+function AgencyIndexRedirect() {
+  const { isAuthenticated, loading } = useAgencyAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center text-gray-600">
+        Loading...
+      </div>
+    );
+  }
+
+  return isAuthenticated ? (
+    <Navigate to="/agency/dashboard" replace />
+  ) : (
+    <Navigate to="/agency/login" replace />
+  );
+}
+
 export default function AppRouter() {
   return (
     <>
@@ -117,7 +157,7 @@ export default function AppRouter() {
           }
         />
 
-        {/* Auth */}
+        {/* Tourist Auth */}
         <Route
           path="/login"
           element={
@@ -239,20 +279,52 @@ export default function AppRouter() {
           }
         />
 
-        {/* Agency Portal */}
-        <Route path="/agency/login" element={<AgencyLoginPage />} />
-        <Route path="/agency/register" element={<AgencyRegisterPage />} />
-        <Route path="/agency/help" element={<AgencyHelpPage />} />
+        {/* ✅ Agency Portal Base */}
+        <Route path="/agency" element={<AgencyIndexRedirect />} />
+
+        {/* ✅ Agency Auth Pages (blocked when already logged in) */}
+        <Route
+          path="/agency/login"
+          element={
+            <AgencyPublicRoute>
+              <AgencyLoginPage />
+            </AgencyPublicRoute>
+          }
+        />
+        <Route
+          path="/agency/register"
+          element={
+            <AgencyPublicRoute>
+              <AgencyRegisterPage />
+            </AgencyPublicRoute>
+          }
+        />
+        <Route
+          path="/agency/help"
+          element={
+            <AgencyPublicRoute>
+              <AgencyHelpPage />
+            </AgencyPublicRoute>
+          }
+        />
         <Route
           path="/agency/forgot-password"
-          element={<AgencyForgotPasswordPage />}
+          element={
+            <AgencyPublicRoute>
+              <AgencyForgotPasswordPage />
+            </AgencyPublicRoute>
+          }
         />
         <Route
           path="/agency/reset-password"
-          element={<AgencyResetPasswordPage />}
+          element={
+            <AgencyPublicRoute>
+              <AgencyResetPasswordPage />
+            </AgencyPublicRoute>
+          }
         />
 
-        {/* Protected agency routes */}
+        {/* ✅ Protected Agency Routes */}
         <Route
           path="/agency/dashboard"
           element={
@@ -261,8 +333,6 @@ export default function AppRouter() {
             </AgencyPrivateRoute>
           }
         />
-
-        {/* New tour creation for agency */}
         <Route
           path="/agency/tours/new"
           element={
@@ -272,6 +342,7 @@ export default function AppRouter() {
           }
         />
 
+        {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>

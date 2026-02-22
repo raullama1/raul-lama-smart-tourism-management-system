@@ -1,3 +1,4 @@
+// client/src/pages/agency/AgencyLoginPage.jsx
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { FiEye, FiEyeOff, FiLogIn } from "react-icons/fi";
@@ -29,7 +30,7 @@ function Toast({ open, type = "success", message, onClose }) {
 }
 
 export default function AgencyLoginPage() {
-  const { login } = useAgencyAuth();
+  const { login, isAuthenticated, loading } = useAgencyAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -45,6 +46,12 @@ export default function AgencyLoginPage() {
     type: "success",
     message: "",
   });
+
+  // If already logged in as agency, block this page
+  useEffect(() => {
+    if (loading) return;
+    if (isAuthenticated) navigate("/agency/dashboard", { replace: true });
+  }, [isAuthenticated, loading, navigate]);
 
   useEffect(() => {
     const t = location.state?.toast;
@@ -77,7 +84,7 @@ export default function AgencyLoginPage() {
 
       await login(trimmedEmail, trimmedPassword);
 
-      navigate("/agency/dashboard");
+      navigate("/agency/dashboard", { replace: true });
     } catch (err) {
       const msg =
         err?.response?.data?.message ||
@@ -87,6 +94,17 @@ export default function AgencyLoginPage() {
       setSubmitting(false);
     }
   };
+
+  // Keep UI stable while auth state is resolving
+  if (loading) {
+    return (
+      <AgencyAuthLayout>
+        <div className="min-h-[60vh] flex items-center justify-center text-gray-600">
+          Loading...
+        </div>
+      </AgencyAuthLayout>
+    );
+  }
 
   return (
     <>
@@ -147,15 +165,9 @@ export default function AgencyLoginPage() {
                     type="button"
                     onClick={() => setShowPassword((p) => !p)}
                     className="absolute inset-y-0 right-2 flex items-center text-gray-500 hover:text-gray-700"
-                    aria-label={
-                      showPassword ? "Hide password" : "Show password"
-                    }
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                   >
-                    {showPassword ? (
-                      <FiEyeOff size={18} />
-                    ) : (
-                      <FiEye size={18} />
-                    )}
+                    {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
                   </button>
                 </div>
               </div>
