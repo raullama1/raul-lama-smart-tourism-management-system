@@ -1,6 +1,7 @@
+// client/src/pages/tourist/TouristNepalMapPage.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 
 import NavbarTourist from "../../components/tourist/NavbarTourist";
@@ -18,6 +19,30 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
+/**
+ * React-Leaflet MapContainer doesn't automatically follow updated center/zoom after mount.
+ * We control movement explicitly using flyTo/setView.
+ */
+function MapViewController({ center, zoom, animate }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!center || !Array.isArray(center)) return;
+
+    const lat = Number(center[0]);
+    const lng = Number(center[1]);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+    if (animate) {
+      map.flyTo([lat, lng], zoom, { duration: 1.1 });
+    } else {
+      map.setView([lat, lng], zoom, { animate: false });
+    }
+  }, [map, center, zoom, animate]);
+
+  return null;
+}
+
 export default function TouristNepalMapPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -29,14 +54,24 @@ export default function TouristNepalMapPage() {
   // filter state
   const [selectedType, setSelectedType] = useState("all");
 
-  // map view state (center + zoom)
+  // map view state
   const nepalCenter = [28.3949, 84.124];
-  const [mapCenter, setMapCenter] = useState(nepalCenter);
-  const [mapZoom, setMapZoom] = useState(7);
+  const NEPAL_ZOOM = 7;
+  const FOCUS_ZOOM = 15;
 
-  // marker popup refs for auto-open
-  const markerRefs = useRef({}); // { [id]: markerInstance }
-  const [focusTourId, setFocusTourId] = useState(null); // id to open popup
+  const [mapCenter, setMapCenter] = useState(nepalCenter);
+  const [mapZoom, setMapZoom] = useState(NEPAL_ZOOM);
+
+  // marker popup refs
+  const markerRefs = useRef({});
+  const [focusTourId, setFocusTourId] = useState(null);
+
+  // control animation
+  const [animateMap, setAnimateMap] = useState(false);
+
+  // track previous tour param to animate zoom-out (avoid flash)
+  const prevTourParamRef = useRef(tourParam);
+  const didMountRef = useRef(false);
 
   const TYPES = [
     { value: "all", label: "All Types" },
@@ -73,14 +108,25 @@ export default function TouristNepalMapPage() {
     return toursWithCoords.filter((t) => t.type === selectedType);
   }, [toursWithCoords, selectedType]);
 
-  // When opened via /map?tour=ID → auto filter + center + open popup
+  // Handle focus mode: /map?tour=ID
   useEffect(() => {
+    const prevTourParam = prevTourParamRef.current;
+
+    // Initial mount: no animation by default
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      setAnimateMap(false);
+    }
+
+    // If param removed (focus -> normal), animate zoom-out smoothly
     if (!tourParam) {
-      // If coming from hero button /map (no param) -> normal default
-      setFocusTourId(null);
-      setSelectedType("all");
-      setMapCenter(nepalCenter);
-      setMapZoom(7);
+      if (prevTourParam) {
+        setFocusTourId(null);
+        setMapCenter(nepalCenter);
+        setMapZoom(NEPAL_ZOOM);
+        setAnimateMap(true);
+      }
+      prevTourParamRef.current = tourParam;
       return;
     }
 
@@ -88,43 +134,57 @@ export default function TouristNepalMapPage() {
     if (!toursWithCoords.length) return;
 
     const idNum = Number(tourParam);
-    if (!idNum) return;
+    if (!Number.isFinite(idNum) || idNum <= 0) return;
 
     const found = toursWithCoords.find((t) => Number(t.id) === idNum);
     if (!found) return;
 
-    // apply filter based on that tour
     setSelectedType(found.type);
 
-    // zoom + center to tour
-    setMapCenter([Number(found.latitude), Number(found.longitude)]);
-    setMapZoom(11);
+    const lat = Number(found.latitude);
+    const lng = Number(found.longitude);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      setMapCenter([lat, lng]);
+      setMapZoom(FOCUS_ZOOM);
+      setAnimateMap(true);
+    }
 
-    // open popup after markers mount
     setFocusTourId(idNum);
+    prevTourParamRef.current = tourParam;
   }, [tourParam, loading, toursWithCoords]);
 
-  // open popup when marker ref exists
+  // Open popup when marker exists
   useEffect(() => {
     if (!focusTourId) return;
 
     const t = setTimeout(() => {
       const marker = markerRefs.current[focusTourId];
-      if (marker && marker.openPopup) {
-        marker.openPopup();
-      }
+      if (marker && marker.openPopup) marker.openPopup();
     }, 300);
 
     return () => clearTimeout(t);
   }, [focusTourId, selectedType]);
 
   const reset = () => {
-    // ✅ clear URL param too
     navigate("/map");
     setSelectedType("all");
-    setMapCenter(nepalCenter);
-    setMapZoom(7);
     setFocusTourId(null);
+    setMapCenter(nepalCenter);
+    setMapZoom(NEPAL_ZOOM);
+    setAnimateMap(true);
+  };
+
+  const handleTypeChange = (value) => {
+    // If user changes filter while focused, clear focus URL
+    if (tourParam) {
+      navigate("/map", { replace: true });
+      setFocusTourId(null);
+      setMapCenter(nepalCenter);
+      setMapZoom(NEPAL_ZOOM);
+      setAnimateMap(true);
+    }
+
+    setSelectedType(value);
   };
 
   return (
@@ -153,7 +213,7 @@ export default function TouristNepalMapPage() {
                 <div className="relative">
                   <select
                     value={selectedType}
-                    onChange={(e) => setSelectedType(e.target.value)}
+                    onChange={(e) => handleTypeChange(e.target.value)}
                     className="appearance-none text-sm font-semibold text-gray-800
                                bg-white border border-gray-300 rounded-xl
                                pl-3 pr-10 py-2
@@ -234,7 +294,14 @@ export default function TouristNepalMapPage() {
                   zoom={mapZoom}
                   style={{ height: "70vh", width: "100%", zIndex: 1 }}
                   scrollWheelZoom
+                  maxZoom={18}
                 >
+                  <MapViewController
+                    center={mapCenter}
+                    zoom={mapZoom}
+                    animate={animateMap}
+                  />
+
                   <TileLayer
                     attribution="&copy; OpenStreetMap contributors"
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
