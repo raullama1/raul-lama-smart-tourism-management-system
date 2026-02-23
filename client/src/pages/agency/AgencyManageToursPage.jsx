@@ -1,4 +1,3 @@
-// client/src/pages/agency/AgencyManageToursPage.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   FiBell,
@@ -22,8 +21,6 @@ import {
   updateAgencyTourStatus,
 } from "../../api/agencyToursApi";
 import { toPublicImageUrl, FALLBACK_TOUR_IMG } from "../../utils/publicImageUrl";
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
-import L from "leaflet";
 
 /* ---------------- Toast (same style as TouristProfilePage) ---------------- */
 function Toast({ open, type = "success", message, onClose }) {
@@ -150,54 +147,152 @@ function isInsideNepal(lat, lng) {
   return la >= 26.35 && la <= 30.45 && lo >= 80.0 && lo <= 88.3;
 }
 
-const markerIcon = new L.Icon({
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-});
-
-function PickMarker({ value, onChange, onInvalid }) {
-  useMapEvents({
-    click(e) {
-      const lat = e.latlng.lat;
-      const lng = e.latlng.lng;
-
-      if (!isInsideNepal(lat, lng)) {
-        if (typeof onInvalid === "function") onInvalid("Please select a location inside Nepal only.");
-        return;
-      }
-
-      onChange({ lat, lng });
-    },
-  });
-
-  if (!value) return null;
-  return <Marker position={[value.lat, value.lng]} icon={markerIcon} />;
-}
-
-function FlyToMarker({ coords, zoom = 12, active = false, onDone }) {
-  const map = useMap();
-  if (!active) return null;
-  if (!coords?.lat || !coords?.lng) return null;
-
-  map.flyTo([coords.lat, coords.lng], zoom, { duration: 0.8 });
-  if (typeof onDone === "function") onDone();
-  return null;
-}
-
 function splitDates(availableDates) {
   const raw = String(availableDates || "");
   const [a, b] = raw.split("|");
-  return {
-    start: a ? a.trim() : "",
-    end: b ? b.trim() : "",
-  };
+  return { start: a ? a.trim() : "", end: b ? b.trim() : "" };
 }
 
 function normalizeText(v) {
   return String(v ?? "").trim().replace(/\s+/g, " ");
+}
+
+/**
+ * Lazy-loaded map picker:
+ * Leaflet + react-leaflet are imported only when this component renders (Edit modal open),
+ * so the Manage Tours page opens instantly from sidebar.
+ */
+function LazyNepalMapPicker({
+  coords,
+  setCoords,
+  latInput,
+  setLatInput,
+  lngInput,
+  setLngInput,
+  setErr,
+  showToast,
+  shouldFly,
+  setShouldFly,
+}) {
+  const [mods, setMods] = useState({ rl: null, L: null });
+
+  useEffect(() => {
+    let alive = true;
+
+    (async () => {
+      try {
+        const [rl, leaflet] = await Promise.all([import("react-leaflet"), import("leaflet")]);
+        const L = leaflet?.default || leaflet;
+
+        if (!alive) return;
+        setMods({ rl, L });
+      } catch (e) {
+        const m = "Failed to load map. Please try again.";
+        setErr(m);
+        showToast("error", m);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [setErr, showToast]);
+
+  const markerIcon = useMemo(() => {
+    if (!mods.L) return null;
+
+    return new mods.L.Icon({
+      iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+      iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+      shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+    });
+  }, [mods.L]);
+
+  if (!mods.rl || !mods.L || !markerIcon) {
+    return (
+      <div className="h-[220px] grid place-items-center text-sm text-gray-600">
+        Loading map...
+      </div>
+    );
+  }
+
+  const { MapContainer, TileLayer, Marker, useMapEvents, useMap } = mods.rl;
+
+  function PickMarker() {
+    useMapEvents({
+      click(e) {
+        const lat = e.latlng.lat;
+        const lng = e.latlng.lng;
+
+        if (!isInsideNepal(lat, lng)) {
+          const m = "Please select a location inside Nepal only.";
+          setErr(m);
+          showToast("error", m);
+          return;
+        }
+
+        setCoords({ lat, lng });
+        setLatInput(String(Number(lat).toFixed(7)));
+        setLngInput(String(Number(lng).toFixed(7)));
+      },
+    });
+
+    if (!coords) return null;
+    return <Marker position={[coords.lat, coords.lng]} icon={markerIcon} />;
+  }
+
+  function FlyToMarker({ active }) {
+    const map = useMap();
+    if (!active) return null;
+    if (!coords?.lat || !coords?.lng) return null;
+
+    map.flyTo([coords.lat, coords.lng], 12, { duration: 0.8 });
+    setShouldFly(false);
+    return null;
+  }
+
+  return (
+    <div className="h-[220px]">
+      <MapContainer
+        center={[28.3949, 84.124]}
+        zoom={7}
+        style={{ height: "100%", width: "100%" }}
+      >
+        <TileLayer
+          attribution="&copy; OpenStreetMap"
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+
+        <FlyToMarker active={shouldFly} />
+
+        {coords ? (
+          <Marker
+            position={[coords.lat, coords.lng]}
+            icon={markerIcon}
+            draggable
+            eventHandlers={{
+              dragend: (e) => {
+                const p = e.target.getLatLng();
+                if (!isInsideNepal(p.lat, p.lng)) {
+                  const m = "Marker must stay inside Nepal.";
+                  setErr(m);
+                  showToast("error", m);
+                  return;
+                }
+                setCoords({ lat: p.lat, lng: p.lng });
+                setLatInput(String(Number(p.lat).toFixed(7)));
+                setLngInput(String(Number(p.lng).toFixed(7)));
+              },
+            }}
+          />
+        ) : null}
+
+        <PickMarker />
+      </MapContainer>
+    </div>
+  );
 }
 
 export default function AgencyManageToursPage() {
@@ -341,8 +436,12 @@ export default function AgencyManageToursPage() {
     setLatInput("");
     setLngInput("");
     setShouldFly(false);
+
     setImageFile(null);
+
+    if (previewUrl?.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
     setPreviewUrl("");
+
     setEditInitial(null);
   };
 
@@ -368,7 +467,6 @@ export default function AgencyManageToursPage() {
     setEditLocation(loc);
     setEditPrice(pr);
 
-    // safety: only allow active/paused in UI
     setEditStatus(st === "paused" ? "paused" : "active");
 
     const dates = splitDates(r.available_dates);
@@ -470,6 +568,8 @@ export default function AgencyManageToursPage() {
     }
 
     setImageFile(file);
+
+    if (previewUrl?.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
   };
@@ -492,7 +592,6 @@ export default function AgencyManageToursPage() {
     if (!isInsideNepal(coords.lat, coords.lng)) return "Selected coordinates must be inside Nepal.";
 
     const st = String(editStatus || "").toLowerCase();
-    // Only active/paused allowed
     if (!["active", "paused"].includes(st)) return "Invalid status.";
 
     return "";
@@ -967,60 +1066,18 @@ export default function AgencyManageToursPage() {
               </div>
 
               <div className="mt-4 overflow-hidden rounded-2xl border border-emerald-100 bg-white">
-                <div className="h-[220px]">
-                  <MapContainer
-                    center={[28.3949, 84.124]}
-                    zoom={7}
-                    style={{ height: "100%", width: "100%" }}
-                  >
-                    <TileLayer
-                      attribution="&copy; OpenStreetMap"
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    />
-
-                    <FlyToMarker
-                      coords={coords}
-                      zoom={12}
-                      active={shouldFly}
-                      onDone={() => setShouldFly(false)}
-                    />
-
-                    {coords ? (
-                      <Marker
-                        position={[coords.lat, coords.lng]}
-                        icon={markerIcon}
-                        draggable
-                        eventHandlers={{
-                          dragend: (e) => {
-                            const p = e.target.getLatLng();
-                            if (!isInsideNepal(p.lat, p.lng)) {
-                              const m = "Marker must stay inside Nepal.";
-                              setErr(m);
-                              showToast("error", m);
-                              return;
-                            }
-                            setCoords({ lat: p.lat, lng: p.lng });
-                            setLatInput(String(Number(p.lat).toFixed(7)));
-                            setLngInput(String(Number(p.lng).toFixed(7)));
-                          },
-                        }}
-                      />
-                    ) : null}
-
-                    <PickMarker
-                      value={coords}
-                      onChange={(c) => {
-                        setCoords(c);
-                        setLatInput(String(Number(c.lat).toFixed(7)));
-                        setLngInput(String(Number(c.lng).toFixed(7)));
-                      }}
-                      onInvalid={(msg) => {
-                        setErr(msg);
-                        showToast("error", msg);
-                      }}
-                    />
-                  </MapContainer>
-                </div>
+                <LazyNepalMapPicker
+                  coords={coords}
+                  setCoords={setCoords}
+                  latInput={latInput}
+                  setLatInput={setLatInput}
+                  lngInput={lngInput}
+                  setLngInput={setLngInput}
+                  setErr={setErr}
+                  showToast={showToast}
+                  shouldFly={shouldFly}
+                  setShouldFly={setShouldFly}
+                />
 
                 <div className="px-4 py-3 text-xs text-gray-600 flex flex-wrap gap-3">
                   <div>
