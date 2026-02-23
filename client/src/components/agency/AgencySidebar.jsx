@@ -1,9 +1,9 @@
+// client/src/components/agency/AgencySidebar.jsx
 import { useEffect, useMemo, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   FiGrid,
   FiMap,
-  FiSettings,
   FiMessageSquare,
   FiBookOpen,
   FiStar,
@@ -15,6 +15,7 @@ import {
   FiLogIn,
   FiUserPlus,
   FiHelpCircle,
+  FiSettings,
 } from "react-icons/fi";
 import { useAgencyAuth } from "../../context/AgencyAuthContext";
 
@@ -89,23 +90,16 @@ export default function AgencySidebar() {
     () => location.pathname.startsWith("/agency/tours"),
     [location.pathname]
   );
-  const inBookings = useMemo(
-    () => location.pathname.startsWith("/agency/bookings"),
-    [location.pathname]
-  );
 
   const [tourOpen, setTourOpen] = useState(false);
-  const [bookingsOpen, setBookingsOpen] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
       setTourOpen(false);
-      setBookingsOpen(false);
       return;
     }
     if (inTour) setTourOpen(true);
-    if (inBookings) setBookingsOpen(true);
-  }, [isAuthenticated, inTour, inBookings]);
+  }, [isAuthenticated, inTour]);
 
   const handleLogout = () => {
     logout();
@@ -128,7 +122,6 @@ export default function AgencySidebar() {
         </div>
       </div>
 
-      {/* SCROLL AREA */}
       <div className="flex-1 overflow-y-auto px-4 pb-4">
         {!isAuthenticated ? (
           <nav className="mt-2 space-y-2">
@@ -150,16 +143,7 @@ export default function AgencySidebar() {
               <SubItem to="/agency/tours/manage" label="Manage Tour" />
             </Section>
 
-            <Section
-              icon={FiSettings}
-              label="Bookings"
-              open={bookingsOpen}
-              onToggle={() => setBookingsOpen((p) => !p)}
-            >
-              <SubItem to="/agency/bookings" label="View Bookings" />
-              <SubItem to="/agency/bookings/details" label="Booking Details" />
-            </Section>
-
+            <Item to="/agency/bookings" icon={FiSettings} label="Bookings" />
             <Item to="/agency/chat" icon={FiMessageSquare} label="Chat" />
             <Item to="/agency/blogs" icon={FiBookOpen} label="Blogs" />
             <Item to="/agency/reviews" icon={FiStar} label="Reviews" />

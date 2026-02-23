@@ -35,6 +35,7 @@ import AgencyForgotPasswordPage from "../pages/agency/AgencyForgotPasswordPage";
 import AgencyResetPasswordPage from "../pages/agency/AgencyResetPasswordPage";
 import AgencyDashboardPage from "../pages/agency/AgencyDashboardPage";
 import AgencyAddTourPage from "../pages/agency/AgencyAddTourPage";
+import AgencyManageToursPage from "../pages/agency/AgencyManageToursPage";
 
 /**
  * Protect tourist routes (normal user login)
@@ -279,10 +280,10 @@ export default function AppRouter() {
           }
         />
 
-        {/* ✅ Agency Portal Base */}
+        {/* Agency Portal Base */}
         <Route path="/agency" element={<AgencyIndexRedirect />} />
 
-        {/* ✅ Agency Auth Pages (blocked when already logged in) */}
+        {/* Agency Auth Pages (blocked when already logged in) */}
         <Route
           path="/agency/login"
           element={
@@ -338,6 +339,15 @@ export default function AppRouter() {
           element={
             <AgencyPrivateRoute>
               <AgencyAddTourPage />
+            </AgencyPrivateRoute>
+          }
+        />
+
+        <Route
+          path="/agency/tours/manage"
+          element={
+            <AgencyPrivateRoute>
+              <AgencyManageToursPage />
             </AgencyPrivateRoute>
           }
         />

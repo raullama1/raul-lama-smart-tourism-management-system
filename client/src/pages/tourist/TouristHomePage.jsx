@@ -1,4 +1,5 @@
-import NavbarTourist from "../../components/tourist/NavBarTourist";
+// client/src/pages/tourist/TouristHomePage.jsx
+import NavbarTourist from "../../components/tourist/NavbarTourist";
 import FooterTourist from "../../components/tourist/FooterTourist";
 import HomeContent from "../../components/shared/HomeContent";
 
