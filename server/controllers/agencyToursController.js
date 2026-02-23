@@ -470,10 +470,19 @@ export async function listExistingToursLibraryController(req, res) {
 
     const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
-    let orderBy = "ORDER BY t.created_at DESC";
-    if (sort === "oldest") orderBy = "ORDER BY t.created_at ASC";
-    if (sort === "price-asc") orderBy = "ORDER BY t.starting_price ASC";
-    if (sort === "price-desc") orderBy = "ORDER BY t.starting_price DESC";
+    /* Stable sort even if created_at is NULL and starting_price is string/NULL */
+    let orderBy = "ORDER BY COALESCE(t.created_at, t.id) DESC, t.id DESC";
+    if (sort === "oldest") {
+      orderBy = "ORDER BY COALESCE(t.created_at, t.id) ASC, t.id ASC";
+    }
+    if (sort === "price-asc") {
+      orderBy =
+        "ORDER BY CAST(COALESCE(t.starting_price, 0) AS DECIMAL(10,2)) ASC, t.id DESC";
+    }
+    if (sort === "price-desc") {
+      orderBy =
+        "ORDER BY CAST(COALESCE(t.starting_price, 0) AS DECIMAL(10,2)) DESC, t.id DESC";
+    }
 
     const [[countRow]] = await db.query(
       `
