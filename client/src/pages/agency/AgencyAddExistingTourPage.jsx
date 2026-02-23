@@ -476,9 +476,6 @@ export default function AgencyAddExistingTourPage() {
             <div className="text-lg font-semibold text-gray-900">
               Add Existing Tour
             </div>
-            <div className="mt-1 text-xs text-gray-500">
-              Browse the tour library and add a listing to your agency.
-            </div>
           </div>
 
           {fetching ? (
