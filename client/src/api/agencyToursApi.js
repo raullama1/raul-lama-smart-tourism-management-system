@@ -14,13 +14,14 @@ export async function fetchAgencyManageTours(params = {}) {
   const url = query ? `/agency/tours/manage?${query}` : `/agency/tours/manage`;
 
   const res = await apiClient.get(url);
-  return res.data; // { data: [...] }
+  return res.data;
 }
 
 export async function updateAgencyTourStatus(agencyTourId, status) {
-  const res = await apiClient.patch(`/agency/tours/manage/${agencyTourId}/status`, {
-    status,
-  });
+  const res = await apiClient.patch(
+    `/agency/tours/manage/${agencyTourId}/status`,
+    { status }
+  );
   return res.data;
 }
 
@@ -33,5 +34,24 @@ export async function updateAgencyTour(agencyTourId, formData) {
   const res = await apiClient.put(`/agency/tours/manage/${agencyTourId}`, formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
+  return res.data;
+}
+
+/* Existing Tours Library (pagination) */
+export async function fetchExistingToursLibrary(params = {}) {
+  const sp = new URLSearchParams(params);
+  const query = sp.toString();
+  const url = query ? `/agency/tours/library?${query}` : `/agency/tours/library`;
+  const res = await apiClient.get(url);
+  return res.data; // { data: [...], meta: {...} }
+}
+
+export async function fetchExistingToursLocations() {
+  const res = await apiClient.get("/agency/tours/library/locations");
+  return res.data; // { data: [...] }
+}
+
+export async function addExistingTourListing(tourId, payload) {
+  const res = await apiClient.post(`/agency/tours/library/${tourId}`, payload);
   return res.data;
 }

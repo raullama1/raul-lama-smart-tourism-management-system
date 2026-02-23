@@ -139,7 +139,8 @@ export default function AgencySidebar() {
               open={tourOpen}
               onToggle={() => setTourOpen((p) => !p)}
             >
-              <SubItem to="/agency/tours/new" label="Add Tour" />
+              <SubItem to="/agency/tours/existing" label="Add Existing Tour" />
+              <SubItem to="/agency/tours/new" label="Add New Tour" />
               <SubItem to="/agency/tours/manage" label="Manage Tour" />
             </Section>
 

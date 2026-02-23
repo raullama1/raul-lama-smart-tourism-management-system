@@ -36,10 +36,8 @@ import AgencyResetPasswordPage from "../pages/agency/AgencyResetPasswordPage";
 import AgencyDashboardPage from "../pages/agency/AgencyDashboardPage";
 import AgencyAddTourPage from "../pages/agency/AgencyAddTourPage";
 import AgencyManageToursPage from "../pages/agency/AgencyManageToursPage";
+import AgencyAddExistingTourPage from "../pages/agency/AgencyAddExistingTourPage";
 
-/**
- * Protect tourist routes (normal user login)
- */
 function PrivateRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
 
@@ -54,9 +52,6 @@ function PrivateRoute({ children }) {
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 }
 
-/**
- * Prevent showing login/signup when already logged in (normal user)
- */
 function PublicRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
 
@@ -71,9 +66,6 @@ function PublicRoute({ children }) {
   return isAuthenticated ? <Navigate to="/home" replace /> : children;
 }
 
-/**
- * Protect agency routes (agency login)
- */
 function AgencyPrivateRoute({ children }) {
   const { isAuthenticated, loading } = useAgencyAuth();
 
@@ -88,9 +80,6 @@ function AgencyPrivateRoute({ children }) {
   return isAuthenticated ? children : <Navigate to="/agency/login" replace />;
 }
 
-/**
- * Prevent showing agency auth pages when already logged in (agency)
- */
 function AgencyPublicRoute({ children }) {
   const { isAuthenticated, loading } = useAgencyAuth();
 
@@ -105,11 +94,6 @@ function AgencyPublicRoute({ children }) {
   return isAuthenticated ? <Navigate to="/agency/dashboard" replace /> : children;
 }
 
-/**
- * Handle /agency base path:
- * - Not logged in => /agency/login
- * - Logged in     => /agency/dashboard
- */
 function AgencyIndexRedirect() {
   const { isAuthenticated, loading } = useAgencyAuth();
 
@@ -283,7 +267,7 @@ export default function AppRouter() {
         {/* Agency Portal Base */}
         <Route path="/agency" element={<AgencyIndexRedirect />} />
 
-        {/* Agency Auth Pages (blocked when already logged in) */}
+        {/* Agency Auth Pages */}
         <Route
           path="/agency/login"
           element={
@@ -334,6 +318,16 @@ export default function AppRouter() {
             </AgencyPrivateRoute>
           }
         />
+
+        <Route
+          path="/agency/tours/existing"
+          element={
+            <AgencyPrivateRoute>
+              <AgencyAddExistingTourPage />
+            </AgencyPrivateRoute>
+          }
+        />
+
         <Route
           path="/agency/tours/new"
           element={
