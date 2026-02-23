@@ -74,3 +74,9 @@ Thumbs.db
 *.sqlite
 *.db
 dump.sql
+
+# ==========================
+#   Uploaded tour images
+# ==========================
+server/uploads/tours/*
+!server/uploads/tours/.gitkeep
