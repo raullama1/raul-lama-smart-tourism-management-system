@@ -1,3 +1,4 @@
+// client/src/pages/tourist/ConfirmBookingPage.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import NavbarTourist from "../../components/tourist/NavbarTourist";
@@ -6,6 +7,34 @@ import { useAuth } from "../../context/AuthContext";
 import { fetchBookingPreview, createBooking } from "../../api/bookingApi";
 import { FaCheckCircle } from "react-icons/fa";
 
+function safeYMD(v) {
+  const s = String(v || "").trim();
+  if (!s) return "";
+  return s.slice(0, 10); // supports YYYY-MM-DD and datetime
+}
+
+function parsePipeRange(raw) {
+  const s = String(raw || "").trim();
+  if (!s || !s.includes("|")) return { start: "", end: "" };
+  const [a, b] = s.split("|");
+  return { start: safeYMD(a), end: safeYMD(b) };
+}
+
+function normalizeCsvDates(raw) {
+  if (!raw) return [];
+  return String(raw)
+    .split(",")
+    .map((d) => d.trim())
+    .filter(Boolean);
+}
+
+function makeRangeLabel(start, end) {
+  const a = safeYMD(start);
+  const b = safeYMD(end);
+  if (!a || !b) return "";
+  return `${a} → ${b}`;
+}
+
 export default function ConfirmBookingPage() {
   const navigate = useNavigate();
   const [sp] = useSearchParams();
@@ -13,68 +42,63 @@ export default function ConfirmBookingPage() {
 
   const agencyTourId = sp.get("agencyTourId");
 
-  // date from URL (optional)
+  // optional date label coming from URL
   const dateFromUrl = sp.get("date") || "";
 
   const [preview, setPreview] = useState(null);
 
-  // ✅ default 1 traveler
   const [travelers, setTravelers] = useState(1);
-
   const [notes, setNotes] = useState("");
 
-  // ✅ user selectable date
+  // selected option label
   const [selectedDateLabel, setSelectedDateLabel] = useState(dateFromUrl);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const normalizeDates = (csv) => {
-    if (!csv) return [];
-    return csv
-      .split(",")
-      .map((d) => d.trim())
-      .filter(Boolean);
-  };
-
-  // ✅ dates from preview (must come from backend)
+  // ✅ Build date options in a backward-compatible way
   const availableDates = useMemo(() => {
-    return normalizeDates(preview?.available_dates);
+    if (!preview) return [];
+
+    // 1) New way: start_date / end_date
+    const rangeLabel = makeRangeLabel(preview.start_date, preview.end_date);
+    if (rangeLabel) return [rangeLabel];
+
+    // 2) Old way: "YYYY-MM-DD|YYYY-MM-DD"
+    const parsed = parsePipeRange(preview.available_dates);
+    const legacyLabel = makeRangeLabel(parsed.start, parsed.end);
+    if (legacyLabel) return [legacyLabel];
+
+    // 3) Very old way: CSV dates (if you ever used it)
+    return normalizeCsvDates(preview.available_dates);
   }, [preview]);
 
-  // ✅ auto-pick first date if none selected and dates exist
-  useEffect(() => {
-    if (!preview) return;
-
-    // if URL date exists and is valid -> keep it
-    if (dateFromUrl && availableDates.includes(dateFromUrl)) {
-      setSelectedDateLabel(dateFromUrl);
-      return;
-    }
-
-    // if not selected -> choose first available date
-    if (!selectedDateLabel && availableDates.length > 0) {
-      setSelectedDateLabel(availableDates[0]);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preview, dateFromUrl, availableDates.length]);
-
-  // ✅ unit price
+  // unit price
   const unitPrice = useMemo(() => Number(preview?.price || 0), [preview]);
 
-  // ✅ total = unit * travelers
+  // total = unit * travelers
   const totalPrice = useMemo(() => {
     const n = Number(travelers || 1);
     return unitPrice * (Number.isNaN(n) ? 1 : n);
   }, [unitPrice, travelers]);
 
-  const unitPriceText = useMemo(() => {
-    return `NPR ${unitPrice.toLocaleString()}`;
-  }, [unitPrice]);
+  const unitPriceText = useMemo(() => `NPR ${unitPrice.toLocaleString("en-NP")}`, [unitPrice]);
+  const totalPriceText = useMemo(() => `NPR ${totalPrice.toLocaleString("en-NP")}`, [totalPrice]);
 
-  const totalPriceText = useMemo(() => {
-    return `NPR ${totalPrice.toLocaleString()}`;
-  }, [totalPrice]);
+  // auto-pick default option
+  useEffect(() => {
+    if (!preview) return;
+
+    if (dateFromUrl && availableDates.includes(dateFromUrl)) {
+      setSelectedDateLabel(dateFromUrl);
+      return;
+    }
+
+    if (!selectedDateLabel && availableDates.length > 0) {
+      setSelectedDateLabel(availableDates[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preview, dateFromUrl, availableDates.length]);
 
   useEffect(() => {
     const load = async () => {
@@ -93,7 +117,7 @@ export default function ConfirmBookingPage() {
           return;
         }
 
-        // ✅ token handled by apiClient interceptor
+        // token handled by apiClient interceptor
         const res = await fetchBookingPreview(agencyTourId);
         setPreview(res?.data || null);
       } catch (e) {
@@ -128,7 +152,7 @@ export default function ConfirmBookingPage() {
         agencyTourId: Number(agencyTourId),
         travelers: n,
         notes: notes?.trim() || null,
-        selectedDateLabel,
+        selectedDateLabel, // keep same payload key (backend already expects this)
       };
 
       const res = await createBooking(payload);
@@ -189,13 +213,13 @@ export default function ConfirmBookingPage() {
           {/* Form */}
           <div className="mt-4 bg-white border border-gray-100 rounded-2xl p-4 md:p-5 shadow-sm">
             <div className="space-y-4">
-              {/* ✅ Date select */}
+              {/* Date select */}
               <div>
                 <label className="text-sm font-semibold text-gray-900">Select date</label>
 
                 {availableDates.length === 0 ? (
                   <div className="mt-2 text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
-                    No dates available yet. (Agency has not added dates.)
+                    No dates available yet.
                   </div>
                 ) : (
                   <select
@@ -212,7 +236,7 @@ export default function ConfirmBookingPage() {
                 )}
 
                 <div className="text-xs text-gray-500 mt-2">
-                  Choose one available date from the agency.
+                  Choose the available period provided by the agency.
                 </div>
               </div>
 

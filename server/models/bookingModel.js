@@ -1,4 +1,28 @@
+// server/models/bookingModel.js
 import { db } from "../db.js";
+
+/* =========================
+   HELPERS
+   ========================= */
+function safeYMD(v) {
+  const s = String(v || "").trim();
+  if (!s) return "";
+  return s.slice(0, 10); // supports YYYY-MM-DD and datetime strings
+}
+
+function parsePipeRange(raw) {
+  const s = String(raw || "").trim();
+  if (!s || !s.includes("|")) return { start: "", end: "" };
+  const [a, b] = s.split("|");
+  return { start: safeYMD(a), end: safeYMD(b) };
+}
+
+function makeRangeLabel(start, end) {
+  const a = safeYMD(start);
+  const b = safeYMD(end);
+  if (!a || !b) return "";
+  return `${a} → ${b}`;
+}
 
 /* =========================
    LIST USER BOOKINGS
@@ -99,18 +123,35 @@ export async function fetchBookingPreviewByAgencyTourId(agencyTourId) {
       at.agency_id,
       at.price,
       at.available_dates,
+      at.start_date,
+      at.end_date,
+      at.listing_status,
+
       t.title AS tour_title,
       a.name AS agency_name
     FROM agency_tours at
     INNER JOIN tours t ON t.id = at.tour_id
     INNER JOIN agencies a ON a.id = at.agency_id
     WHERE at.id = ?
+      AND at.listing_status = 'active'
     LIMIT 1
     `,
     [Number(agencyTourId)]
   );
 
-  return rows[0] || null;
+  if (!rows[0]) return null;
+
+  const r = rows[0];
+
+  // Normalize start/end for frontend (fallback for old rows)
+  const start = safeYMD(r.start_date) || parsePipeRange(r.available_dates).start;
+  const end = safeYMD(r.end_date) || parsePipeRange(r.available_dates).end;
+
+  return {
+    ...r,
+    start_date: start || null,
+    end_date: end || null,
+  };
 }
 
 /* =========================
@@ -137,9 +178,16 @@ export async function insertBooking({
   notes,
   selectedDateLabel,
 }) {
-  // Load agency-tour preview
   const preview = await fetchBookingPreviewByAgencyTourId(Number(agencyTourId));
-  if (!preview) return null;
+  if (!preview) return null; // includes active-only rule
+
+  // Validate selectedDateLabel must match the listing’s season
+  const expectedLabel = makeRangeLabel(preview.start_date, preview.end_date);
+  if (!expectedLabel) return null;
+
+  if (String(selectedDateLabel || "").trim() !== expectedLabel) {
+    return null;
+  }
 
   const bookingRef = makeBookingRef(preview.tour_title);
   const totalPrice = Number(preview.price) * Number(travelers);
@@ -172,7 +220,7 @@ export async function insertBooking({
       bookingRef,
       Number(travelers),
       notes ?? null,
-      selectedDateLabel ?? null,
+      expectedLabel,
       totalPrice,
     ]
   );

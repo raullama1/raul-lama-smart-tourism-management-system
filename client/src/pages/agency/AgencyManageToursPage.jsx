@@ -1,3 +1,4 @@
+// client/src/pages/agency/AgencyManageToursPage.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   FiBell,
@@ -60,6 +61,7 @@ function badgeClass(status) {
   const s = String(status || "").toLowerCase();
   if (s === "active") return "bg-emerald-50 text-emerald-800 border-emerald-100";
   if (s === "paused") return "bg-amber-50 text-amber-800 border-amber-100";
+  if (s === "completed") return "bg-sky-50 text-sky-800 border-sky-100";
   return "bg-gray-50 text-gray-800 border-gray-100";
 }
 
@@ -74,7 +76,13 @@ function StatusPill({ status }) {
         badgeClass(s),
       ].join(" ")}
     >
-      {s === "active" ? <FiCheckCircle /> : s === "paused" ? <FiPauseCircle /> : null}
+      {s === "active" ? (
+        <FiCheckCircle />
+      ) : s === "paused" ? (
+        <FiPauseCircle />
+      ) : s === "completed" ? (
+        <FiCheckCircle />
+      ) : null}
       {label}
     </span>
   );
@@ -84,6 +92,8 @@ function IconBtn({ children, tone = "default", ...props }) {
   const cls =
     tone === "danger"
       ? "border-red-200 text-red-700 hover:bg-red-50"
+      : tone === "neutral"
+      ? "border-gray-200 text-gray-900 hover:bg-gray-50"
       : "border-emerald-200 text-emerald-900 hover:bg-emerald-50";
 
   return (
@@ -101,19 +111,34 @@ function IconBtn({ children, tone = "default", ...props }) {
 }
 
 /* ModalShell (scrollable body + max height) */
-function ModalShell({ open, title, subtitle, children, onClose, footer, busy = false }) {
+function ModalShell({
+  open,
+  title,
+  subtitle,
+  children,
+  onClose,
+  footer,
+  busy = false,
+}) {
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-[300]">
-      <div className="absolute inset-0 bg-black/30" onClick={busy ? undefined : onClose} />
+      <div
+        className="absolute inset-0 bg-black/30"
+        onClick={busy ? undefined : onClose}
+      />
 
       <div className="absolute inset-0 flex items-center justify-center p-4">
         <div className="w-full max-w-3xl max-h-[92vh] rounded-2xl bg-white shadow-xl border border-emerald-100 overflow-hidden flex flex-col">
           <div className="px-5 py-4 border-b border-emerald-100 flex items-start justify-between gap-3 shrink-0">
             <div>
-              <div className="text-base font-semibold text-gray-900">{title}</div>
-              {subtitle ? <div className="mt-1 text-xs text-gray-500">{subtitle}</div> : null}
+              <div className="text-base font-semibold text-gray-900">
+                {title}
+              </div>
+              {subtitle ? (
+                <div className="mt-1 text-xs text-gray-500">{subtitle}</div>
+              ) : null}
             </div>
 
             <button
@@ -154,13 +179,39 @@ function splitDates(availableDates) {
 }
 
 function normalizeText(v) {
-  return String(v ?? "").trim().replace(/\s+/g, " ");
+  return String(v ?? "")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+/* ---- Date helpers (same as AgencyAddTourPage) ---- */
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+function toYMD(date) {
+  const d = new Date(date);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+function addMonths(date, months) {
+  const d = new Date(date);
+  const day = d.getDate();
+  d.setMonth(d.getMonth() + months);
+  if (d.getDate() < day) d.setDate(0);
+  return d;
+}
+function isValidDateString(ymd) {
+  if (!ymd) return false;
+  const d = new Date(ymd);
+  return !Number.isNaN(d.getTime());
+}
+function blockManualDateInput(e) {
+  if (e.type === "keydown" && e.key === "Tab") return;
+  e.preventDefault();
 }
 
 /**
  * Lazy-loaded map picker:
- * Leaflet + react-leaflet are imported only when this component renders (Edit modal open),
- * so the Manage Tours page opens instantly from sidebar.
+ * Leaflet + react-leaflet are imported only when this component renders (Edit modal open)
  */
 function LazyNepalMapPicker({
   coords,
@@ -181,7 +232,10 @@ function LazyNepalMapPicker({
 
     (async () => {
       try {
-        const [rl, leaflet] = await Promise.all([import("react-leaflet"), import("leaflet")]);
+        const [rl, leaflet] = await Promise.all([
+          import("react-leaflet"),
+          import("leaflet"),
+        ]);
         const L = leaflet?.default || leaflet;
 
         if (!alive) return;
@@ -203,8 +257,10 @@ function LazyNepalMapPicker({
 
     return new mods.L.Icon({
       iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-      iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-      shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+      iconRetinaUrl:
+        "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+      shadowUrl:
+        "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
       iconSize: [25, 41],
       iconAnchor: [12, 41],
     });
@@ -312,6 +368,9 @@ export default function AgencyManageToursPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteRow, setDeleteRow] = useState(null);
 
+  const [completeOpen, setCompleteOpen] = useState(false);
+  const [completeRow, setCompleteRow] = useState(null);
+
   const [editOpen, setEditOpen] = useState(false);
   const [editRow, setEditRow] = useState(null);
 
@@ -347,6 +406,28 @@ export default function AgencyManageToursPage() {
 
   const params = useMemo(() => ({ q, status, sort }), [q, status, sort]);
 
+  /* ---- Calendar rules (same as Add Tour) ---- */
+  const todayYMD = useMemo(() => toYMD(new Date()), []);
+  const startMaxYMD = useMemo(() => toYMD(addMonths(new Date(), 3)), []);
+
+  const endMinYMD = useMemo(() => {
+    if (!isValidDateString(editStartDate)) return "";
+    return toYMD(addMonths(new Date(editStartDate), 1));
+  }, [editStartDate]);
+
+  const endMaxYMD = useMemo(() => {
+    if (!isValidDateString(editStartDate)) return "";
+    return toYMD(addMonths(new Date(editStartDate), 3));
+  }, [editStartDate]);
+
+  /* Shared grid for header + rows to keep perfect alignment */
+  const TABLE_GRID =
+    "grid grid-cols-[120px_minmax(0,1.8fr)_125px_160px_110px_360px]";
+
+  /* Consistent left alignment for all columns */
+  const CELL_LEFT = "flex items-center justify-start";
+  const HEADER_LEFT = "text-left";
+
   const load = async () => {
     try {
       setErr("");
@@ -374,6 +455,12 @@ export default function AgencyManageToursPage() {
   const onToggle = async (r) => {
     const agencyTourId = r.agency_tour_id;
     const current = String(r.listing_status || "active").toLowerCase();
+
+    if (current === "completed") {
+      showToast("error", "Completed tours cannot be toggled.");
+      return;
+    }
+
     const next = current === "active" ? "paused" : "active";
 
     try {
@@ -422,6 +509,38 @@ export default function AgencyManageToursPage() {
     }
   };
 
+  const openComplete = (r) => {
+    setCompleteRow(r);
+    setCompleteOpen(true);
+  };
+
+  const closeComplete = () => {
+    setCompleteOpen(false);
+    setCompleteRow(null);
+  };
+
+  const confirmComplete = async () => {
+    if (!completeRow) return;
+
+    const agencyTourId = completeRow.agency_tour_id;
+
+    closeComplete();
+
+    try {
+      setBusyId(agencyTourId);
+      setErr("");
+      await updateAgencyTourStatus(agencyTourId, "completed");
+      await load();
+      showToast("success", "Tour marked as completed");
+    } catch (e) {
+      const m = e?.response?.data?.message || "Failed to mark as completed.";
+      setErr(m);
+      showToast("error", m);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const resetEditState = () => {
     setEditRow(null);
     setEditTitle("");
@@ -458,7 +577,7 @@ export default function AgencyManageToursPage() {
     const d = String(r.long_description || "");
     const ty = String(r.type || "");
     const loc = String(r.location || "");
-    const pr = String(r.price || "");
+    const pr = String(r.price ?? "").replace(/\D/g, "").slice(0, 7);
     const st = String(r.listing_status || "active").toLowerCase();
 
     setEditTitle(t);
@@ -467,14 +586,20 @@ export default function AgencyManageToursPage() {
     setEditLocation(loc);
     setEditPrice(pr);
 
-    setEditStatus(st === "paused" ? "paused" : "active");
+    const safeStatus =
+      st === "paused" ? "paused" : st === "completed" ? "completed" : "active";
+    setEditStatus(safeStatus);
 
     const dates = splitDates(r.available_dates);
     setEditStartDate(dates.start);
     setEditEndDate(dates.end);
 
-    const la = r.latitude !== null && r.latitude !== undefined ? Number(r.latitude) : null;
-    const lo = r.longitude !== null && r.longitude !== undefined ? Number(r.longitude) : null;
+    const la =
+      r.latitude !== null && r.latitude !== undefined ? Number(r.latitude) : null;
+    const lo =
+      r.longitude !== null && r.longitude !== undefined
+        ? Number(r.longitude)
+        : null;
 
     if (Number.isFinite(la) && Number.isFinite(lo)) {
       setCoords({ lat: la, lng: lo });
@@ -499,7 +624,7 @@ export default function AgencyManageToursPage() {
       price: String(pr ?? "").trim(),
       start: String(dates.start || ""),
       end: String(dates.end || ""),
-      status: st === "paused" ? "paused" : "active",
+      status: safeStatus,
       lat: Number.isFinite(la) ? Number(la).toFixed(7) : "",
       lng: Number.isFinite(lo) ? Number(lo).toFixed(7) : "",
       imageUrl: imgUrl,
@@ -553,7 +678,9 @@ export default function AgencyManageToursPage() {
   const onPickImage = (file) => {
     if (!file) return;
 
-    if (!["image/png", "image/jpeg", "image/jpg", "image/webp"].includes(file.type)) {
+    if (
+      !["image/png", "image/jpeg", "image/jpg", "image/webp"].includes(file.type)
+    ) {
       const m = "Only PNG/JPG/WEBP allowed.";
       setErr(m);
       showToast("error", m);
@@ -579,20 +706,47 @@ export default function AgencyManageToursPage() {
     if (!editTitle.trim()) return "Tour title is required.";
     if (!editDesc.trim()) return "Description is required.";
     if (!editLocation.trim()) return "Location is required.";
-    if (!editLocation.toLowerCase().endsWith("nepal")) return "Location must end with 'Nepal'.";
+    if (!editLocation.toLowerCase().endsWith("nepal"))
+      return "Location must end with 'Nepal'.";
     if (!editType) return "Type is required.";
 
-    const p = Number(editPrice);
+    const prRaw = String(editPrice ?? "").replace(/\D/g, "");
+    if (!prRaw) return "Price must be greater than 0.";
+    if (prRaw.length > 7) return "Price must be max 7 digits.";
+
+    const p = Number(prRaw);
     if (!Number.isFinite(p) || p <= 0) return "Price must be greater than 0.";
 
-    if (!editStartDate || !editEndDate) return "Start date and end date are required.";
-    if (new Date(editEndDate) < new Date(editStartDate)) return "End date must be after start date.";
+    if (!editStartDate || !editEndDate)
+      return "Start date and end date are required.";
 
-    if (!coords?.lat || !coords?.lng) return "Please pick location on map or type lat/lng.";
-    if (!isInsideNepal(coords.lat, coords.lng)) return "Selected coordinates must be inside Nepal.";
+    if (!isValidDateString(editStartDate)) return "Invalid start date.";
+    if (!isValidDateString(editEndDate)) return "Invalid end date.";
+
+    const start = new Date(editStartDate);
+    const today = new Date(todayYMD);
+    const maxStart = new Date(startMaxYMD);
+
+    if (start < today) return "Start date cannot be in the past.";
+    if (start > maxStart)
+      return "Start date must be within 3 months from today.";
+
+    const end = new Date(editEndDate);
+    const minEnd = new Date(endMinYMD);
+    const maxEnd = new Date(endMaxYMD);
+
+    if (end < minEnd) return "End date must be at least 1 month after start.";
+    if (end > maxEnd)
+      return "End date must be within 3 months after start.";
+
+    if (!coords?.lat || !coords?.lng)
+      return "Please pick location on map or type lat/lng.";
+    if (!isInsideNepal(coords.lat, coords.lng))
+      return "Selected coordinates must be inside Nepal.";
 
     const st = String(editStatus || "").toLowerCase();
-    if (!["active", "paused"].includes(st)) return "Invalid status.";
+    if (!["active", "paused", "completed"].includes(st))
+      return "Invalid status.";
 
     return "";
   };
@@ -670,7 +824,7 @@ export default function AgencyManageToursPage() {
       fd.append("type", editType);
       fd.append("latitude", String(coords.lat));
       fd.append("longitude", String(coords.lng));
-      fd.append("price", String(editPrice));
+      fd.append("price", String(String(editPrice ?? "").replace(/\D/g, "")));
       fd.append("start_date", editStartDate);
       fd.append("end_date", editEndDate);
       fd.append("listing_status", String(editStatus).toLowerCase());
@@ -736,6 +890,7 @@ export default function AgencyManageToursPage() {
             <option value="all">All Status</option>
             <option value="active">Active</option>
             <option value="paused">Paused</option>
+            <option value="completed">Completed</option>
           </select>
 
           <select
@@ -765,13 +920,19 @@ export default function AgencyManageToursPage() {
         ) : null}
 
         <div className="mt-5 overflow-hidden rounded-2xl border border-emerald-100">
-          <div className="grid grid-cols-[120px_1fr_160px_140px_120px_360px] gap-0 bg-emerald-50/60 border-b border-emerald-100 px-4 py-3 text-xs font-bold text-emerald-900/80">
-            <div>Image</div>
-            <div>Tour Name</div>
-            <div>Price (NPR)</div>
-            <div>Status</div>
-            <div>Bookings</div>
-            <div>Actions</div>
+          {/* Header: enforce left alignment to match rows */}
+          <div
+            className={[
+              TABLE_GRID,
+              "gap-0 bg-emerald-50/60 border-b border-emerald-100 px-4 py-3 text-xs font-bold text-emerald-900/80",
+            ].join(" ")}
+          >
+            <div className={HEADER_LEFT}>Image</div>
+            <div className={HEADER_LEFT}>Tour Name</div>
+            <div className={HEADER_LEFT}>Price (NPR)</div>
+            <div className={HEADER_LEFT}>Status</div>
+            <div className={HEADER_LEFT}>Bookings</div>
+            <div className={HEADER_LEFT}>Actions</div>
           </div>
 
           {loading ? (
@@ -783,13 +944,16 @@ export default function AgencyManageToursPage() {
               {rows.map((r) => {
                 const img = toPublicImageUrl(r.image_url) || FALLBACK_TOUR_IMG;
                 const busy = busyId === r.agency_tour_id;
+                const s = String(r.listing_status || "active").toLowerCase();
+                const isCompleted = s === "completed";
 
                 return (
                   <div
                     key={r.agency_tour_id}
-                    className="grid grid-cols-[120px_1fr_160px_140px_120px_360px] items-center px-4 py-4"
+                    className={[TABLE_GRID, "items-center px-4 py-4"].join(" ")}
                   >
-                    <div>
+                    {/* Column alignment: keep every cell left-aligned for consistent start */}
+                    <div className={CELL_LEFT}>
                       <img
                         src={img}
                         alt={r.title}
@@ -800,51 +964,78 @@ export default function AgencyManageToursPage() {
                       />
                     </div>
 
-                    <div className="pr-4">
-                      <div className="text-sm font-bold text-gray-900 leading-tight">
+                    <div className="pr-4 min-w-0">
+                      <div className="text-sm font-bold text-gray-900 leading-tight truncate">
                         {r.title}
                       </div>
-                      <div className="mt-1 text-xs text-gray-500">{r.location}</div>
+                      <div className="mt-1 text-xs text-gray-500 truncate">
+                        {r.location}
+                      </div>
                     </div>
 
-                    <div className="text-sm font-bold text-gray-900">
+                    <div className={[CELL_LEFT, "text-sm font-bold text-gray-900 tabular-nums"].join(" ")}>
                       NPR {Number(r.price || 0).toLocaleString("en-NP")}
                     </div>
 
-                    <div>
+                    <div className={CELL_LEFT}>
                       <button
                         type="button"
                         onClick={() => onToggle(r)}
-                        disabled={busy}
+                        disabled={busy || isCompleted}
                         className="text-left"
-                        title="Toggle status"
+                        title={
+                          isCompleted
+                            ? "Completed tours cannot be toggled"
+                            : "Toggle status"
+                        }
                       >
                         <StatusPill status={r.listing_status} />
                       </button>
                     </div>
 
-                    <div>
-                      <span className="inline-flex items-center justify-center rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-1 text-xs font-bold text-emerald-900">
+                    <div className={CELL_LEFT}>
+                      <span className="inline-flex items-center justify-center rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-1 text-xs font-bold text-emerald-900 tabular-nums">
                         {Number(r.bookings_count || 0)}
                       </span>
                     </div>
 
-                    <div className="flex flex-wrap gap-2 justify-end">
+                    <div className="flex flex-wrap gap-2 justify-start">
                       <IconBtn onClick={() => openEdit(r)} disabled={busy}>
                         <FiEdit2 />
                         Edit
                       </IconBtn>
 
-                      <IconBtn tone="danger" onClick={() => openDelete(r)} disabled={busy}>
+                      <IconBtn
+                        tone="danger"
+                        onClick={() => openDelete(r)}
+                        disabled={busy}
+                      >
                         <FiTrash2 />
                         Delete
                       </IconBtn>
 
-                      <IconBtn onClick={() => navigate("/agency/bookings")} disabled={busy}>
+                      {!isCompleted ? (
+                        <IconBtn
+                          tone="neutral"
+                          onClick={() => openComplete(r)}
+                          disabled={busy}
+                        >
+                          <FiCheckCircle />
+                          Mark Completed
+                        </IconBtn>
+                      ) : null}
+
+                      <IconBtn
+                        onClick={() => navigate("/agency/bookings")}
+                        disabled={busy}
+                      >
                         View Bookings
                       </IconBtn>
 
-                      <IconBtn onClick={() => navigate("/agency/reviews")} disabled={busy}>
+                      <IconBtn
+                        onClick={() => navigate("/agency/reviews")}
+                        disabled={busy}
+                      >
                         View Reviews
                       </IconBtn>
                     </div>
@@ -856,14 +1047,20 @@ export default function AgencyManageToursPage() {
         </div>
 
         <div className="mt-3 text-xs text-gray-500">
-          Tip: Click the status pill to toggle Active / Paused.
+          Tip: Click the status pill to toggle Active / Paused. Use “Mark
+          Completed” when the tour is finished.
         </div>
       </div>
 
+      {/* Delete Modal */}
       <ModalShell
         open={deleteOpen}
         title="Delete tour"
-        subtitle={deleteRow ? `This will remove "${deleteRow.title}" if it has no bookings.` : ""}
+        subtitle={
+          deleteRow
+            ? `This will remove "${deleteRow.title}" if it has no bookings.`
+            : ""
+        }
         onClose={busyId ? () => {} : closeDelete}
         busy={Boolean(busyId)}
         footer={
@@ -888,13 +1085,52 @@ export default function AgencyManageToursPage() {
         }
       >
         <div className="text-sm text-gray-700">
-          Are you sure you want to delete this tour? This action cannot be undone.
+          Are you sure you want to delete this tour? This action cannot be
+          undone.
         </div>
         <div className="mt-2 text-xs text-gray-500">
-          If this tour already has bookings, deletion will be blocked and you should pause it instead.
+          If this tour already has bookings, deletion will be blocked and you
+          should pause it instead.
         </div>
       </ModalShell>
 
+      {/* Completed Confirmation Modal */}
+      <ModalShell
+        open={completeOpen}
+        title="Mark tour as completed"
+        subtitle={
+          completeRow ? `Are you sure "${completeRow.title}" is completed?` : ""
+        }
+        onClose={busyId ? () => {} : closeComplete}
+        busy={Boolean(busyId)}
+        footer={
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={closeComplete}
+              disabled={Boolean(busyId)}
+              className="h-10 rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-gray-900 hover:bg-gray-50 disabled:opacity-60"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={confirmComplete}
+              disabled={Boolean(busyId)}
+              className="h-10 rounded-xl bg-sky-700 px-4 text-sm font-semibold text-white hover:bg-sky-800 disabled:opacity-60"
+            >
+              Yes, Completed
+            </button>
+          </div>
+        }
+      >
+        <div className="text-sm text-gray-700">
+          After marking completed, this tour will be treated as finished and
+          cannot be toggled back from this page.
+        </div>
+      </ModalShell>
+
+      {/* Edit Modal */}
       <ModalShell
         open={editOpen}
         title="Edit tour"
@@ -929,17 +1165,22 @@ export default function AgencyManageToursPage() {
       >
         <div className="grid grid-cols-1 gap-4">
           <div>
-            <div className="text-sm font-semibold text-emerald-900/70">Tour Title</div>
+            <div className="text-sm font-semibold text-emerald-900/70">
+              Tour Title
+            </div>
             <input
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
               className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               placeholder="Enter tour title"
+              maxLength={80}
             />
           </div>
 
           <div>
-            <div className="text-sm font-semibold text-emerald-900/70">Description</div>
+            <div className="text-sm font-semibold text-emerald-900/70">
+              Description
+            </div>
             <textarea
               value={editDesc}
               onChange={(e) => setEditDesc(e.target.value)}
@@ -951,50 +1192,94 @@ export default function AgencyManageToursPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
-              <div className="text-sm font-semibold text-emerald-900/70">Price (NPR)</div>
+              <div className="text-sm font-semibold text-emerald-900/70">
+                Price (NPR)
+              </div>
               <input
                 value={editPrice}
-                onChange={(e) => setEditPrice(e.target.value.replace(/\D/g, ""))}
+                onChange={(e) => {
+                  const v = String(e.target.value || "")
+                    .replace(/\D/g, "")
+                    .slice(0, 7);
+                  setEditPrice(v);
+                }}
+                maxLength={7}
                 className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 placeholder="Enter price"
                 inputMode="numeric"
               />
+              <div className="mt-1 text-[11px] text-gray-500">
+                Digits only • max 7 digits
+              </div>
             </div>
 
             <div>
-              <div className="text-sm font-semibold text-emerald-900/70">Start Date</div>
+              <div className="text-sm font-semibold text-emerald-900/70">
+                Start Date
+              </div>
               <input
                 type="date"
                 value={editStartDate}
-                onChange={(e) => setEditStartDate(e.target.value)}
+                min={todayYMD}
+                max={startMaxYMD}
+                onKeyDown={blockManualDateInput}
+                onPaste={blockManualDateInput}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setEditStartDate(v);
+
+                  if (v && editEndDate) {
+                    const end = new Date(editEndDate);
+                    const minEnd = new Date(toYMD(addMonths(new Date(v), 1)));
+                    const maxEnd = new Date(toYMD(addMonths(new Date(v), 3)));
+                    if (end < minEnd || end > maxEnd) setEditEndDate("");
+                  }
+                }}
                 className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
 
             <div>
-              <div className="text-sm font-semibold text-emerald-900/70">End Date</div>
+              <div className="text-sm font-semibold text-emerald-900/70">
+                End Date
+              </div>
               <input
                 type="date"
                 value={editEndDate}
+                min={endMinYMD || undefined}
+                max={endMaxYMD || undefined}
+                disabled={!editStartDate}
+                onKeyDown={blockManualDateInput}
+                onPaste={blockManualDateInput}
                 onChange={(e) => setEditEndDate(e.target.value)}
-                className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className={[
+                  "mt-2 w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500",
+                  !editStartDate
+                    ? "bg-gray-50 text-gray-600 cursor-not-allowed border-gray-200"
+                    : "border-gray-200",
+                ].join(" ")}
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="md:col-span-2">
-              <div className="text-sm font-semibold text-emerald-900/70">Location (Nepal only)</div>
+              <div className="text-sm font-semibold text-emerald-900/70">
+                Location (Nepal only)
+              </div>
               <input
                 value={editLocation}
                 onChange={(e) => setEditLocation(e.target.value)}
                 className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 placeholder="e.g., Pokhara, Nepal"
+                maxLength={80}
               />
             </div>
 
             <div>
-              <div className="text-sm font-semibold text-emerald-900/70">Type</div>
+              <div className="text-sm font-semibold text-emerald-900/70">
+                Type
+              </div>
               <select
                 value={editType}
                 onChange={(e) => setEditType(e.target.value)}
@@ -1011,7 +1296,9 @@ export default function AgencyManageToursPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
-              <div className="text-sm font-semibold text-emerald-900/70">Status</div>
+              <div className="text-sm font-semibold text-emerald-900/70">
+                Status
+              </div>
               <select
                 value={editStatus}
                 onChange={(e) => setEditStatus(e.target.value)}
@@ -1019,6 +1306,7 @@ export default function AgencyManageToursPage() {
               >
                 <option value="active">Active</option>
                 <option value="paused">Paused</option>
+                <option value="completed">Completed</option>
               </select>
             </div>
 
@@ -1028,15 +1316,21 @@ export default function AgencyManageToursPage() {
                   <FiMapPin />
                   Pick Location on Map
                 </div>
-                <div className="text-xs text-gray-600">Click map or type lat/lng.</div>
+                <div className="text-xs text-gray-600">
+                  Click map or type lat/lng.
+                </div>
               </div>
 
               <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
-                  <div className="text-xs font-semibold text-gray-700">Latitude</div>
+                  <div className="text-xs font-semibold text-gray-700">
+                    Latitude
+                  </div>
                   <input
                     value={latInput}
-                    onChange={(e) => setLatInput(sanitizeDecimal(e.target.value))}
+                    onChange={(e) =>
+                      setLatInput(sanitizeDecimal(e.target.value))
+                    }
                     className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     placeholder="e.g., 27.6727000"
                     inputMode="decimal"
@@ -1044,10 +1338,14 @@ export default function AgencyManageToursPage() {
                 </div>
 
                 <div>
-                  <div className="text-xs font-semibold text-gray-700">Longitude</div>
+                  <div className="text-xs font-semibold text-gray-700">
+                    Longitude
+                  </div>
                   <input
                     value={lngInput}
-                    onChange={(e) => setLngInput(sanitizeDecimal(e.target.value))}
+                    onChange={(e) =>
+                      setLngInput(sanitizeDecimal(e.target.value))
+                    }
                     className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     placeholder="e.g., 85.4298000"
                     inputMode="decimal"
@@ -1094,7 +1392,9 @@ export default function AgencyManageToursPage() {
           </div>
 
           <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
-            <div className="text-sm font-semibold text-emerald-900">Cover Image</div>
+            <div className="text-sm font-semibold text-emerald-900">
+              Cover Image
+            </div>
 
             <input
               ref={fileRef}

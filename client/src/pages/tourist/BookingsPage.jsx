@@ -1,3 +1,4 @@
+// client/src/pages/tourist/BookingsPage.jsx
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import NavbarTourist from "../../components/tourist/NavbarTourist";
 import FooterTourist from "../../components/tourist/FooterTourist";
@@ -50,7 +51,7 @@ export default function BookingsPage() {
   const closeInfoModal = () =>
     setInfoModal({ open: false, title: "Write Review", message: "" });
 
-  // Prevent double-fetch in React 18 dev StrictMode + prevent duplicate same request while in-flight
+  // Prevent duplicate same request while in-flight
   const inFlightRef = useRef(false);
   const lastKeyRef = useRef("");
   const draftFirstRunRef = useRef(true);
@@ -61,6 +62,9 @@ export default function BookingsPage() {
   // Pagination + smooth scroll + fade
   const userPagingRef = useRef(false);
   const [page, setPage] = useState(1);
+
+  // Manual refresh trigger (used when agency changes status to Completed)
+  const [refreshNonce, setRefreshNonce] = useState(0);
 
   // Start hidden so first paint fades in (tbody only)
   const [fadeState, setFadeState] = useState("out");
@@ -73,7 +77,6 @@ export default function BookingsPage() {
   const scrollFullTop = useCallback(() => {
     const start = window.scrollY || window.pageYOffset;
     const duration = 650;
-
     const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
 
     let startTime = null;
@@ -100,13 +103,14 @@ export default function BookingsPage() {
   }, [page, loading, scrollFullTop]);
 
   const displayStatus = (b) => {
+    // Confirmed is UI-derived (Paid + not Cancelled + not Completed)
     if (b.payment_status === "Paid" && b.booking_status !== "Cancelled") {
       return b.booking_status === "Completed" ? "Completed" : "Confirmed";
     }
     return b.booking_status;
   };
 
-  const load = async (f = filters, { smoothSwap = false } = {}) => {
+  const load = async (f = filters, { smoothSwap = false, force = false } = {}) => {
     if (!token) {
       setRows([]);
       setLoading(false);
@@ -123,7 +127,7 @@ export default function BookingsPage() {
     });
 
     if (inFlightRef.current) return;
-    if (lastKeyRef.current === key) return;
+    if (!force && lastKeyRef.current === key) return;
 
     try {
       inFlightRef.current = true;
@@ -170,7 +174,7 @@ export default function BookingsPage() {
     return () => clearTimeout(id);
   }, [draft.q, draft.date, draft.status, draft.sort]);
 
-  // Load only when token / server-relevant filters change
+  // Load when token / server-relevant filters change OR when refreshNonce changes
   useEffect(() => {
     if (!token) {
       setRows([]);
@@ -179,12 +183,36 @@ export default function BookingsPage() {
       return;
     }
 
-    // First load should be fast (no artificial delay)
     const smooth = !firstLoadRef.current;
-    load(filters, { smoothSwap: smooth });
+    load(filters, { smoothSwap: smooth, force: refreshNonce > 0 });
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, filters.q, filters.date]);
+  }, [token, filters.q, filters.date, refreshNonce]);
+
+  // Auto-refresh when user comes back to the tab/window (so Completed status shows)
+  useEffect(() => {
+    if (!token) return;
+
+    const onFocus = () => {
+      lastKeyRef.current = "";
+      setRefreshNonce(Date.now());
+    };
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        lastKeyRef.current = "";
+        setRefreshNonce(Date.now());
+      }
+    };
+
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [token]);
 
   const StatusBadge = ({ status }) => {
     const map = {
@@ -221,13 +249,15 @@ export default function BookingsPage() {
     </span>
   );
 
-  const actionBase =
-    "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200";
-  const lift =
-    "hover:-translate-y-[1px] hover:shadow-md active:translate-y-0 active:shadow-sm";
-
   const handleReset = () => {
     setDraft(DEFAULT_FILTERS);
+    lastKeyRef.current = "";
+    setRefreshNonce(Date.now());
+  };
+
+  const handleRefresh = () => {
+    lastKeyRef.current = "";
+    setRefreshNonce(Date.now());
   };
 
   const handlePayNow = async (bookingId) => {
@@ -239,6 +269,8 @@ export default function BookingsPage() {
       setRows((prev) =>
         prev.map((r) => (r.id === bookingId ? { ...r, payment_status: "Paid" } : r))
       );
+      // Re-fetch to reflect any server-side status updates after payment
+      handleRefresh();
     } catch (e) {
       console.error("Pay failed", e);
       alert(e?.response?.data?.message || "Payment failed. Please try again.");
@@ -277,6 +309,8 @@ export default function BookingsPage() {
         prev.map((r) => (r.id === bookingId ? { ...r, booking_status: "Cancelled" } : r))
       );
       closeCancelModal();
+      // Re-fetch so UI matches DB
+      handleRefresh();
     } catch (e) {
       console.error("Cancel failed", e);
       alert(e?.response?.data?.message || "Cancel failed. Please try again.");
@@ -400,16 +434,9 @@ export default function BookingsPage() {
     "px-4 py-2.5 rounded-2xl text-sm font-semibold border " +
     "transition-all duration-300 ease-out transform active:scale-95 shadow-sm hover:shadow-md";
 
-  const pagerBtnEnabled =
-    "bg-white text-gray-900 border-gray-200 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-800 hover:-translate-y-0.5";
-
-  const pagerBtnDisabled =
-    "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed shadow-none";
-
   // Fade ONLY body (keep header stable)
   const fadeWrapClass = fadeState === "in" ? "opacity-100" : "opacity-0";
-  const transitionClass =
-    "transition-opacity duration-600 ease-[cubic-bezier(.22,1,.36,1)]";
+  const transitionClass = "transition-opacity duration-600 ease-[cubic-bezier(.22,1,.36,1)]";
 
   return (
     <>
@@ -418,10 +445,22 @@ export default function BookingsPage() {
       <main className="bg-[#e6f4ec] pt-6 pb-6">
         <div className="max-w-6xl mx-auto px-4 md:px-6">
           <div className="bg-white border border-gray-100 rounded-2xl p-4 md:p-5 shadow-sm">
-            <h1 className="text-lg md:text-xl font-semibold text-gray-900">Booking History</h1>
-            <p className="text-xs md:text-sm text-emerald-700 mt-1">
-              Your past and current bookings with status and payment details.
-            </p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h1 className="text-lg md:text-xl font-semibold text-gray-900">Booking History</h1>
+                <p className="text-xs md:text-sm text-emerald-700 mt-1">
+                  Your past and current bookings with status and payment details.
+                </p>
+              </div>
+
+              <button
+                onClick={handleRefresh}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-gray-200 bg-white text-gray-900 hover:bg-gray-50"
+                title="Refresh bookings"
+              >
+                <FaRedo /> Refresh
+              </button>
+            </div>
 
             <div className="mt-4 flex flex-col md:flex-row gap-2 md:items-center">
               <input
@@ -635,7 +674,11 @@ export default function BookingsPage() {
               <button
                 onClick={() => setSafePage(page - 1, totalPages)}
                 disabled={page === 1}
-                className={`${pagerBtn} ${page === 1 ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed shadow-none" : "bg-white text-gray-900 border-gray-200 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-800 hover:-translate-y-0.5"}`}
+                className={`${pagerBtn} ${
+                  page === 1
+                    ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed shadow-none"
+                    : "bg-white text-gray-900 border-gray-200 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-800 hover:-translate-y-0.5"
+                }`}
               >
                 Prev
               </button>
@@ -647,7 +690,11 @@ export default function BookingsPage() {
               <button
                 onClick={() => setSafePage(page + 1, totalPages)}
                 disabled={page === totalPages}
-                className={`${pagerBtn} ${page === totalPages ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed shadow-none" : "bg-white text-gray-900 border-gray-200 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-800 hover:-translate-y-0.5"}`}
+                className={`${pagerBtn} ${
+                  page === totalPages
+                    ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed shadow-none"
+                    : "bg-white text-gray-900 border-gray-200 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-800 hover:-translate-y-0.5"
+                }`}
               >
                 Next
               </button>
@@ -675,7 +722,11 @@ export default function BookingsPage() {
                   </div>
                 </div>
 
-                <button onClick={closeCancelModal} className="text-gray-400 hover:text-gray-700 transition" title="Close">
+                <button
+                  onClick={closeCancelModal}
+                  className="text-gray-400 hover:text-gray-700 transition"
+                  title="Close"
+                >
                   <FaTimesCircle size={20} />
                 </button>
               </div>
@@ -734,7 +785,11 @@ export default function BookingsPage() {
                   </div>
                 </div>
 
-                <button onClick={closeInfoModal} className="text-gray-400 hover:text-gray-700 transition" title="Close">
+                <button
+                  onClick={closeInfoModal}
+                  className="text-gray-400 hover:text-gray-700 transition"
+                  title="Close"
+                >
                   <FaTimesCircle size={20} />
                 </button>
               </div>

@@ -1,3 +1,4 @@
+// server/controllers/bookingController.js
 import {
   getUserBookings,
   markBookingPaid,
@@ -57,9 +58,10 @@ export async function getBookingPreview(req, res) {
       return res.status(400).json({ message: "agencyTourId is required." });
     }
 
+    // Active-only preview is enforced in model
     const preview = await fetchBookingPreviewByAgencyTourId(Number(agencyTourId));
     if (!preview) {
-      return res.status(404).json({ message: "Booking preview not found." });
+      return res.status(404).json({ message: "Booking preview not found (inactive or missing)." });
     }
 
     res.json({ data: preview });
@@ -91,8 +93,14 @@ export async function createBooking(req, res) {
       agencyTourId: Number(agencyTourId),
       travelers: trav,
       notes: notes || null,
-      selectedDateLabel,
+      selectedDateLabel: String(selectedDateLabel || "").trim(),
     });
+
+    if (!created) {
+      return res.status(400).json({
+        message: "Booking failed. The listing may be inactive or the selected date is invalid.",
+      });
+    }
 
     res.status(201).json({ message: "Booking created.", data: created });
   } catch (err) {

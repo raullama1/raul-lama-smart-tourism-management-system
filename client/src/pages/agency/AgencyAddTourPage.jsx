@@ -209,18 +209,15 @@ export default function AgencyAddTourPage() {
     }, 2200);
   };
 
-  /* ✅ ADDED: scroll helper */
   const scrollToTop = () => {
     window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
   };
 
   const nepalCenter = useMemo(() => ({ lat: 28.3949, lng: 84.124 }), []);
 
-  /* Date windows */
   const todayYMD = useMemo(() => toYMD(new Date()), []);
   const startMaxYMD = useMemo(() => toYMD(addMonths(new Date(), 3)), []);
 
-  /* End date: 1–3 months after start date */
   const endMinYMD = useMemo(() => {
     if (!isValidDateString(startDate)) return "";
     return toYMD(addMonths(new Date(startDate), 1));
@@ -451,12 +448,10 @@ export default function AgencyAddTourPage() {
 
       showToast("success", "Tour saved successfully.");
 
-      /* ✅ CHANGED: scroll to top first (so user sees toast/top) */
       window.requestAnimationFrame(() => {
         scrollToTop();
       });
 
-      /* After success: reset form */
       setTitle("");
       setDesc("");
       setPrice("");
@@ -486,6 +481,13 @@ export default function AgencyAddTourPage() {
         lng: "",
       });
     } catch (e) {
+      const status = e?.response?.status;
+
+      if (status === 409) {
+        showToast("error", "This tour already exists. Please add it from 'Add Existing Tour'.");
+        return;
+      }
+
       const msg = e?.response?.data?.message || "Failed to save tour.";
       showToast("error", msg);
     } finally {
@@ -600,7 +602,9 @@ export default function AgencyAddTourPage() {
                   fieldErr.startDate ? "border-red-300 focus:ring-red-400" : "border-gray-200 focus:ring-emerald-500",
                 ].join(" ")}
               />
-              {fieldErr.startDate ? <div className="mt-1 text-xs font-semibold text-red-600">{fieldErr.startDate}</div> : null}
+              {fieldErr.startDate ? (
+                <div className="mt-1 text-xs font-semibold text-red-600">{fieldErr.startDate}</div>
+              ) : null}
             </div>
 
             <div ref={refEndDate}>
@@ -649,7 +653,9 @@ export default function AgencyAddTourPage() {
                   </option>
                 ))}
               </select>
-              {fieldErr.location ? <div className="mt-1 text-xs font-semibold text-red-600">{fieldErr.location}</div> : null}
+              {fieldErr.location ? (
+                <div className="mt-1 text-xs font-semibold text-red-600">{fieldErr.location}</div>
+              ) : null}
             </div>
 
             <div ref={refType}>
@@ -692,7 +698,9 @@ export default function AgencyAddTourPage() {
               <option value="active">Active</option>
               <option value="paused">Paused</option>
             </select>
-            {fieldErr.listingStatus ? <div className="mt-1 text-xs font-semibold text-red-600">{fieldErr.listingStatus}</div> : null}
+            {fieldErr.listingStatus ? (
+              <div className="mt-1 text-xs font-semibold text-red-600">{fieldErr.listingStatus}</div>
+            ) : null}
           </div>
 
           <div ref={refMap} className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
@@ -755,10 +763,7 @@ export default function AgencyAddTourPage() {
                   zoom={7}
                   style={{ height: "100%", width: "100%" }}
                 >
-                  <TileLayer
-                    attribution="&copy; OpenStreetMap"
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  />
+                  <TileLayer attribution="&copy; OpenStreetMap" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
 
                   <FlyToMarker coords={coords} zoom={12} active={shouldFly} onDone={() => setShouldFly(false)} />
 
