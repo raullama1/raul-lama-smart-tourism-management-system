@@ -10,7 +10,7 @@ import { FaCheckCircle } from "react-icons/fa";
 function safeYMD(v) {
   const s = String(v || "").trim();
   if (!s) return "";
-  return s.slice(0, 10); // supports YYYY-MM-DD and datetime
+  return s.slice(0, 10);
 }
 
 function parsePipeRange(raw) {
@@ -41,51 +41,39 @@ export default function ConfirmBookingPage() {
   const { token } = useAuth();
 
   const agencyTourId = sp.get("agencyTourId");
-
-  // optional date label coming from URL
   const dateFromUrl = sp.get("date") || "";
 
   const [preview, setPreview] = useState(null);
-
-  const [travelers, setTravelers] = useState(1);
+  const [travelers, setTravelers] = useState("1"); // keep as string for input UX
   const [notes, setNotes] = useState("");
-
-  // selected option label
   const [selectedDateLabel, setSelectedDateLabel] = useState(dateFromUrl);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // ✅ Build date options in a backward-compatible way
   const availableDates = useMemo(() => {
     if (!preview) return [];
 
-    // 1) New way: start_date / end_date
     const rangeLabel = makeRangeLabel(preview.start_date, preview.end_date);
     if (rangeLabel) return [rangeLabel];
 
-    // 2) Old way: "YYYY-MM-DD|YYYY-MM-DD"
     const parsed = parsePipeRange(preview.available_dates);
     const legacyLabel = makeRangeLabel(parsed.start, parsed.end);
     if (legacyLabel) return [legacyLabel];
 
-    // 3) Very old way: CSV dates (if you ever used it)
     return normalizeCsvDates(preview.available_dates);
   }, [preview]);
 
-  // unit price
   const unitPrice = useMemo(() => Number(preview?.price || 0), [preview]);
 
-  // total = unit * travelers
   const totalPrice = useMemo(() => {
-    const n = Number(travelers || 1);
+    const n = Number(String(travelers || "1").trim());
     return unitPrice * (Number.isNaN(n) ? 1 : n);
   }, [unitPrice, travelers]);
 
   const unitPriceText = useMemo(() => `NPR ${unitPrice.toLocaleString("en-NP")}`, [unitPrice]);
   const totalPriceText = useMemo(() => `NPR ${totalPrice.toLocaleString("en-NP")}`, [totalPrice]);
 
-  // auto-pick default option
   useEffect(() => {
     if (!preview) return;
 
@@ -117,7 +105,6 @@ export default function ConfirmBookingPage() {
           return;
         }
 
-        // token handled by apiClient interceptor
         const res = await fetchBookingPreview(agencyTourId);
         setPreview(res?.data || null);
       } catch (e) {
@@ -139,8 +126,8 @@ export default function ConfirmBookingPage() {
       return;
     }
 
-    const n = Number(travelers);
-    if (!n || n < 1 || n > 99) {
+    const n = Number(String(travelers || "1").trim());
+    if (!n || Number.isNaN(n) || n < 1 || n > 99) {
       alert("Travelers must be between 1 and 99.");
       return;
     }
@@ -152,12 +139,16 @@ export default function ConfirmBookingPage() {
         agencyTourId: Number(agencyTourId),
         travelers: n,
         notes: notes?.trim() || null,
-        selectedDateLabel, // keep same payload key (backend already expects this)
+        selectedDateLabel,
       };
 
       const res = await createBooking(payload);
 
-      alert(`Booking confirmed ✅\nRef: ${res?.data?.ref_code || "-"}`);
+      const saved = res?.data || {};
+      alert(
+        `Booking confirmed ✅\nRef: ${saved?.ref_code || "-"}\nTravelers saved: ${saved?.travelers ?? "-"}`
+      );
+
       navigate("/bookings");
     } catch (e) {
       console.error("Confirm booking failed", e);
@@ -179,7 +170,6 @@ export default function ConfirmBookingPage() {
             </h1>
           </div>
 
-          {/* Summary */}
           <div className="mt-4 bg-white border border-gray-100 rounded-2xl p-4 md:p-5 shadow-sm">
             {loading ? (
               <div className="text-sm text-gray-500">Loading booking details...</div>
@@ -210,10 +200,8 @@ export default function ConfirmBookingPage() {
             )}
           </div>
 
-          {/* Form */}
           <div className="mt-4 bg-white border border-gray-100 rounded-2xl p-4 md:p-5 shadow-sm">
             <div className="space-y-4">
-              {/* Date select */}
               <div>
                 <label className="text-sm font-semibold text-gray-900">Select date</label>
 
@@ -240,7 +228,6 @@ export default function ConfirmBookingPage() {
                 </div>
               </div>
 
-              {/* Travelers */}
               <div>
                 <label className="text-sm font-semibold text-gray-900">
                   Number of travelers
@@ -258,7 +245,6 @@ export default function ConfirmBookingPage() {
                 </div>
               </div>
 
-              {/* Notes */}
               <div>
                 <label className="text-sm font-semibold text-gray-900">
                   Additional notes (optional)

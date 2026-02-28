@@ -1,3 +1,4 @@
+// client/src/api/bookingApi.js
 import apiClient from "./apiClient";
 
 export const fetchMyBookings = async (filters = {}) => {

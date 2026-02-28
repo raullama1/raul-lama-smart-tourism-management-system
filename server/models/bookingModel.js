@@ -225,9 +225,12 @@ export async function insertBooking({
     ]
   );
 
+  // Return what we actually saved (helps debug traveler mismatch)
   return {
     id: res.insertId,
     ref_code: bookingRef,
+    travelers: Number(travelers),
+    selected_date_label: expectedLabel,
     booking_status: "Pending",
     payment_status: "Unpaid",
     total_price: totalPrice,

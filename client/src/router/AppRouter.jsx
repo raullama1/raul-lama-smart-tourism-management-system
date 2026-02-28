@@ -37,6 +37,7 @@ import AgencyDashboardPage from "../pages/agency/AgencyDashboardPage";
 import AgencyAddTourPage from "../pages/agency/AgencyAddTourPage";
 import AgencyManageToursPage from "../pages/agency/AgencyManageToursPage";
 import AgencyAddExistingTourPage from "../pages/agency/AgencyAddExistingTourPage";
+import AgencyBookingsPage from "../pages/agency/AgencyBookingsPage";
 
 function PrivateRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -91,7 +92,11 @@ function AgencyPublicRoute({ children }) {
     );
   }
 
-  return isAuthenticated ? <Navigate to="/agency/dashboard" replace /> : children;
+  return isAuthenticated ? (
+    <Navigate to="/agency/dashboard" replace />
+  ) : (
+    children
+  );
 }
 
 function AgencyIndexRedirect() {
@@ -342,6 +347,15 @@ export default function AppRouter() {
           element={
             <AgencyPrivateRoute>
               <AgencyManageToursPage />
+            </AgencyPrivateRoute>
+          }
+        />
+
+        <Route
+          path="/agency/bookings"
+          element={
+            <AgencyPrivateRoute>
+              <AgencyBookingsPage />
             </AgencyPrivateRoute>
           }
         />

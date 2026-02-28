@@ -24,6 +24,7 @@ import agencyAuthRoutes from "./routes/agencyAuthRoutes.js";
 import agencySupportRoutes from "./routes/agencySupportRoutes.js";
 import agencyDashboardRoutes from "./routes/agencyDashboardRoutes.js";
 import agencyToursRoutes from "./routes/agencyToursRoutes.js";
+import agencyBookingsRoutes from "./routes/agencyBookingsRoutes.js";
 
 import { initChatSocket } from "./sockets/chatSocket.js";
 
@@ -84,6 +85,9 @@ app.use("/api/agency/dashboard", agencyDashboardRoutes);
 
 // Agency Tours
 app.use("/api/agency/tours", agencyToursRoutes);
+
+// Agency Bookings
+app.use("/api/agency/bookings", agencyBookingsRoutes);
 
 // Socket.IO
 const server = http.createServer(app);
