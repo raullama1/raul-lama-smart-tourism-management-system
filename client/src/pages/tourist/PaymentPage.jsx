@@ -276,9 +276,6 @@ export default function PaymentPage() {
                     </div>
                     <div>
                       <div className="font-semibold text-gray-900">Pay with eSewa</div>
-                      <div className="text-sm text-emerald-700">
-                        Secure wallet checkout (test environment).
-                      </div>
                     </div>
                   </div>
                   <div className="text-sm font-semibold text-emerald-700">Selected</div>

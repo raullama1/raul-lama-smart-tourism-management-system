@@ -1045,11 +1045,6 @@ export default function AgencyManageToursPage() {
             </div>
           )}
         </div>
-
-        <div className="mt-3 text-xs text-gray-500">
-          Tip: Click the status pill to toggle Active / Paused. Use “Mark
-          Completed” when the tour is finished.
-        </div>
       </div>
 
       {/* Delete Modal */}

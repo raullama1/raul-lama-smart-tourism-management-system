@@ -1,3 +1,4 @@
+// server/models/paymentModel.js
 import { db } from "../db.js";
 
 export async function getBookingForPayment(userId, bookingId) {

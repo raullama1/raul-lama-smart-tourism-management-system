@@ -1,3 +1,4 @@
+// server/routes/paymentRoutes.js
 import express from "express";
 import { authRequired } from "../middleware/authMiddleware.js";
 import {
@@ -8,10 +9,10 @@ import {
 
 const router = express.Router();
 
-// user clicks pay -> we return form fields
+// User clicks pay -> return eSewa form fields (new transaction_uuid each time)
 router.post("/esewa/initiate", authRequired, initiateEsewaPayment);
 
-// esewa redirects here
+// eSewa redirects here after payment attempt
 router.get("/esewa/success", esewaSuccess);
 router.get("/esewa/failure", esewaFailure);
 

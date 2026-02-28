@@ -3,14 +3,20 @@ import AgencySidebar from "./AgencySidebar";
 
 export default function AgencyLayout({ children }) {
   return (
-    <main className="h-screen bg-[#e6f4ec] flex overflow-hidden">
-      <aside className="h-screen shrink-0">
+    <main className="min-h-screen bg-[#e6f4ec] flex">
+      
+      {/* Sidebar */}
+      <aside className="h-screen sticky top-0 shrink-0">
         <AgencySidebar />
       </aside>
 
-      <section className="flex-1 overflow-y-auto px-6 py-6 flex justify-center">
-        <div className="w-full max-w-6xl my-2">{children}</div>
+      {/* Content */}
+      <section className="flex-1 flex justify-center px-6 py-10">
+        <div className="w-full max-w-6xl">
+          {children}
+        </div>
       </section>
+
     </main>
   );
 }
