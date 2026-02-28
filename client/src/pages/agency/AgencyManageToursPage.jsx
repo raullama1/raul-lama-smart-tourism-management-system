@@ -172,10 +172,34 @@ function isInsideNepal(lat, lng) {
   return la >= 26.35 && la <= 30.45 && lo >= 80.0 && lo <= 88.3;
 }
 
-function splitDates(availableDates) {
-  const raw = String(availableDates || "");
-  const [a, b] = raw.split("|");
-  return { start: a ? a.trim() : "", end: b ? b.trim() : "" };
+function splitDatesFromRow(r) {
+  const s1 = r?.start_date ? String(r.start_date).slice(0, 10) : "";
+  const e1 = r?.end_date ? String(r.end_date).slice(0, 10) : "";
+  if (s1 && e1) return { start: s1, end: e1 };
+
+  const raw = String(r?.available_dates || "").trim();
+  if (!raw) return { start: "", end: "" };
+
+  // Old format: "YYYY-MM-DD|YYYY-MM-DD"
+  if (raw.includes("|")) {
+    const [a, b] = raw.split("|");
+    return { start: a ? a.trim() : "", end: b ? b.trim() : "" };
+  }
+
+  // Current format: CSV "YYYY-MM-DD,YYYY-MM-DD,..."
+  if (raw.includes(",")) {
+    const parts = raw
+      .split(",")
+      .map((x) => x.trim())
+      .filter(Boolean);
+
+    return {
+      start: parts[0] || "",
+      end: parts.length ? parts[parts.length - 1] : "",
+    };
+  }
+
+  return { start: "", end: "" };
 }
 
 function normalizeText(v) {
@@ -283,7 +307,7 @@ function LazyNepalMapPicker({
         const lng = e.latlng.lng;
 
         if (!isInsideNepal(lat, lng)) {
-          const m = "Please select a location inside Nepal only.";
+          const m = "Please select a location.";
           setErr(m);
           showToast("error", m);
           return;
@@ -590,9 +614,9 @@ export default function AgencyManageToursPage() {
       st === "paused" ? "paused" : st === "completed" ? "completed" : "active";
     setEditStatus(safeStatus);
 
-    const dates = splitDates(r.available_dates);
-    setEditStartDate(dates.start);
-    setEditEndDate(dates.end);
+const dates = splitDatesFromRow(r);
+setEditStartDate(dates.start);
+setEditEndDate(dates.end);
 
     const la =
       r.latitude !== null && r.latitude !== undefined ? Number(r.latitude) : null;
@@ -1260,7 +1284,7 @@ export default function AgencyManageToursPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="md:col-span-2">
               <div className="text-sm font-semibold text-emerald-900/70">
-                Location (Nepal only)
+                Location
               </div>
               <input
                 value={editLocation}
