@@ -9,6 +9,11 @@ export async function fetchAgencyBookings(params = {}) {
   return res.data; // { data: [...] }
 }
 
+export async function fetchAgencyBookingDetails(bookingId) {
+  const res = await apiClient.get(`/agency/bookings/${bookingId}`);
+  return res.data; // { data: {...} }
+}
+
 export async function approveAgencyBooking(bookingId) {
   const res = await apiClient.patch(`/agency/bookings/${bookingId}/approve`);
   return res.data;

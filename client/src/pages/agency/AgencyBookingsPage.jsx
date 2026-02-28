@@ -9,6 +9,7 @@ import {
   FiRefreshCw,
   FiSearch,
 } from "react-icons/fi";
+import { useNavigate } from "react-router-dom";
 import AgencyLayout from "../../components/agency/AgencyLayout";
 import {
   approveAgencyBooking,
@@ -111,13 +112,13 @@ function formatYMD(value) {
 }
 
 export default function AgencyBookingsPage() {
-  // Filters
-  const [status, setStatus] = useState("all"); // default ALL
+  const navigate = useNavigate();
+
+  const [status, setStatus] = useState("all");
   const [payment, setPayment] = useState("all");
-  const [sort, setSort] = useState("latest"); // default latest
+  const [sort, setSort] = useState("latest");
   const [q, setQ] = useState("");
 
-  // Data
   const [loading, setLoading] = useState(true);
   const [fetching, setFetching] = useState(false);
   const [rows, setRows] = useState([]);
@@ -125,7 +126,6 @@ export default function AgencyBookingsPage() {
 
   const [busyId, setBusyId] = useState(null);
 
-  // Toast
   const toastTimerRef = useRef(null);
   const [toast, setToast] = useState({ open: false, type: "success", message: "" });
 
@@ -137,7 +137,6 @@ export default function AgencyBookingsPage() {
     }, 2200);
   };
 
-  // Simple debounce for search input
   const [debouncedQ, setDebouncedQ] = useState("");
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedQ(q.trim()), 350);
@@ -216,7 +215,6 @@ export default function AgencyBookingsPage() {
   return (
     <AgencyLayout>
       <div className="bg-white rounded-2xl border border-emerald-100 shadow-sm p-6">
-        {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="text-lg font-extrabold text-gray-900">Tour Bookings</div>
@@ -237,10 +235,8 @@ export default function AgencyBookingsPage() {
           </button>
         </div>
 
-        {/* Filter Bar */}
         <div className="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-            {/* Search */}
             <div className="relative flex-1">
               <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-900/60" />
               <input
@@ -252,7 +248,6 @@ export default function AgencyBookingsPage() {
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              {/* Status */}
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
@@ -266,7 +261,6 @@ export default function AgencyBookingsPage() {
                 <option value="cancelled">Cancelled</option>
               </select>
 
-              {/* Payment */}
               <select
                 value={payment}
                 onChange={(e) => setPayment(e.target.value)}
@@ -277,7 +271,6 @@ export default function AgencyBookingsPage() {
                 <option value="paid">Paid</option>
               </select>
 
-              {/* Sort */}
               <select
                 value={sort}
                 onChange={(e) => setSort(e.target.value)}
@@ -287,7 +280,6 @@ export default function AgencyBookingsPage() {
                 <option value="oldest">Oldest</option>
               </select>
 
-              {/* Refresh */}
               <button
                 type="button"
                 onClick={() => load(false)}
@@ -316,7 +308,6 @@ export default function AgencyBookingsPage() {
           </div>
         ) : null}
 
-        {/* Table */}
         <div className="mt-5 overflow-hidden rounded-2xl border border-emerald-100">
           <div className="overflow-x-auto">
             <table className="min-w-[980px] w-full">
@@ -356,7 +347,7 @@ export default function AgencyBookingsPage() {
                     const touristEmail = b.tourist_email ?? "";
 
                     const bookingDate = formatYMD(b.booking_date ?? b.created_at);
-                    const travelers = Number(b.travelers); // strict: from bookings.travelers
+                    const travelers = Number(b.travelers);
 
                     const statusVal = b.booking_status ?? b.status;
                     const paymentVal = b.payment_status ?? "Unpaid";
@@ -366,7 +357,6 @@ export default function AgencyBookingsPage() {
 
                     return (
                       <tr key={bookingId} className="hover:bg-emerald-50/30">
-                        {/* Tour */}
                         <td className="px-5 py-4 align-top">
                           <div className="text-sm font-extrabold text-gray-900 leading-snug">
                             {tourTitle}
@@ -381,7 +371,6 @@ export default function AgencyBookingsPage() {
                           ) : null}
                         </td>
 
-                        {/* Tourist */}
                         <td className="px-5 py-4 align-top">
                           <div className="text-sm font-bold text-gray-900">{touristName}</div>
                           {touristEmail ? (
@@ -389,7 +378,6 @@ export default function AgencyBookingsPage() {
                           ) : null}
                         </td>
 
-                        {/* Date */}
                         <td className="px-5 py-4 align-top">
                           <div className="text-sm font-bold text-gray-900">{bookingDate}</div>
                           {b.selected_date_label ? (
@@ -397,7 +385,6 @@ export default function AgencyBookingsPage() {
                           ) : null}
                         </td>
 
-                        {/* Travelers */}
                         <td className="px-5 py-4 align-top">
                           <span className="inline-flex items-center rounded-xl bg-emerald-50 border border-emerald-100 px-3 py-2 text-xs font-black text-emerald-900">
                             {Number.isFinite(travelers) && travelers > 0 ? travelers : 1}{" "}
@@ -405,22 +392,19 @@ export default function AgencyBookingsPage() {
                           </span>
                         </td>
 
-                        {/* Status */}
                         <td className="px-5 py-4 align-top">
                           <StatusPill v={statusVal} />
                         </td>
 
-                        {/* Payment */}
                         <td className="px-5 py-4 align-top">
                           <PaymentPill v={paymentVal} />
                         </td>
 
-                        {/* Actions */}
                         <td className="px-5 py-4 align-top">
                           <div className="flex justify-end gap-2">
                             <button
                               type="button"
-                              onClick={() => showToast("success", "Details page can be added next.")}
+                              onClick={() => navigate(`/agency/bookings/${bookingId}`)}
                               className="h-10 w-10 rounded-2xl border border-gray-200 bg-white grid place-items-center text-gray-900 hover:bg-gray-50"
                               title="View details"
                             >
@@ -453,9 +437,7 @@ export default function AgencyBookingsPage() {
 
                             <button
                               type="button"
-                              onClick={() =>
-                                showToast("success", "Chat open can be wired to your chat module next.")
-                              }
+                              onClick={() => showToast("success", "Chat wiring can be connected next.")}
                               className="h-10 w-10 rounded-2xl border border-gray-200 bg-white grid place-items-center text-gray-900 hover:bg-gray-50"
                               title="Chat"
                             >
