@@ -1,5 +1,9 @@
-// client/src/components/tourist/chat/ChatWindow.jsx
+// client/src/components/agency/chat/AgencyChatWindow.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
+
+function getConvoId(selected) {
+  return Number(selected?.conversation_id ?? selected?.conversationId ?? selected?.id) || null;
+}
 
 function ConfirmModal({ open, title, message, dangerText = "Delete", onCancel, onConfirm }) {
   if (!open) return null;
@@ -85,13 +89,13 @@ function LoadingOverlay({ show }) {
     <div className="absolute inset-0 z-[5] flex items-center justify-center">
       <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px]" />
       <div className="relative z-[6] rounded-2xl bg-white border border-gray-100 shadow-md px-4 py-2 text-xs font-semibold text-gray-700">
-        Start a new chat…
+        Loading…
       </div>
     </div>
   );
 }
 
-export default function ChatWindow({
+export default function AgencyChatWindow({
   selected,
   messages = [],
   loading,
@@ -117,7 +121,7 @@ export default function ChatWindow({
   const typingTimerRef = useRef(null);
   const typingActiveRef = useRef(false);
 
-  // --- delayed close for unsend menu ---
+  // --- menu close delay (for unsend hover) ---
   const msgMenuCloseTimerRef = useRef(null);
   const scheduleCloseMsgMenu = (delayMs = 300) => {
     if (msgMenuCloseTimerRef.current) clearTimeout(msgMenuCloseTimerRef.current);
@@ -133,11 +137,11 @@ export default function ChatWindow({
   const prevLastIdRef = useRef(null);
   const prevScrollHeightRef = useRef(0);
 
-  const title = selected?.agency_name || "";
+  const convoId = getConvoId(selected);
+  const title = selected?.tourist_name || "";
   const subtitle = useMemo(() => {
     if (!selected) return "";
-    const addr = selected.agency_address || selected.agency_location;
-    return addr ? `Nepal • ${addr}` : "Nepal";
+    return selected?.tourist_email ? selected.tourist_email : "Tourist";
   }, [selected]);
 
   const [showOverlay, setShowOverlay] = useState(false);
@@ -211,9 +215,10 @@ export default function ChatWindow({
     prevFirstIdRef.current = firstId;
     prevLastIdRef.current = lastId;
     prevScrollHeightRef.current = box.scrollHeight;
-  }, [messages, typingText, selected?.conversation_id]);
+  }, [messages, typingText, convoId]);
 
   useEffect(() => {
+    // Reset local UI state when switching conversations (but keep input stable while staying in same convo)
     prevCountRef.current = 0;
     prevFirstIdRef.current = null;
     prevLastIdRef.current = null;
@@ -234,10 +239,9 @@ export default function ChatWindow({
       cancelCloseMsgMenu();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected?.conversation_id]);
+  }, [convoId]);
 
   const emitTyping = () => {
-    const convoId = selected?.conversation_id;
     if (!convoId) return;
 
     if (!typingActiveRef.current) {
@@ -254,16 +258,13 @@ export default function ChatWindow({
 
   const handleSend = () => {
     const msg = text.trim();
-    if (!msg) return;
+    if (!msg || !convoId) return;
 
-    const convoId = selected?.conversation_id;
-    if (convoId) {
-      typingActiveRef.current = false;
-      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
-      onStopTyping?.(convoId);
-    }
+    typingActiveRef.current = false;
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    onStopTyping?.(convoId);
 
-    onSend(msg);
+    onSend?.(msg);
     setText("");
   };
 
@@ -273,7 +274,7 @@ export default function ChatWindow({
         <div className="text-center max-w-md px-6">
           <div className="text-lg font-semibold text-gray-900">Select a chat</div>
           <div className="mt-1 text-sm text-gray-500">
-            Choose an agency from the left to view messages.
+            Choose a tourist from the left to view messages.
           </div>
         </div>
       </section>
@@ -287,7 +288,7 @@ export default function ChatWindow({
       <div className="px-4 md:px-5 py-3 border-b border-gray-100 bg-emerald-50 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-full bg-emerald-200 flex items-center justify-center font-semibold text-emerald-900">
-            {title?.[0]?.toUpperCase() || "A"}
+            {title?.[0]?.toUpperCase() || "T"}
           </div>
           <div>
             <div className="font-semibold text-gray-900 text-sm md:text-base">{title}</div>
@@ -350,7 +351,7 @@ export default function ChatWindow({
             <div className="text-sm text-gray-500">No messages yet. Say hello 👋</div>
           ) : (
             messages.map((m) => {
-              const mine = m.sender_role === "tourist";
+              const mine = m.sender_role === "agency";
               const isDeleted = Number(m.is_deleted || 0) === 1;
 
               return (
@@ -379,13 +380,16 @@ export default function ChatWindow({
                             : "text-emerald-900/60"
                         }`}
                       >
-                        {new Date(m.created_at).toLocaleTimeString("en-GB", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {m?.created_at
+                          ? new Date(m.created_at).toLocaleTimeString("en-GB", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : ""}
                       </div>
                     </div>
 
+                    {/* ✅ Unsend menu with delay close + hover-safe */}
                     {mine && !isDeleted && !String(m.id).startsWith("tmp-") && (
                       <div
                         className="absolute -left-10 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition"
@@ -452,7 +456,6 @@ export default function ChatWindow({
               }
             }}
             onBlur={() => {
-              const convoId = selected?.conversation_id;
               if (!convoId) return;
               typingActiveRef.current = false;
               if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
@@ -490,7 +493,6 @@ export default function ChatWindow({
         onCancel={() => setConfirmDeleteChat(false)}
         onConfirm={() => {
           setConfirmDeleteChat(false);
-          const convoId = selected?.conversation_id;
           if (convoId) onDeleteConversation?.(convoId);
         }}
       />

@@ -17,13 +17,26 @@ function readTokenFrom(storageKey) {
   }
 }
 
+function isAgencyEndpoint(url) {
+  const u = String(url || "");
+
+  // Agency module endpoints
+  if (u.startsWith("/agency/")) return true;
+
+  // Agency chat endpoints (IMPORTANT)
+  // Adjusted to match your server chat routes pattern
+  if (u.startsWith("/chat/agency")) return true;
+  if (u === "/chat/tourists" || u.startsWith("/chat/tourists/")) return true;
+
+  // If you also have agency-specific chat helpers, include them here
+  return false;
+}
+
 apiClient.interceptors.request.use((config) => {
   if (typeof window === "undefined") return config;
 
   const url = String(config?.url || "");
-  const isAgencyCall = url.startsWith("/agency/");
-
-  const token = isAgencyCall
+  const token = isAgencyEndpoint(url)
     ? readTokenFrom("tn_agency_auth")
     : readTokenFrom("tn_auth");
 

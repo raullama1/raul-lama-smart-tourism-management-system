@@ -1,5 +1,9 @@
-// client/src/components/tourist/chat/ChatSidebar.jsx
+// client/src/components/agency/chat/AgencyChatSidebar.jsx
 import { useMemo } from "react";
+
+function getConvoId(c) {
+  return Number(c?.conversation_id ?? c?.conversationId ?? c?.id) || null;
+}
 
 function formatLastTime(ts) {
   if (!ts) return "";
@@ -33,7 +37,7 @@ function safePreview(c) {
  * Computes the label shown before the preview text.
  * Requires backend/API to provide the last message sender role for accuracy.
  */
-function getDirectionLabelForTourist(c) {
+function getDirectionLabelForAgency(c) {
   const role = String(
     c?.last_message_sender_role ??
       c?.last_sender_role ??
@@ -44,10 +48,10 @@ function getDirectionLabelForTourist(c) {
     .toLowerCase();
 
   if (!role) return "Received:";
-  return role === "tourist" ? "Sent:" : "Received:";
+  return role === "agency" ? "Sent:" : "Received:";
 }
 
-export default function ChatSidebar({
+export default function AgencyChatSidebar({
   search,
   onSearch,
   conversations = [],
@@ -60,7 +64,7 @@ export default function ChatSidebar({
     if (!q) return conversations;
 
     return (conversations || []).filter((c) => {
-      const name = String(c?.agency_name || c?.name || "").toLowerCase();
+      const name = String(c?.tourist_name || c?.name || "").toLowerCase();
       const last = String(safePreview(c) || "").toLowerCase();
       return name.includes(q) || last.includes(q);
     });
@@ -68,13 +72,13 @@ export default function ChatSidebar({
 
   return (
     <aside className="w-full md:w-[340px] bg-emerald-900 rounded-2xl p-4 text-white h-[570px] flex flex-col">
-      <div className="text-sm font-semibold mb-2 opacity-90">Agencies</div>
+      <div className="text-sm font-semibold mb-2 opacity-90">Tourists</div>
 
       <div className="mb-3">
         <input
           value={search}
-          onChange={(e) => onSearch(e.target.value)}
-          placeholder="Search Agency"
+          onChange={(e) => onSearch?.(e.target.value)}
+          placeholder="Search Tourist"
           className="w-full rounded-lg px-3 py-2 text-sm text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400"
         />
       </div>
@@ -84,24 +88,24 @@ export default function ChatSidebar({
       <div className="flex-1 overflow-y-auto pr-1 space-y-2">
         {filtered.length === 0 ? (
           <div className="bg-emerald-950/40 rounded-xl p-3 text-xs text-emerald-50/80">
-            No chats yet. Start a new chat to message an agency.
+            No chats yet. Start a new chat to message a tourist.
           </div>
         ) : (
           filtered.map((c) => {
-            const convoId = c?.conversation_id;
+            const convoId = getConvoId(c);
             const active = Number(selectedId) === Number(convoId);
             const unread = Number(c?.unread_count || 0);
 
-            const name = c?.agency_name || c?.name || "Agency";
+            const name = c?.tourist_name || c?.name || "Tourist";
             const preview = safePreview(c);
             const when = formatLastTime(c?.last_message_at);
 
-            const direction = getDirectionLabelForTourist(c);
+            const direction = getDirectionLabelForAgency(c);
 
             return (
               <button
-                key={convoId}
-                onClick={() => onSelect(c)}
+                key={convoId || `${name}-${when}`}
+                onClick={() => onSelect?.(c)}
                 type="button"
                 className={`w-full text-left rounded-xl p-3 border transition outline-none
                   ${

@@ -1,6 +1,7 @@
 // server/models/chatModel.js
 import { db } from "../db.js";
 
+/* Tourist-side: agencies list */
 export async function getChatAgencies({ search = "", limit = 50 } = {}) {
   const params = [];
   let where = "";
@@ -27,6 +28,34 @@ export async function getChatAgencies({ search = "", limit = 50 } = {}) {
   return rows;
 }
 
+/* Agency-side: tourists list */
+export async function getChatTourists({ search = "", limit = 50 } = {}) {
+  const params = [];
+  let where = "";
+
+  if (search && String(search).trim()) {
+    where = `WHERE (name LIKE ? OR email LIKE ? OR phone LIKE ?)`;
+    const s = `%${String(search).trim()}%`;
+    params.push(s, s, s);
+  }
+
+  params.push(Number(limit) || 50);
+
+  const [rows] = await db.query(
+    `
+    SELECT id, name, email, phone
+    FROM users
+    ${where}
+    ORDER BY name ASC
+    LIMIT ?
+    `,
+    params
+  );
+
+  return rows;
+}
+
+/* Tourist: conversations list */
 export async function getMyConversations(userId) {
   const [rows] = await db.query(
     `
@@ -38,7 +67,6 @@ export async function getMyConversations(userId) {
       a.name AS agency_name,
       a.address AS agency_address,
 
-      /* Persist deleted-preview after refresh */
       CASE
         WHEN lm.is_deleted = 1 THEN 'This message was deleted'
         ELSE lm.message
@@ -46,6 +74,9 @@ export async function getMyConversations(userId) {
 
       lm.created_at AS last_message_at,
       lm.is_deleted AS last_message_deleted,
+
+      -- Needed to show Sent/Received label correctly in sidebar
+      lm.sender_role AS last_message_sender_role,
 
       (
         SELECT COUNT(*)
@@ -76,6 +107,60 @@ export async function getMyConversations(userId) {
   return rows;
 }
 
+/* Agency: conversations list */
+export async function getAgencyConversations(agencyId) {
+  const [rows] = await db.query(
+    `
+    SELECT
+      c.id AS conversation_id,
+      c.created_at AS conversation_created_at,
+
+      u.id AS tourist_id,
+      u.name AS tourist_name,
+      u.email AS tourist_email,
+      u.phone AS tourist_phone,
+
+      CASE
+        WHEN lm.is_deleted = 1 THEN 'This message was deleted'
+        ELSE lm.message
+      END AS last_message,
+
+      lm.created_at AS last_message_at,
+      lm.is_deleted AS last_message_deleted,
+
+      -- Needed to show Sent/Received label correctly in sidebar
+      lm.sender_role AS last_message_sender_role,
+
+      (
+        SELECT COUNT(*)
+        FROM chat_messages m
+        WHERE m.conversation_id = c.id
+          AND m.sender_role = 'tourist'
+          AND m.read_at IS NULL
+      ) AS unread_count
+
+    FROM chat_conversations c
+    JOIN users u ON u.id = c.tourist_id
+
+    LEFT JOIN chat_messages lm
+      ON lm.id = (
+        SELECT m2.id
+        FROM chat_messages m2
+        WHERE m2.conversation_id = c.id
+        ORDER BY m2.created_at DESC
+        LIMIT 1
+      )
+
+    WHERE c.agency_id = ?
+    ORDER BY COALESCE(lm.created_at, c.created_at) DESC
+    `,
+    [agencyId]
+  );
+
+  return rows;
+}
+
+/* Shared: create or get */
 export async function createOrGetConversation(touristId, agencyId) {
   await db.query(
     `
@@ -98,20 +183,29 @@ export async function createOrGetConversation(touristId, agencyId) {
   return rows[0] || null;
 }
 
+/* Conversation details (include BOTH sides info) */
 export async function getConversationById(conversationId) {
   const [rows] = await db.query(
     `
     SELECT 
       c.id, c.tourist_id, c.agency_id, c.created_at,
+
       a.name AS agency_name,
-      a.address AS agency_address
+      a.address AS agency_address,
+
+      u.name AS tourist_name,
+      u.email AS tourist_email,
+      u.phone AS tourist_phone
+
     FROM chat_conversations c
     JOIN agencies a ON a.id = c.agency_id
+    JOIN users u ON u.id = c.tourist_id
     WHERE c.id = ?
     LIMIT 1
     `,
     [conversationId]
   );
+
   return rows[0] || null;
 }
 
@@ -175,6 +269,7 @@ export async function addMessage(conversationId, { senderId, senderRole, message
   return rows[0] || null;
 }
 
+/* Tourist reads: mark agency messages read */
 export async function markAgencyMessagesRead(conversationId) {
   await db.query(
     `
@@ -182,6 +277,20 @@ export async function markAgencyMessagesRead(conversationId) {
     SET read_at = NOW()
     WHERE conversation_id = ?
       AND sender_role = 'agency'
+      AND read_at IS NULL
+    `,
+    [conversationId]
+  );
+}
+
+/* Agency reads: mark tourist messages read */
+export async function markTouristMessagesRead(conversationId) {
+  await db.query(
+    `
+    UPDATE chat_messages
+    SET read_at = NOW()
+    WHERE conversation_id = ?
+      AND sender_role = 'tourist'
       AND read_at IS NULL
     `,
     [conversationId]
@@ -218,6 +327,7 @@ export async function deleteMessageForAll(conversationId, messageId, userId, rol
   return { ok: true };
 }
 
+/* Tourist delete */
 export async function deleteConversationForTourist({ conversationId, touristId, onlyIfEmpty }) {
   if (!conversationId || !touristId) return { ok: false, reason: "bad_request" };
 
@@ -259,7 +369,57 @@ export async function deleteConversationForTourist({ conversationId, touristId, 
     try {
       await conn.rollback();
     } catch {
-      // ignore
+      /* ignore */
+    }
+    throw e;
+  } finally {
+    conn.release();
+  }
+}
+
+/* Agency delete */
+export async function deleteConversationForAgency({ conversationId, agencyId, onlyIfEmpty }) {
+  if (!conversationId || !agencyId) return { ok: false, reason: "bad_request" };
+
+  const [convos] = await db.query(
+    `
+    SELECT id, agency_id
+    FROM chat_conversations
+    WHERE id = ?
+    LIMIT 1
+    `,
+    [conversationId]
+  );
+
+  const convo = convos[0];
+  if (!convo) return { ok: false, reason: "not_found" };
+  if (Number(convo.agency_id) !== Number(agencyId)) return { ok: false, reason: "not_allowed" };
+
+  const [[{ total }]] = await db.query(
+    `
+    SELECT COUNT(*) AS total
+    FROM chat_messages
+    WHERE conversation_id = ?
+    `,
+    [conversationId]
+  );
+
+  if (onlyIfEmpty && Number(total) > 0) return { ok: false, reason: "not_empty" };
+
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    await conn.query(`DELETE FROM chat_messages WHERE conversation_id = ?`, [conversationId]);
+    await conn.query(`DELETE FROM chat_conversations WHERE id = ?`, [conversationId]);
+
+    await conn.commit();
+    return { ok: true };
+  } catch (e) {
+    try {
+      await conn.rollback();
+    } catch {
+      /* ignore */
     }
     throw e;
   } finally {

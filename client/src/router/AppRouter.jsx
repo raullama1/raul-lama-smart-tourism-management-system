@@ -39,6 +39,7 @@ import AgencyManageToursPage from "../pages/agency/AgencyManageToursPage";
 import AgencyAddExistingTourPage from "../pages/agency/AgencyAddExistingTourPage";
 import AgencyBookingsPage from "../pages/agency/AgencyBookingsPage";
 import AgencyBookingDetailsPage from "../pages/agency/AgencyBookingDetailsPage";
+import AgencyChatPage from "../pages/agency/AgencyChatPage";
 
 function PrivateRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -367,6 +368,16 @@ export default function AppRouter() {
           element={
             <AgencyPrivateRoute>
               <AgencyBookingDetailsPage />
+            </AgencyPrivateRoute>
+          }
+        />
+
+        {/* Agency Chat */}
+        <Route
+          path="/agency/chat"
+          element={
+            <AgencyPrivateRoute>
+              <AgencyChatPage />
             </AgencyPrivateRoute>
           }
         />

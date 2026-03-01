@@ -217,10 +217,7 @@ export default function AgencyBookingsPage() {
       <div className="bg-white rounded-2xl border border-emerald-100 shadow-sm p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <div className="text-lg font-extrabold text-gray-900">Tour Bookings</div>
-            <div className="text-xs text-gray-500 mt-1">
-              Manage bookings for your tours.
-            </div>
+            <div className="text-lg font-extrabold text-gray-900">Bookings</div>
           </div>
 
           <button

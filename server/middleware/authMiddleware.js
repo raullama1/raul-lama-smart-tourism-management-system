@@ -5,9 +5,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 
 export function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization || "";
-  const token = authHeader.startsWith("Bearer ")
-    ? authHeader.slice(7)
-    : null;
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
   if (!token) {
     return res.status(401).json({ message: "Authentication required." });
@@ -15,7 +13,10 @@ export function authMiddleware(req, res, next) {
 
   try {
     const payload = jwt.verify(token, JWT_SECRET);
-    req.user = payload; // { id, role, iat, exp }
+
+    // Payload should contain at least { id, role }
+    req.user = payload;
+
     next();
   } catch (err) {
     console.error("authMiddleware error", err);
@@ -23,5 +24,5 @@ export function authMiddleware(req, res, next) {
   }
 }
 
-// ✅ Backwards compatible export (so existing routes don’t break)
+// Backwards compatible export
 export const authRequired = authMiddleware;

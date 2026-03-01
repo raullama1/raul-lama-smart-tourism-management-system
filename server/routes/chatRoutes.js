@@ -3,9 +3,13 @@ import express from "express";
 import { authRequired } from "../middleware/authMiddleware.js";
 import {
   listChatAgenciesController,
+  listChatTouristsController,
   getMyConversationsController,
+  getAgencyConversationsController,
   startConversationController,
+  startConversationAsAgencyController,
   deleteConversationController,
+  deleteConversationAsAgencyController,
   getConversationDetailsController,
   getMessagesController,
   postMessageController,
@@ -15,48 +19,59 @@ import {
 
 const router = express.Router();
 
-// Agencies list for "Start New Chat"
+/* Tourist: Agencies list for "Start New Chat" */
 router.get("/agencies", authRequired, listChatAgenciesController);
 
-// Tourist: list conversations
+/* Agency: Tourists list for "Start New Chat" */
+router.get("/tourists", authRequired, listChatTouristsController);
+
+/* Tourist: list conversations */
 router.get("/conversations", authRequired, getMyConversationsController);
 
-// Tourist: start new chat (agencyId)
+/* Agency: list conversations */
+router.get("/agency/conversations", authRequired, getAgencyConversationsController);
+
+/* Tourist: start new chat (agencyId) */
 router.post("/conversations", authRequired, startConversationController);
 
-// ✅ Delete whole conversation (Messenger-style)
-// optional query: ?onlyIfEmpty=1
+/* Agency: start new chat (touristId) */
+router.post("/agency/conversations", authRequired, startConversationAsAgencyController);
+
+/* Tourist: delete whole conversation (optional query: ?onlyIfEmpty=1) */
 router.delete("/conversations/:conversationId", authRequired, deleteConversationController);
 
-// Delete message for all (soft delete)
+/* Agency: delete whole conversation (optional query: ?onlyIfEmpty=1) */
+router.delete(
+  "/agency/conversations/:conversationId",
+  authRequired,
+  deleteConversationAsAgencyController
+);
+
+/* Delete message for all (soft delete) */
 router.delete(
   "/conversations/:conversationId/messages/:messageId",
   authRequired,
   deleteMessageController
 );
 
-// Details
-router.get(
-  "/conversations/:conversationId",
-  authRequired,
-  getConversationDetailsController
-);
+/* Details */
+router.get("/conversations/:conversationId", authRequired, getConversationDetailsController);
 
-// Messages (pagination)
+/* Messages (pagination) */
 router.get(
   "/conversations/:conversationId/messages",
   authRequired,
   getMessagesController
 );
 
-// Send message
+/* Send message */
 router.post(
   "/conversations/:conversationId/messages",
   authRequired,
   postMessageController
 );
 
-// Mark read
+/* Mark read */
 router.post(
   "/conversations/:conversationId/read",
   authRequired,

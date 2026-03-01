@@ -128,9 +128,6 @@ export default function AgencyDashboardPage() {
             <h1 className="text-lg md:text-xl font-semibold text-gray-900">
               {title}
             </h1>
-            <p className="text-xs text-gray-500 mt-1">
-              Overview of your tours, bookings and reviews
-            </p>
           </div>
 
           <div className="flex items-center gap-2">

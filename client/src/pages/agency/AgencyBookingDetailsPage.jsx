@@ -13,7 +13,10 @@ import {
   fetchAgencyBookingDetails,
   rejectAgencyBooking,
 } from "../../api/agencyBookingsApi";
-import { toPublicImageUrl, FALLBACK_TOUR_IMG } from "../../utils/publicImageUrl";
+import {
+  toPublicImageUrl,
+  FALLBACK_TOUR_IMG,
+} from "../../utils/publicImageUrl";
 
 function Toast({ open, type = "success", message, onClose }) {
   const boxClass =
@@ -79,10 +82,10 @@ function StatusChip({ label, tone = "gray" }) {
     tone === "green"
       ? "bg-emerald-700 text-white"
       : tone === "orange"
-      ? "bg-amber-500 text-white"
-      : tone === "gray"
-      ? "bg-gray-100 text-gray-900"
-      : "bg-white text-gray-900 border border-gray-200";
+        ? "bg-amber-500 text-white"
+        : tone === "gray"
+          ? "bg-gray-100 text-gray-900"
+          : "bg-white text-gray-900 border border-gray-200";
 
   return (
     <span
@@ -102,8 +105,8 @@ function Step({ label, active = false, done = false }) {
   const cls = done
     ? "bg-emerald-800 border-emerald-800 text-white"
     : active
-    ? "bg-amber-100 border-amber-200 text-amber-900"
-    : "bg-white border-emerald-100 text-emerald-900/70";
+      ? "bg-amber-100 border-amber-200 text-amber-900"
+      : "bg-white border-emerald-100 text-emerald-900/70";
 
   return (
     <div className={[base, cls].join(" ")}>
@@ -161,7 +164,9 @@ export default function AgencyBookingDetailsPage() {
       .trim()
       .toLowerCase();
 
-    const bookingStatusRaw = String(row?.booking_status || "").trim().toLowerCase();
+    const bookingStatusRaw = String(row?.booking_status || "")
+      .trim()
+      .toLowerCase();
 
     // If the tour listing is completed, force the UI status to completed.
     const effectiveStatus =
@@ -169,7 +174,8 @@ export default function AgencyBookingDetailsPage() {
 
     const paymentStatus = String(row?.payment_status || "").toLowerCase();
 
-    const canApprove = effectiveStatus === "pending" && paymentStatus === "unpaid";
+    const canApprove =
+      effectiveStatus === "pending" && paymentStatus === "unpaid";
     const canReject = effectiveStatus === "pending";
 
     const scheduleLabel = row?.selected_date_label?.trim();
@@ -186,16 +192,18 @@ export default function AgencyBookingDetailsPage() {
 
     const paymentLabel = String(row?.payment_status || "Unpaid");
     const paymentTone =
-      String(row?.payment_status || "").toLowerCase() === "paid" ? "green" : "gray";
+      String(row?.payment_status || "").toLowerCase() === "paid"
+        ? "green"
+        : "gray";
 
     const topStatusTone =
       effectiveStatus === "completed"
         ? "green"
         : effectiveStatus === "confirmed"
-        ? "orange"
-        : effectiveStatus === "approved"
-        ? "green"
-        : "gray";
+          ? "orange"
+          : effectiveStatus === "approved"
+            ? "green"
+            : "gray";
 
     const steps = {
       requested: effectiveStatus !== "cancelled",
@@ -230,7 +238,10 @@ export default function AgencyBookingDetailsPage() {
       showToast("success", "Booking approved.");
       await load();
     } catch (e) {
-      showToast("error", e?.response?.data?.message || "Failed to approve booking.");
+      showToast(
+        "error",
+        e?.response?.data?.message || "Failed to approve booking.",
+      );
     } finally {
       setBusy(false);
     }
@@ -243,7 +254,10 @@ export default function AgencyBookingDetailsPage() {
       showToast("success", "Booking rejected.");
       await load();
     } catch (e) {
-      showToast("error", e?.response?.data?.message || "Failed to reject booking.");
+      showToast(
+        "error",
+        e?.response?.data?.message || "Failed to reject booking.",
+      );
     } finally {
       setBusy(false);
     }
@@ -254,7 +268,9 @@ export default function AgencyBookingDetailsPage() {
       <div className="bg-white rounded-2xl border border-emerald-100 shadow-sm p-6">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="text-lg font-extrabold text-gray-900">Booking Details</div>
+            <div className="text-lg font-extrabold text-gray-900">
+              Booking Details
+            </div>
             <div className="text-xs text-gray-500 mt-1">
               Review booking information and take action.
             </div>
@@ -300,7 +316,8 @@ export default function AgencyBookingDetailsPage() {
                       {row.tour_title || "—"}
                     </div>
                     <div className="mt-0.5 text-xs text-gray-600">
-                      Ref: {row.ref_code || "—"} • Created {fmtYMDLong(row.created_at)}
+                      Ref: {row.ref_code || "—"} • Created{" "}
+                      {fmtYMDLong(row.created_at)}
                     </div>
                   </div>
                 </div>
@@ -320,26 +337,34 @@ export default function AgencyBookingDetailsPage() {
 
             {/* Overview */}
             <div className="mt-5 rounded-2xl border border-emerald-100 bg-white p-5">
-              <div className="text-sm font-extrabold text-gray-900">Booking Overview</div>
+              <div className="text-sm font-extrabold text-gray-900">
+                Booking Overview
+              </div>
 
               <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div className="space-y-3">
                   <div className="flex items-start justify-between gap-4">
-                    <div className="text-emerald-900/70 font-bold">Tour Name</div>
+                    <div className="text-emerald-900/70 font-bold">
+                      Tour Name
+                    </div>
                     <div className="text-gray-900 font-extrabold text-right">
                       {row.tour_title || "—"}
                     </div>
                   </div>
 
                   <div className="flex items-start justify-between gap-4">
-                    <div className="text-emerald-900/70 font-bold">Tourist Information</div>
+                    <div className="text-emerald-900/70 font-bold">
+                      Tourist Information
+                    </div>
                     <div className="text-gray-900 font-extrabold text-right">
                       {row.tourist_name || "—"} • {row.tourist_email || "—"}
                     </div>
                   </div>
 
                   <div className="flex items-start justify-between gap-4">
-                    <div className="text-emerald-900/70 font-bold">Booking Date</div>
+                    <div className="text-emerald-900/70 font-bold">
+                      Booking Date
+                    </div>
                     <div className="text-gray-900 font-extrabold text-right">
                       {fmtYMDLong(row.booking_date)}
                     </div>
@@ -348,28 +373,37 @@ export default function AgencyBookingDetailsPage() {
 
                 <div className="space-y-3">
                   <div className="flex items-start justify-between gap-4">
-                    <div className="text-emerald-900/70 font-bold">Travelers Count</div>
+                    <div className="text-emerald-900/70 font-bold">
+                      Travelers Count
+                    </div>
                     <div className="text-gray-900 font-extrabold text-right">
                       {Number(row.travelers || 1)}{" "}
-                      {Number(row.travelers || 1) === 1 ? "Traveler" : "Travelers"}
+                      {Number(row.travelers || 1) === 1
+                        ? "Traveler"
+                        : "Travelers"}
                     </div>
                   </div>
 
                   <div className="flex items-start justify-between gap-4">
-                    <div className="text-emerald-900/70 font-bold">Current Booking Status</div>
+                    <div className="text-emerald-900/70 font-bold">
+                      Current Booking Status
+                    </div>
                     <div className="text-gray-900 font-extrabold text-right">
                       {derived.statusLabel}
                     </div>
                   </div>
 
                   <div className="flex items-start justify-between gap-4">
-                    <div className="text-emerald-900/70 font-bold">Payment Status</div>
+                    <div className="text-emerald-900/70 font-bold">
+                      Payment Status
+                    </div>
                     <div className="text-gray-900 font-extrabold text-right">
                       {derived.paymentLabel}
                       {Number(row.total_price || 0) > 0 ? (
                         <span className="text-gray-500 font-bold">
                           {" "}
-                          • Amount: NPR {Number(row.total_price || 0).toLocaleString("en-NP")}
+                          • Amount: NPR{" "}
+                          {Number(row.total_price || 0).toLocaleString("en-NP")}
                         </span>
                       ) : null}
                     </div>
@@ -381,19 +415,27 @@ export default function AgencyBookingDetailsPage() {
             {/* Price & schedule */}
             <div className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div className="rounded-2xl border border-emerald-100 bg-white p-5">
-                <div className="text-sm font-extrabold text-gray-900">Agency Price & Schedule</div>
+                <div className="text-sm font-extrabold text-gray-900">
+                  Agency Price & Schedule
+                </div>
 
                 <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/30 p-4">
                   <div className="text-xs font-black text-emerald-900/70">
                     Agency Price (per person)
                   </div>
                   <div className="mt-2 text-sm font-extrabold text-gray-900">
-                    NPR {Number(row.agency_price_per_person || 0).toLocaleString("en-NP")}
+                    NPR{" "}
+                    {Number(row.agency_price_per_person || 0).toLocaleString(
+                      "en-NP",
+                    )}
                   </div>
 
                   <div className="mt-3 text-xs font-black text-emerald-900/70">
                     Total ({Number(row.travelers || 1)}{" "}
-                    {Number(row.travelers || 1) === 1 ? "traveler" : "travelers"})
+                    {Number(row.travelers || 1) === 1
+                      ? "traveler"
+                      : "travelers"}
+                    )
                   </div>
                   <div className="mt-2 text-sm font-extrabold text-gray-900">
                     NPR {Number(row.total_price || 0).toLocaleString("en-NP")}
@@ -402,7 +444,9 @@ export default function AgencyBookingDetailsPage() {
               </div>
 
               <div className="rounded-2xl border border-emerald-100 bg-white p-5">
-                <div className="text-sm font-extrabold text-gray-900">Schedule</div>
+                <div className="text-sm font-extrabold text-gray-900">
+                  Schedule
+                </div>
 
                 <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/30 p-4">
                   <div className="text-sm font-extrabold text-gray-900">
@@ -413,7 +457,9 @@ export default function AgencyBookingDetailsPage() {
                     Itinerary Highlights
                   </div>
                   <div className="mt-2 text-sm font-semibold text-gray-900 line-clamp-3">
-                    {row.tour_description ? String(row.tour_description).trim() : "—"}
+                    {row.tour_description
+                      ? String(row.tour_description).trim()
+                      : "—"}
                   </div>
                 </div>
               </div>
@@ -444,7 +490,17 @@ export default function AgencyBookingDetailsPage() {
 
                 <button
                   type="button"
-                  onClick={() => showToast("success", "Chat can be wired to your chat module next.")}
+                  onClick={() => {
+                    const touristId = Number(row?.tourist_id);
+                    if (!touristId) {
+                      showToast(
+                        "error",
+                        "Tourist id not found for this booking.",
+                      );
+                      return;
+                    }
+                    navigate(`/agency/chat?touristId=${touristId}`);
+                  }}
                   className="h-11 rounded-2xl bg-emerald-800 px-5 text-sm font-black text-white hover:bg-emerald-900 inline-flex items-center justify-center gap-2"
                 >
                   <FiMessageSquare />

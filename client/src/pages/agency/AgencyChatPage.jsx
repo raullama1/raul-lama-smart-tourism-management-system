@@ -1,19 +1,19 @@
-// client/src/pages/tourist/TouristChatPage.jsx
+// client/src/pages/agency/AgencyChatPage.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
-import NavbarTourist from "../../components/tourist/NavbarTourist";
-import FooterTourist from "../../components/tourist/FooterTourist";
-import ChatSidebar from "../../components/tourist/chat/ChatSidebar";
-import ChatWindow from "../../components/tourist/chat/ChatWindow";
-import NewChatModal from "../../components/tourist/chat/NewChatModal";
-import { useAuth } from "../../context/AuthContext";
+import AgencyLayout from "../../components/agency/AgencyLayout";
+import AgencyChatSidebar from "../../components/agency/chat/AgencyChatSidebar";
+import AgencyChatWindow from "../../components/agency/chat/AgencyChatWindow";
+import NewAgencyChatModal from "../../components/agency/chat/NewAgencyChatModal";
+
+import { useAgencyAuth } from "../../context/AgencyAuthContext";
 import {
-  fetchMyConversations,
-  startConversation,
+  fetchAgencyConversations,
+  startConversationAsAgency,
   fetchMessages,
   sendMessage,
   markRead,
   deleteMessage,
-  deleteConversation,
+  deleteConversationAsAgency,
 } from "../../api/chatApi";
 import { getSocket } from "../../socket";
 
@@ -25,8 +25,8 @@ function getConvoId(c) {
   return Number.isFinite(n) ? n : null;
 }
 
-function getAgencyIdFromConvo(c) {
-  const v = c?.agency_id ?? c?.agencyId ?? c?.agency?.id;
+function getTouristIdFromConvo(c) {
+  const v = c?.tourist_id ?? c?.touristId ?? c?.tourist?.id;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
@@ -37,8 +37,8 @@ function hasAnyMessagePreview(c) {
   return Boolean(last || at);
 }
 
-export default function TouristChatPage() {
-  const { token } = useAuth();
+export default function AgencyChatPage() {
+  const { token } = useAgencyAuth();
 
   const [loadingConvos, setLoadingConvos] = useState(true);
   const [convos, setConvos] = useState([]);
@@ -107,6 +107,7 @@ export default function TouristChatPage() {
 
     const curSelected = Number(selectedIdRef.current || 0);
     const selectedWasEmpty = empties.some((c) => Number(getConvoId(c)) === curSelected);
+
     if (selectedWasEmpty) {
       setSelectedId(null);
       setMessages([]);
@@ -118,7 +119,7 @@ export default function TouristChatPage() {
       const cid = getConvoId(c);
       if (!cid) continue;
       try {
-        await deleteConversation(token, cid, { onlyIfEmpty: true });
+        await deleteConversationAsAgency(token, cid, { onlyIfEmpty: true });
       } catch (e) {
         console.error("cleanup empty convo failed", cid, e);
       }
@@ -129,11 +130,10 @@ export default function TouristChatPage() {
 
   const loadConvos = async ({ silent = false } = {}) => {
     if (!token) return;
-
     try {
       if (!silent) setLoadingConvos(true);
 
-      const res = await fetchMyConversations(token);
+      const res = await fetchAgencyConversations(token);
       const list = res.data || [];
 
       const cleaned = await cleanupEmptyConvosOnServer(list);
@@ -238,7 +238,8 @@ export default function TouristChatPage() {
           };
 
           const isOpen = Number(selectedIdRef.current) === Number(conversationId);
-          if (!isOpen && message?.sender_role !== "tourist") {
+
+          if (!isOpen && message?.sender_role !== "agency") {
             updated.unread_count = Number(updated.unread_count || 0) + 1;
           }
 
@@ -252,7 +253,7 @@ export default function TouristChatPage() {
       const isOpen = Number(selectedIdRef.current) === Number(conversationId);
       if (!isOpen) return;
 
-      if (message?.sender_role === "tourist") return;
+      if (message?.sender_role === "agency") return;
 
       setMessages((prev) => {
         const next = [...(prev || []), message];
@@ -265,7 +266,7 @@ export default function TouristChatPage() {
 
     const onTyping = ({ conversationId, name }) => {
       if (Number(selectedIdRef.current) === Number(conversationId)) {
-        setTypingText(`${name || "Agency"} is typing...`);
+        setTypingText(`${name || "Tourist"} is typing...`);
       }
     };
 
@@ -342,7 +343,7 @@ export default function TouristChatPage() {
     if (!token || !conversationId) return;
 
     try {
-      const res = await deleteConversation(token, conversationId, { onlyIfEmpty: true });
+      const res = await deleteConversationAsAgency(token, conversationId, { onlyIfEmpty: true });
       if (res?.ok) {
         pendingEmptyConvosRef.current.delete(Number(conversationId));
         clearCacheFor(conversationId);
@@ -401,7 +402,7 @@ export default function TouristChatPage() {
     const optimistic = {
       id: tempId,
       conversation_id: conversationId,
-      sender_role: "tourist",
+      sender_role: "agency",
       message: text,
       created_at: new Date().toISOString(),
       is_deleted: 0,
@@ -421,7 +422,7 @@ export default function TouristChatPage() {
           ...next[idx],
           last_message: text,
           last_message_at: new Date().toISOString(),
-          last_message_sender_role: "tourist",
+          last_message_sender_role: "agency",
         };
         const [item] = next.splice(idx, 1);
         next.unshift(item);
@@ -537,7 +538,7 @@ export default function TouristChatPage() {
     }
 
     try {
-      const res = await deleteConversation(token, cid);
+      const res = await deleteConversationAsAgency(token, cid);
       if (!res?.ok) {
         alert("Failed to delete chat.");
         loadConvos({ silent: true });
@@ -561,40 +562,40 @@ export default function TouristChatPage() {
     if (!q) return convos;
 
     return (convos || []).filter((c) => {
-      const name = String(c.agency_name || c.name || "").toLowerCase();
+      const name = String(c.tourist_name || c.name || "").toLowerCase();
       const last = String(c.last_message || "").toLowerCase();
       return name.includes(q) || last.includes(q);
     });
   }, [convos, loadingConvos, search]);
 
-  const excludeAgencyIds = useMemo(() => {
+  const excludeTouristIds = useMemo(() => {
     return (convos || [])
-      .map((c) => getAgencyIdFromConvo(c))
+      .map((c) => getTouristIdFromConvo(c))
       .filter((x) => Number.isFinite(Number(x)));
   }, [convos]);
 
-  const handlePickAgency = async (agency) => {
+  const handlePickTourist = async (tourist) => {
     try {
       setShowNewChat(false);
 
-      const agencyId = Number(agency?.id);
-      const agencyName = String(agency?.name || "Agency");
-      const agencyAddress = String(agency?.address || "Nepal");
+      const touristId = Number(tourist?.id);
+      const touristName = String(tourist?.name || "Tourist");
+      const touristEmail = String(tourist?.email || "");
 
-      if (!agencyId) {
-        alert("Invalid agency.");
+      if (!touristId) {
+        alert("Invalid tourist.");
         return;
       }
 
       const existing = (convos || []).find(
-        (c) => Number(getAgencyIdFromConvo(c)) === Number(agencyId)
+        (c) => Number(getTouristIdFromConvo(c)) === Number(touristId)
       );
       if (existing) {
         handleSelect(existing);
         return;
       }
 
-      const res = await startConversation(token, agencyId);
+      const res = await startConversationAsAgency(token, touristId);
 
       const convoId =
         Number(res?.conversation?.id) ||
@@ -611,9 +612,9 @@ export default function TouristChatPage() {
 
       const newConvo = {
         conversation_id: convoId,
-        agency_id: Number(agencyId),
-        agency_name: agencyName,
-        agency_address: agencyAddress,
+        tourist_id: Number(touristId),
+        tourist_name: touristName,
+        tourist_email: touristEmail,
         last_message: "",
         last_message_at: "",
         last_message_sender_role: "",
@@ -650,48 +651,40 @@ export default function TouristChatPage() {
   };
 
   return (
-    <>
-      <NavbarTourist />
+    <AgencyLayout>
+      <div className="mt-5 flex flex-col md:flex-row gap-4">
+        <AgencyChatSidebar
+          search={search}
+          onSearch={setSearch}
+          conversations={filteredConvos}
+          selectedId={selectedId}
+          onSelect={handleSelect}
+          onStartNew={() => setShowNewChat(true)}
+        />
 
-      <main className="bg-[#f3faf6] pt-6 pb-6">
-        <div className="max-w-6xl mx-auto px-4 md:px-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <ChatSidebar
-              search={search}
-              onSearch={setSearch}
-              conversations={filteredConvos}
-              selectedId={selectedId}
-              onSelect={handleSelect}
-              onStartNew={() => setShowNewChat(true)}
-            />
+        <AgencyChatWindow
+          selected={selected}
+          messages={messages}
+          loading={msgLoading}
+          hasMore={!!pagination?.hasMore}
+          onLoadMore={loadOlder}
+          onSend={handleSend}
+          typingText={typingText}
+          onTyping={handleTyping}
+          onStopTyping={handleStopTyping}
+          onDeleteMessage={handleDeleteMessage}
+          onDeleteConversation={handleDeleteConversation}
+        />
+      </div>
 
-            <ChatWindow
-              selected={selected}
-              messages={messages}
-              loading={msgLoading}
-              hasMore={!!pagination?.hasMore}
-              onLoadMore={loadOlder}
-              onSend={handleSend}
-              typingText={typingText}
-              onTyping={handleTyping}
-              onStopTyping={handleStopTyping}
-              onDeleteMessage={handleDeleteMessage}
-              onDeleteConversation={handleDeleteConversation}
-            />
-          </div>
+      {loadingConvos && <div className="mt-3 text-xs text-gray-500">Loading chats...</div>}
 
-          {loadingConvos && <div className="mt-3 text-xs text-gray-500">Loading chats...</div>}
-        </div>
-      </main>
-
-      <FooterTourist />
-
-      <NewChatModal
+      <NewAgencyChatModal
         open={showNewChat}
         onClose={() => setShowNewChat(false)}
-        onPickAgency={handlePickAgency}
-        excludeAgencyIds={excludeAgencyIds}
+        onPickTourist={handlePickTourist}
+        excludeTouristIds={excludeTouristIds}
       />
-    </>
+    </AgencyLayout>
   );
 }
