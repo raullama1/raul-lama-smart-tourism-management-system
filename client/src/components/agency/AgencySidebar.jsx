@@ -182,6 +182,11 @@ export default function AgencySidebar() {
                 label="Add Blog"
                 icon={FiPlus}
               />
+              <SubItem
+                to="/agency/blogs/manage"
+                label="Manage Blog"
+                icon={FiCheckSquare}
+              />
             </Section>
 
             <Item to="/agency/reviews" icon={FiStar} label="Reviews" />

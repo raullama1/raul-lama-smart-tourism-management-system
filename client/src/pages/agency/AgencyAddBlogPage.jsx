@@ -294,7 +294,7 @@ export default function AgencyAddBlogPage() {
           <div className="mx-auto max-w-6xl rounded-3xl bg-white/70 shadow-sm ring-1 ring-emerald-100">
             <div className="flex items-start justify-between border-b border-emerald-100 px-6 py-5">
               <div>
-                <h1 className="text-3xl font-extrabold text-slate-800">
+                <h1 className="text-lg font-semibold text-gray-900">
                   Add Blog
                 </h1>
               </div>

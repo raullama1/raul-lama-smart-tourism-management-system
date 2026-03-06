@@ -41,6 +41,7 @@ import AgencyBookingsPage from "../pages/agency/AgencyBookingsPage";
 import AgencyBookingDetailsPage from "../pages/agency/AgencyBookingDetailsPage";
 import AgencyChatPage from "../pages/agency/AgencyChatPage";
 import AgencyAddBlogPage from "../pages/agency/AgencyAddBlogPage";
+import AgencyManageBlogsPage from "../pages/agency/AgencyManageBlogsPage";
 
 function PrivateRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -386,6 +387,15 @@ export default function AppRouter() {
           element={
             <AgencyPrivateRoute>
               <AgencyAddBlogPage />
+            </AgencyPrivateRoute>
+          }
+        />
+
+        <Route
+          path="/agency/blogs/manage"
+          element={
+            <AgencyPrivateRoute>
+              <AgencyManageBlogsPage />
             </AgencyPrivateRoute>
           }
         />
