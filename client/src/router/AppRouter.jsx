@@ -42,6 +42,7 @@ import AgencyBookingDetailsPage from "../pages/agency/AgencyBookingDetailsPage";
 import AgencyChatPage from "../pages/agency/AgencyChatPage";
 import AgencyAddBlogPage from "../pages/agency/AgencyAddBlogPage";
 import AgencyManageBlogsPage from "../pages/agency/AgencyManageBlogsPage";
+import AgencyReviewsPage from "../pages/agency/AgencyReviewsPage";
 
 function PrivateRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -136,7 +137,6 @@ export default function AppRouter() {
           }
         />
 
-        {/* Public */}
         <Route path="/tours" element={<PublicToursPage />} />
         <Route path="/tours/:tourId" element={<PublicTourDetailsPage />} />
         <Route path="/blogs" element={<PublicBlogsPage />} />
@@ -151,7 +151,6 @@ export default function AppRouter() {
           }
         />
 
-        {/* Tourist Auth */}
         <Route
           path="/login"
           element={
@@ -171,7 +170,6 @@ export default function AppRouter() {
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-        {/* Tourist */}
         <Route
           path="/home"
           element={
@@ -253,7 +251,6 @@ export default function AppRouter() {
           }
         />
 
-        {/* Chat */}
         <Route
           path="/chat"
           element={
@@ -263,7 +260,6 @@ export default function AppRouter() {
           }
         />
 
-        {/* Tourist Profile */}
         <Route
           path="/profile"
           element={
@@ -273,10 +269,8 @@ export default function AppRouter() {
           }
         />
 
-        {/* Agency Portal Base */}
         <Route path="/agency" element={<AgencyIndexRedirect />} />
 
-        {/* Agency Auth Pages */}
         <Route
           path="/agency/login"
           element={
@@ -318,7 +312,6 @@ export default function AppRouter() {
           }
         />
 
-        {/* Protected Agency Routes */}
         <Route
           path="/agency/dashboard"
           element={
@@ -400,7 +393,15 @@ export default function AppRouter() {
           }
         />
 
-        {/* Fallback */}
+        <Route
+          path="/agency/reviews"
+          element={
+            <AgencyPrivateRoute>
+              <AgencyReviewsPage />
+            </AgencyPrivateRoute>
+          }
+        />
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </>
