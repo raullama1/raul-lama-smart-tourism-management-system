@@ -96,7 +96,7 @@ export default function AgencyReviewsPage() {
           <div className="mx-auto max-w-7xl rounded-3xl border border-emerald-100 bg-white shadow-sm">
             <div className="flex items-start justify-between border-b border-emerald-100 px-6 py-5">
               <div>
-                <h1 className="text-3xl font-extrabold text-slate-800">
+                <h1 className="text-lg font-semibold text-gray-900">
                   All Reviews
                 </h1>
               </div>
@@ -206,11 +206,11 @@ export default function AgencyReviewsPage() {
                           : "",
                       ].join(" ")}
                     >
-                      <div className="font-semibold text-slate-800">
+                      <div className="text-sm font-medium leading-6 text-slate-700">
                         {review.tourist_name}
                       </div>
 
-                      <div className="font-semibold text-slate-800">
+                      <div className="text-sm font-medium leading-6 text-slate-700">
                         {review.tour_name}
                       </div>
 
