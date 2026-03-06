@@ -14,12 +14,88 @@ import {
 } from "../../api/blogApi";
 import { useAuth } from "../../context/AuthContext";
 
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5001/api";
+
+const SERVER_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, "");
+
+const FALLBACK_BLOG_IMAGE =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700">
+      <rect width="1200" height="700" fill="#dff3e7"/>
+      <rect x="80" y="80" width="1040" height="540" rx="28" fill="#c8ead5"/>
+      <circle cx="260" cy="230" r="56" fill="#9fd3b2"/>
+      <path d="M170 500l170-170 120 115 155-165 225 220H170z" fill="#77b790"/>
+      <text x="600" y="610" text-anchor="middle" font-family="Arial, sans-serif" font-size="40" fill="#2f6f53">
+        Smart Tourism Blog
+      </text>
+    </svg>
+  `);
+
+function resolveImageUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return FALLBACK_BLOG_IMAGE;
+  if (/^https?:\/\//i.test(raw)) return raw;
+  if (raw.startsWith("/")) return `${SERVER_BASE_URL}${raw}`;
+  return `${SERVER_BASE_URL}/${raw}`;
+}
+
 function makePreviewText(text, max = 140) {
-  if (!text) return "";
-  const firstLine =
-    String(text).split(/\r?\n/).find((l) => l.trim().length > 0) || "";
-  const clean = firstLine.replace(/\s+/g, " ").trim();
-  return clean.length <= max ? clean : clean.slice(0, max).trim() + "...";
+  const clean = String(text || "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/\*(.*?)\*/g, "$1")
+    .replace(/^[•-]\s+/gm, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!clean) return "";
+  return clean.length <= max ? clean : `${clean.slice(0, max).trim()}...`;
+}
+
+function escapeHtml(text) {
+  return String(text || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function renderInlineMarkdown(text) {
+  let safe = escapeHtml(text);
+  safe = safe.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  safe = safe.replace(/\*(.+?)\*/g, "<em>$1</em>");
+  return safe;
+}
+
+function renderContentHtml(text) {
+  const lines = String(text || "").split(/\r?\n/);
+  const html = [];
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+
+    if (!line) {
+      html.push('<div class="h-4"></div>');
+      continue;
+    }
+
+    const bulletMatch = line.match(/^(?:•|-)\s+(.*)$/);
+    if (bulletMatch) {
+      html.push(
+        `<div class="leading-7 text-gray-800">&bull; ${renderInlineMarkdown(
+          bulletMatch[1]
+        )}</div>`
+      );
+      continue;
+    }
+
+    html.push(
+      `<div class="leading-7 text-gray-800">${renderInlineMarkdown(line)}</div>`
+    );
+  }
+
+  return html.join("");
 }
 
 function AuthPopup({ open, onClose, onLogin, onSignup }) {
@@ -115,6 +191,7 @@ export default function PublicBlogDetailsPage() {
         setLoading(false);
       }
     }
+
     loadBlog();
   }, [blogId]);
 
@@ -143,7 +220,6 @@ export default function PublicBlogDetailsPage() {
 
   useEffect(() => {
     loadCommentsPage(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blogId]);
 
   const handlePostComment = async () => {
@@ -219,21 +295,13 @@ export default function PublicBlogDetailsPage() {
     );
   }
 
-  const tagMap = {
-    "Chitwan Jungle Safari Tips": ["Nepal", "Chitwan", "Safari", "Tharu Culture"],
-    "Lumbini Buddhist Heritage Tour": ["Lumbini", "Buddhist", "Heritage"],
-    "Top 5 Trekking Places in Nepal": ["Nepal", "Trekking", "Himalaya"],
-    "Pokhara Travel Guide 2025": ["Pokhara", "Travel", "Adventure"],
-  };
-  const tags = tagMap[blog.title] || [];
-
-  // ✅ Preview uses FIRST LINE of content (or excerpt fallback), so it matches Read More page
   const mappedRecentBlogs = (recentBlogs || []).map((b) => ({
     id: b.id,
     title: b.title,
     excerpt: makePreviewText(b.content || b.excerpt, 140),
     agency: b.agency_name,
     image: b.image_url,
+    type: b.type,
     date: new Date(b.created_at).toLocaleDateString("en-GB", {
       day: "2-digit",
       month: "short",
@@ -249,6 +317,7 @@ export default function PublicBlogDetailsPage() {
   return (
     <>
       <Navbar />
+
       <main className="bg-[#e6f4ec] min-h-screen pt-6 pb-10">
         <div className="max-w-6xl mx-auto px-4 md:px-6 space-y-6">
           <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-5">
@@ -258,33 +327,34 @@ export default function PublicBlogDetailsPage() {
 
             <div className="mt-1 text-xs md:text-sm text-gray-600">
               <div className="font-medium">{blog.agency_name}</div>
-              <div>{formattedDate} • 7 min read</div>
+              <div>{formattedDate}</div>
             </div>
 
             <div className="mt-4 rounded-2xl overflow-hidden">
               <img
-                src={blog.image_url}
+                src={resolveImageUrl(blog.image_url)}
                 alt={blog.title}
+                onError={(e) => {
+                  e.currentTarget.src = FALLBACK_BLOG_IMAGE;
+                }}
                 className="w-full h-56 md:h-72 lg:h-80 object-cover"
               />
             </div>
 
-            <p className="mt-4 text-xs md:text-sm text-gray-800 leading-relaxed whitespace-pre-line">
-              {blog.content}
-            </p>
+            <div
+              className="mt-4 text-xs md:text-sm leading-relaxed"
+              dangerouslySetInnerHTML={{
+                __html: renderContentHtml(blog.content),
+              }}
+            />
 
-            {tags.length > 0 && (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs border border-emerald-100"
-                  >
-                    {tag}
-                  </span>
-                ))}
+            {blog.type ? (
+              <div className="mt-4">
+                <span className="inline-flex rounded-full bg-emerald-50 text-emerald-700 text-xs border border-emerald-100 px-3 py-1 font-medium">
+                  {blog.type}
+                </span>
               </div>
-            )}
+            ) : null}
           </section>
 
           <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-5 space-y-3">
@@ -387,6 +457,7 @@ export default function PublicBlogDetailsPage() {
           )}
         </div>
       </main>
+
       <Footer />
 
       <AuthPopup

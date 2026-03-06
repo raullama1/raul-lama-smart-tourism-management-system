@@ -7,6 +7,45 @@ import { Draggable } from "gsap/Draggable";
 
 gsap.registerPlugin(Draggable);
 
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5001/api";
+
+const SERVER_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, "");
+
+const FALLBACK_BLOG_IMAGE =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700">
+      <rect width="1200" height="700" fill="#dff3e7"/>
+      <rect x="80" y="80" width="1040" height="540" rx="28" fill="#c8ead5"/>
+      <circle cx="260" cy="230" r="56" fill="#9fd3b2"/>
+      <path d="M170 500l170-170 120 115 155-165 225 220H170z" fill="#77b790"/>
+      <text x="600" y="610" text-anchor="middle" font-family="Arial, sans-serif" font-size="40" fill="#2f6f53">
+        Smart Tourism Blog
+      </text>
+    </svg>
+  `);
+
+function resolveImageUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return FALLBACK_BLOG_IMAGE;
+  if (/^https?:\/\//i.test(raw)) return raw;
+  if (raw.startsWith("/")) return `${SERVER_BASE_URL}${raw}`;
+  return `${SERVER_BASE_URL}/${raw}`;
+}
+
+function plainPreview(text, max = 140) {
+  const clean = String(text || "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/\*(.*?)\*/g, "$1")
+    .replace(/^[•-]\s+/gm, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!clean) return "";
+  return clean.length <= max ? clean : `${clean.slice(0, max).trim()}...`;
+}
+
 export function BlogCard({ blog }) {
   const navigate = useNavigate();
 
@@ -19,8 +58,11 @@ export function BlogCard({ blog }) {
     <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden flex flex-col transform hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
       <div className="relative h-40 w-full overflow-hidden">
         <img
-          src={blog.image}
+          src={resolveImageUrl(blog.image)}
           alt={blog.title}
+          onError={(e) => {
+            e.currentTarget.src = FALLBACK_BLOG_IMAGE;
+          }}
           className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
         />
       </div>
@@ -30,14 +72,22 @@ export function BlogCard({ blog }) {
           {blog.title}
         </h3>
 
-        <p className="mt-1 text-gray-600 text-xs md:text-sm line-clamp-2">
-          {blog.excerpt}
+        <p className="mt-1 text-gray-600 text-xs md:text-sm line-clamp-3">
+          {plainPreview(blog.excerpt, 150)}
         </p>
 
-        <div className="mt-2 text-xs text-gray-500 flex justify-between">
+        <div className="mt-2 text-xs text-gray-500 flex justify-between gap-3">
           <span className="line-clamp-1">{blog.agency}</span>
           <span>{blog.date}</span>
         </div>
+
+        {blog.type ? (
+          <div className="mt-3">
+            <span className="inline-flex rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700">
+              {blog.type}
+            </span>
+          </div>
+        ) : null}
 
         <button
           onClick={handleReadMore}
@@ -75,8 +125,10 @@ export function BlogCardSection({
     if (!first) return;
 
     const itemW = first.getBoundingClientRect().width || 520;
-
-    const gapStr = getComputedStyle(container).gap || getComputedStyle(container).columnGap || "0";
+    const gapStr =
+      getComputedStyle(container).gap ||
+      getComputedStyle(container).columnGap ||
+      "0";
     const gap = Number.parseFloat(gapStr) || 0;
 
     setDims({ itemW, gap, ready: true });
@@ -118,7 +170,6 @@ export function BlogCardSection({
     ro.observe(container);
 
     return () => ro.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseBlogs.length]);
 
   useEffect(() => {
@@ -129,7 +180,6 @@ export function BlogCardSection({
 
     const single = getSingleWidth();
 
-    // Start in the middle copy
     gsap.set(container, { x: -single });
 
     draggableRef.current = Draggable.create(container, {
@@ -156,6 +206,7 @@ export function BlogCardSection({
         moveBy(-Math.min(340, dims.itemW + dims.gap));
       }
     };
+
     window.addEventListener("keydown", onKeyDown);
 
     return () => {
@@ -163,7 +214,6 @@ export function BlogCardSection({
       destroyDraggable();
       container.style.cursor = "";
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dims.ready, dims.itemW, dims.gap, baseBlogs.length]);
 
   const moveBy = (delta) => {
@@ -223,7 +273,6 @@ export function BlogCardSection({
           >
             {tripled.map((blog, idx) => (
               <div
-                // key must be unique in triple set
                 key={`${blog.id}-${idx}`}
                 className="flex-shrink-0 w-[470px] md:w-[500px] lg:w-[520px]"
               >

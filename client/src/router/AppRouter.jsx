@@ -40,6 +40,7 @@ import AgencyAddExistingTourPage from "../pages/agency/AgencyAddExistingTourPage
 import AgencyBookingsPage from "../pages/agency/AgencyBookingsPage";
 import AgencyBookingDetailsPage from "../pages/agency/AgencyBookingDetailsPage";
 import AgencyChatPage from "../pages/agency/AgencyChatPage";
+import AgencyAddBlogPage from "../pages/agency/AgencyAddBlogPage";
 
 function PrivateRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -316,7 +317,7 @@ export default function AppRouter() {
           }
         />
 
-        {/* ✅ Protected Agency Routes */}
+        {/* Protected Agency Routes */}
         <Route
           path="/agency/dashboard"
           element={
@@ -362,7 +363,6 @@ export default function AppRouter() {
           }
         />
 
-        {/* Booking Details */}
         <Route
           path="/agency/bookings/:bookingId"
           element={
@@ -372,12 +372,20 @@ export default function AppRouter() {
           }
         />
 
-        {/* Agency Chat */}
         <Route
           path="/agency/chat"
           element={
             <AgencyPrivateRoute>
               <AgencyChatPage />
+            </AgencyPrivateRoute>
+          }
+        />
+
+        <Route
+          path="/agency/blogs/add"
+          element={
+            <AgencyPrivateRoute>
+              <AgencyAddBlogPage />
             </AgencyPrivateRoute>
           }
         />

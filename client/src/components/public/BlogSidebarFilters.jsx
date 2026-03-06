@@ -18,23 +18,6 @@ export default function BlogSidebarFilters({ filters, onChange, onReset }) {
       <div>
         <h3 className="text-sm font-semibold mb-2">Quick Filters</h3>
 
-        {/* Top Agencies */}
-        <button
-          onClick={() =>
-            onChange({
-              ...filters,
-              sort: filters.sort === "top-agencies" ? "" : "top-agencies",
-            })
-          }
-          className={`w-full h-9 rounded-md text-xs font-medium flex items-center gap-2 px-3 border ${
-            filters.sort === "top-agencies"
-              ? "bg-emerald-400 text-[#0f3b24] border-transparent"
-              : "bg-white text-gray-800 border-gray-200"
-          }`}
-        >
-          🏆 Top Agencies
-        </button>
-
         {/* Latest */}
         <button
           onClick={() =>
@@ -43,13 +26,47 @@ export default function BlogSidebarFilters({ filters, onChange, onReset }) {
               sort: filters.sort === "latest" ? "" : "latest",
             })
           }
-          className={`mt-2 w-full h-9 rounded-md text-xs font-medium flex items-center gap-2 px-3 border ${
+          className={`w-full h-9 rounded-md text-xs font-medium flex items-center gap-2 px-3 border ${
             filters.sort === "latest"
               ? "bg-emerald-400 text-[#0f3b24] border-transparent"
               : "bg-white text-gray-800 border-gray-200"
           }`}
         >
           🕒 Latest
+        </button>
+
+        {/* Oldest */}
+        <button
+          onClick={() =>
+            onChange({
+              ...filters,
+              sort: filters.sort === "oldest" ? "" : "oldest",
+            })
+          }
+          className={`mt-2 w-full h-9 rounded-md text-xs font-medium flex items-center gap-2 px-3 border ${
+            filters.sort === "oldest"
+              ? "bg-emerald-400 text-[#0f3b24] border-transparent"
+              : "bg-white text-gray-800 border-gray-200"
+          }`}
+        >
+          📅 Oldest
+        </button>
+
+        {/* Top Agencies */}
+        <button
+          onClick={() =>
+            onChange({
+              ...filters,
+              sort: filters.sort === "top-agencies" ? "" : "top-agencies",
+            })
+          }
+          className={`mt-2 w-full h-9 rounded-md text-xs font-medium flex items-center gap-2 px-3 border ${
+            filters.sort === "top-agencies"
+              ? "bg-emerald-400 text-[#0f3b24] border-transparent"
+              : "bg-white text-gray-800 border-gray-200"
+          }`}
+        >
+          🏆 Top Agencies
         </button>
 
         {/* Reset */}

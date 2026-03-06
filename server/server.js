@@ -25,6 +25,7 @@ import agencySupportRoutes from "./routes/agencySupportRoutes.js";
 import agencyDashboardRoutes from "./routes/agencyDashboardRoutes.js";
 import agencyToursRoutes from "./routes/agencyToursRoutes.js";
 import agencyBookingsRoutes from "./routes/agencyBookingsRoutes.js";
+import agencyBlogsRoutes from "./routes/agencyBlogsRoutes.js";
 
 import { initChatSocket } from "./sockets/chatSocket.js";
 
@@ -41,8 +42,10 @@ app.use(
 
 app.use(express.json());
 
-// Serve uploaded images
-app.use("/uploads", express.static(path.join(process.cwd(), "server", "uploads")));
+app.use(
+  "/uploads",
+  express.static(path.join(process.cwd(), "server", "uploads"))
+);
 
 app.get("/", (req, res) => {
   res.json({ message: "Smart Tourism API running..." });
@@ -62,7 +65,7 @@ app.use("/api/bookings", bookingRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/reviews", reviewRoutes);
 
-// Blogs (comments)
+// Blogs
 app.use("/api/blogs", blogCommentsRoutes);
 
 // Chat REST
@@ -88,6 +91,9 @@ app.use("/api/agency/tours", agencyToursRoutes);
 
 // Agency Bookings
 app.use("/api/agency/bookings", agencyBookingsRoutes);
+
+// Agency Blogs
+app.use("/api/agency/blogs", agencyBlogsRoutes);
 
 // Socket.IO
 const server = http.createServer(app);

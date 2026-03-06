@@ -1,3 +1,4 @@
+// client/src/pages/public/PublicBlogsPage.jsx
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import NavbarPublic from "../../components/public/NavbarPublic";
@@ -9,15 +10,16 @@ import BlogListItem from "../../components/public/BlogListItem";
 import { fetchPublicBlogs, fetchBlogComments } from "../../api/blogApi";
 import { useAuth } from "../../context/AuthContext";
 
-function makePreviewText(text, max = 140) {
-  if (!text) return "";
+function normalizePreviewText(text, max = 140) {
+  const clean = String(text || "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/\*(.*?)\*/g, "$1")
+    .replace(/^[•-]\s+/gm, "")
+    .replace(/\s+/g, " ")
+    .trim();
 
-  const firstLine =
-    String(text).split(/\r?\n/).find((l) => l.trim().length > 0) || "";
-  const clean = firstLine.replace(/\s+/g, " ").trim();
-
-  if (clean.length <= max) return clean;
-  return clean.slice(0, max).trim() + "...";
+  if (!clean) return "";
+  return clean.length <= max ? clean : `${clean.slice(0, max).trim()}...`;
 }
 
 export default function PublicBlogsPage() {
@@ -29,7 +31,7 @@ export default function PublicBlogsPage() {
 
   const [filters, setFilters] = useState({
     search: "",
-    sort: "",
+    sort: "latest",
     page: 1,
     limit: 6,
   });
@@ -41,8 +43,7 @@ export default function PublicBlogsPage() {
   const [commentsByBlog, setCommentsByBlog] = useState({});
   const [loadingComments, setLoadingComments] = useState(false);
 
-  // Smooth fade (content list only)
-  const [fadeState, setFadeState] = useState("out"); // start hidden
+  const [fadeState, setFadeState] = useState("out");
   const firstLoadRef = useRef(true);
 
   useEffect(() => {
@@ -55,18 +56,21 @@ export default function PublicBlogsPage() {
     "transition-opacity duration-700 ease-[cubic-bezier(.22,1,.36,1)]";
 
   const loadBlogs = useCallback(
-    async ({ page, append, smoothSwap }) => {
+    async ({ search, sort, page, limit, append, smoothSwap }) => {
       try {
         if (smoothSwap && !append) setFadeState("out");
         setLoading(true);
 
         const res = await fetchPublicBlogs({
-          ...filters,
+          search,
+          sort,
           page,
+          limit,
         });
 
-        // tiny delay ONLY for swap (not for append / not for first load)
-        if (smoothSwap && !append) await new Promise((r) => setTimeout(r, 140));
+        if (smoothSwap && !append) {
+          await new Promise((resolve) => setTimeout(resolve, 140));
+        }
 
         if (append) {
           setBlogs((prev) => [...prev, ...(res.data || [])]);
@@ -85,7 +89,7 @@ export default function PublicBlogsPage() {
         firstLoadRef.current = false;
       }
     },
-    [filters]
+    []
   );
 
   const loadCommentsPreview = useCallback(async (list) => {
@@ -109,55 +113,79 @@ export default function PublicBlogsPage() {
         })
       );
 
-      const obj = {};
-      results.forEach(([id, payload]) => (obj[id] = payload));
-      setCommentsByBlog(obj);
+      const nextComments = {};
+      results.forEach(([id, payload]) => {
+        nextComments[id] = payload;
+      });
+
+      setCommentsByBlog(nextComments);
     } finally {
       setLoadingComments(false);
     }
   }, []);
 
-  // Reload list when search/sort changes (smooth swap after first load)
   useEffect(() => {
-    setFilters((prev) => ({ ...prev, page: 1 }));
-
     const smooth = !firstLoadRef.current;
-    loadBlogs({ page: 1, append: false, smoothSwap: smooth });
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.search, filters.sort]);
+    loadBlogs({
+      search: filters.search,
+      sort: filters.sort,
+      page: 1,
+      limit: filters.limit,
+      append: false,
+      smoothSwap: smooth,
+    });
+  }, [filters.search, filters.sort, filters.limit, loadBlogs]);
 
-  // When blogs change, refresh comment previews
   useEffect(() => {
-    if (blogs.length > 0) loadCommentsPreview(blogs);
-    else setCommentsByBlog({});
+    if (blogs.length > 0) {
+      loadCommentsPreview(blogs);
+    } else {
+      setCommentsByBlog({});
+    }
   }, [blogs, loadCommentsPreview]);
 
-  // When coming back to page via navigation, refresh comment previews
   useEffect(() => {
-    if (blogs.length > 0) loadCommentsPreview(blogs);
-  }, [location.key, blogs.length, loadCommentsPreview]);
+    if (blogs.length > 0) {
+      loadCommentsPreview(blogs);
+    }
+  }, [location.key, blogs.length, loadCommentsPreview, blogs]);
 
   const handleSidebarChange = (next) => {
-    setFilters((prev) => ({ ...prev, ...next, page: 1 }));
+    setFilters((prev) => ({
+      ...prev,
+      ...next,
+      page: 1,
+    }));
   };
 
   const handleReset = () => {
     setFilters({
       search: "",
-      sort: "",
+      sort: "latest",
       page: 1,
       limit: 6,
     });
   };
 
   const handleLoadMore = async () => {
-    if (!pagination.hasMore) return;
+    if (!pagination.hasMore || loading) return;
 
     const nextPage = (filters.page || 1) + 1;
 
-    setFilters((prev) => ({ ...prev, page: nextPage }));
-    await loadBlogs({ page: nextPage, append: true, smoothSwap: false });
+    setFilters((prev) => ({
+      ...prev,
+      page: nextPage,
+    }));
+
+    await loadBlogs({
+      search: filters.search,
+      sort: filters.sort,
+      page: nextPage,
+      limit: filters.limit,
+      append: true,
+      smoothSwap: false,
+    });
   };
 
   const mappedBlogs = useMemo(() => {
@@ -174,7 +202,7 @@ export default function PublicBlogsPage() {
       return {
         ...b,
         formattedDate,
-        excerpt: makePreviewText(b.content || b.excerpt, 140),
+        excerpt: normalizePreviewText(b.content || b.excerpt, 180),
         commentCount: count,
         commentsPreview: preview,
       };
@@ -203,7 +231,6 @@ export default function PublicBlogsPage() {
               </p>
             </header>
 
-            {/* Fade ONLY the content area (not sidebar/header) */}
             <div className={`${transitionClass} ${fadeWrapClass}`}>
               {loading && blogs.length === 0 ? (
                 <div className="bg-white rounded-2xl border border-gray-100 p-6 text-sm text-gray-500">
@@ -222,11 +249,7 @@ export default function PublicBlogsPage() {
                   )}
 
                   {mappedBlogs.map((blog) => (
-                    <BlogListItem
-                      key={blog.id}
-                      blog={blog}
-                      isAuthenticated={isAuthenticated}
-                    />
+                    <BlogListItem key={blog.id} blog={blog} />
                   ))}
 
                   {pagination.hasMore && (

@@ -12,9 +12,6 @@ function toMySqlDateTime(d) {
   return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
 }
 
-// --------------------------------------------------
-// Latest blogs for Home Page + simple latest sections
-// --------------------------------------------------
 export async function getLatestBlogs(limit = 4, excludeId = null) {
   const params = [];
   let whereClause = "";
@@ -31,7 +28,9 @@ export async function getLatestBlogs(limit = 4, excludeId = null) {
         id,
         title,
         excerpt,
+        content,
         agency_name,
+        type,
         image_url,
         created_at
      FROM blogs
@@ -44,12 +43,6 @@ export async function getLatestBlogs(limit = 4, excludeId = null) {
   return rows;
 }
 
-// --------------------------------------------------
-// Smart Recent Blogs:
-// 1) Try last N days first (latest-first)
-// 2) If not enough, fill from older posts (latest-first)
-// 3) Exclude current blog
-// --------------------------------------------------
 export async function getSmartRecentBlogs({
   limit = 12,
   excludeId = null,
@@ -83,6 +76,7 @@ export async function getSmartRecentBlogs({
         excerpt,
         content,
         agency_name,
+        type,
         image_url,
         created_at
      FROM blogs
@@ -94,7 +88,6 @@ export async function getSmartRecentBlogs({
 
   if (recentRows.length >= lim) return recentRows;
 
-  // Fill remaining from older (still latest-first), excluding already picked ids
   const remaining = lim - recentRows.length;
   const pickedIds = recentRows.map((r) => r.id);
 
@@ -125,6 +118,7 @@ export async function getSmartRecentBlogs({
         excerpt,
         content,
         agency_name,
+        type,
         image_url,
         created_at
      FROM blogs
@@ -137,33 +131,36 @@ export async function getSmartRecentBlogs({
   return [...recentRows, ...olderRows];
 }
 
-// --------------------------------------------------
-// Public blogs list for Blogs Page
-// with search, sort, pagination
-// --------------------------------------------------
 export async function getPublicBlogs(filters) {
-  const { search = "", sort = "", page = 1, limit = 6 } = filters;
+  const { search = "", sort = "latest", page = 1, limit = 6 } = filters;
 
   const whereParts = [];
   const params = [];
 
   if (search) {
     whereParts.push(
-      "(title LIKE ? OR excerpt LIKE ? OR content LIKE ? OR agency_name LIKE ?)"
+      "(b.title LIKE ? OR b.excerpt LIKE ? OR b.content LIKE ? OR b.agency_name LIKE ? OR b.type LIKE ?)"
     );
     const s = `%${search}%`;
-    params.push(s, s, s, s);
+    params.push(s, s, s, s, s);
   }
 
   const whereClause = whereParts.length
     ? `WHERE ${whereParts.join(" AND ")}`
     : "";
 
-  let orderBy = "ORDER BY created_at DESC";
+  let orderBy = "ORDER BY b.created_at DESC";
+
   if (sort === "latest") {
-    orderBy = "ORDER BY created_at DESC";
+    orderBy = "ORDER BY b.created_at DESC";
+  } else if (sort === "oldest") {
+    orderBy = "ORDER BY b.created_at ASC";
   } else if (sort === "top-agencies") {
-    orderBy = "ORDER BY agency_name ASC, created_at DESC";
+    orderBy = `
+      ORDER BY
+        COALESCE(agency_stats.confirmed_bookings_count, 0) DESC,
+        b.created_at DESC
+    `;
   }
 
   const pageNum = Number(page) || 1;
@@ -171,15 +168,26 @@ export async function getPublicBlogs(filters) {
   const offset = (pageNum - 1) * limitNum;
 
   const [rows] = await db.query(
-    `SELECT 
-        id,
-        title,
-        excerpt,
-        content,
-        agency_name,
-        image_url,
-        created_at
-     FROM blogs
+    `SELECT
+        b.id,
+        b.title,
+        b.excerpt,
+        b.content,
+        b.agency_name,
+        b.type,
+        b.image_url,
+        b.created_at,
+        COALESCE(agency_stats.confirmed_bookings_count, 0) AS confirmed_bookings_count
+     FROM blogs b
+     LEFT JOIN (
+       SELECT
+         agency_id,
+         COUNT(*) AS confirmed_bookings_count
+       FROM bookings
+       WHERE booking_status = 'Confirmed'
+       GROUP BY agency_id
+     ) AS agency_stats
+       ON agency_stats.agency_id = b.agency_id
      ${whereClause}
      ${orderBy}
      LIMIT ? OFFSET ?`,
@@ -188,7 +196,7 @@ export async function getPublicBlogs(filters) {
 
   const [[{ total }]] = await db.query(
     `SELECT COUNT(*) AS total
-     FROM blogs
+     FROM blogs b
      ${whereClause}`,
     params
   );
@@ -204,9 +212,6 @@ export async function getPublicBlogs(filters) {
   };
 }
 
-// --------------------------------------------------
-// Single blog for Blog Details Page
-// --------------------------------------------------
 export async function getPublicBlogById(blogId) {
   const [rows] = await db.query(
     `SELECT 
@@ -215,6 +220,7 @@ export async function getPublicBlogById(blogId) {
         excerpt,
         content,
         agency_name,
+        type,
         image_url,
         created_at
      FROM blogs

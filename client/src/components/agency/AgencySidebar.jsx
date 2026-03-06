@@ -16,6 +16,8 @@ import {
   FiUserPlus,
   FiHelpCircle,
   FiSettings,
+  FiPlus,
+  FiCheckSquare,
 } from "react-icons/fi";
 import { useAgencyAuth } from "../../context/AgencyAuthContext";
 
@@ -63,20 +65,21 @@ function Section({ icon: Icon, label, open, onToggle, children }) {
   );
 }
 
-function SubItem({ to, label }) {
+function SubItem({ to, label, icon: Icon }) {
   return (
     <NavLink
       to={to}
       className={({ isActive }) =>
         [
-          "block rounded-lg px-3 py-2 text-sm font-semibold transition-colors",
+          "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-colors",
           isActive
             ? "bg-emerald-700/60 text-white"
             : "text-emerald-50/80 hover:bg-emerald-800/35",
         ].join(" ")
       }
     >
-      {label}
+      {Icon ? <Icon size={15} /> : null}
+      <span>{label}</span>
     </NavLink>
   );
 }
@@ -91,15 +94,24 @@ export default function AgencySidebar() {
     [location.pathname]
   );
 
+  const inBlog = useMemo(
+    () => location.pathname.startsWith("/agency/blogs"),
+    [location.pathname]
+  );
+
   const [tourOpen, setTourOpen] = useState(false);
+  const [blogOpen, setBlogOpen] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) {
       setTourOpen(false);
+      setBlogOpen(false);
       return;
     }
+
     if (inTour) setTourOpen(true);
-  }, [isAuthenticated, inTour]);
+    if (inBlog) setBlogOpen(true);
+  }, [isAuthenticated, inTour, inBlog]);
 
   const handleLogout = () => {
     logout();
@@ -137,16 +149,41 @@ export default function AgencySidebar() {
               icon={FiMap}
               label="Tour"
               open={tourOpen}
-              onToggle={() => setTourOpen((p) => !p)}
+              onToggle={() => setTourOpen((prev) => !prev)}
             >
-              <SubItem to="/agency/tours/existing" label="Add Existing Tour" />
-              <SubItem to="/agency/tours/new" label="Add New Tour" />
-              <SubItem to="/agency/tours/manage" label="Manage Tour" />
+              <SubItem
+                to="/agency/tours/existing"
+                label="Add Existing Tour"
+                icon={FiPlus}
+              />
+              <SubItem
+                to="/agency/tours/new"
+                label="Add New Tour"
+                icon={FiPlus}
+              />
+              <SubItem
+                to="/agency/tours/manage"
+                label="Manage Tour"
+                icon={FiCheckSquare}
+              />
             </Section>
 
             <Item to="/agency/bookings" icon={FiSettings} label="Bookings" />
             <Item to="/agency/chat" icon={FiMessageSquare} label="Chat" />
-            <Item to="/agency/blogs" icon={FiBookOpen} label="Blogs" />
+
+            <Section
+              icon={FiBookOpen}
+              label="Blogs"
+              open={blogOpen}
+              onToggle={() => setBlogOpen((prev) => !prev)}
+            >
+              <SubItem
+                to="/agency/blogs/add"
+                label="Add Blog"
+                icon={FiPlus}
+              />
+            </Section>
+
             <Item to="/agency/reviews" icon={FiStar} label="Reviews" />
             <Item to="/agency/earnings" icon={FiDollarSign} label="Earnings" />
             <Item to="/agency/profile" icon={FiUser} label="Profile" />
