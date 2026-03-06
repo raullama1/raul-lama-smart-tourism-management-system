@@ -51,22 +51,15 @@ export default function BookingsPage() {
   const closeInfoModal = () =>
     setInfoModal({ open: false, title: "Write Review", message: "" });
 
-  // Prevent duplicate same request while in-flight
   const inFlightRef = useRef(false);
   const lastKeyRef = useRef("");
   const draftFirstRunRef = useRef(true);
-
-  // First load flag (avoid artificial delay on first load)
   const firstLoadRef = useRef(true);
 
-  // Pagination + smooth scroll + fade
   const userPagingRef = useRef(false);
   const [page, setPage] = useState(1);
 
-  // Manual refresh trigger (used when agency changes status to Completed)
   const [refreshNonce, setRefreshNonce] = useState(0);
-
-  // Start hidden so first paint fades in (tbody only)
   const [fadeState, setFadeState] = useState("out");
 
   useEffect(() => {
@@ -103,11 +96,7 @@ export default function BookingsPage() {
   }, [page, loading, scrollFullTop]);
 
   const displayStatus = (b) => {
-    // Confirmed is UI-derived (Paid + not Cancelled + not Completed)
-    if (b.payment_status === "Paid" && b.booking_status !== "Cancelled") {
-      return b.booking_status === "Completed" ? "Completed" : "Confirmed";
-    }
-    return b.booking_status;
+    return String(b?.booking_status || "").trim();
   };
 
   const load = async (f = filters, { smoothSwap = false, force = false } = {}) => {
@@ -118,12 +107,10 @@ export default function BookingsPage() {
       return;
     }
 
-    // Always fetch with status=All, because "Confirmed" is a UI-derived state.
-    const requestFilters = { ...f, status: "All" };
     const key = JSON.stringify({
-      q: requestFilters.q,
-      date: requestFilters.date,
-      status: requestFilters.status,
+      q: f.q,
+      date: f.date,
+      status: f.status,
     });
 
     if (inFlightRef.current) return;
@@ -136,10 +123,9 @@ export default function BookingsPage() {
       if (smoothSwap) setFadeState("out");
       setLoading(true);
 
-      const res = await fetchMyBookings(requestFilters);
+      const res = await fetchMyBookings(f);
       const list = Array.isArray(res?.data) ? res.data : [];
 
-      // Only add delay for user-triggered smooth swap (NOT first load)
       if (smoothSwap) await new Promise((r) => setTimeout(r, 140));
 
       setRows(list);
@@ -159,7 +145,6 @@ export default function BookingsPage() {
     }
   };
 
-  // Debounce only updates filters (NO load here)
   useEffect(() => {
     if (draftFirstRunRef.current) {
       draftFirstRunRef.current = false;
@@ -174,7 +159,6 @@ export default function BookingsPage() {
     return () => clearTimeout(id);
   }, [draft.q, draft.date, draft.status, draft.sort]);
 
-  // Load when token / server-relevant filters change OR when refreshNonce changes
   useEffect(() => {
     if (!token) {
       setRows([]);
@@ -187,9 +171,8 @@ export default function BookingsPage() {
     load(filters, { smoothSwap: smooth, force: refreshNonce > 0 });
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, filters.q, filters.date, refreshNonce]);
+  }, [token, filters.q, filters.date, filters.status, refreshNonce]);
 
-  // Auto-refresh when user comes back to the tab/window (so Completed status shows)
   useEffect(() => {
     if (!token) return;
 
@@ -266,10 +249,6 @@ export default function BookingsPage() {
     try {
       setBusyId(bookingId);
       await payBooking(bookingId);
-      setRows((prev) =>
-        prev.map((r) => (r.id === bookingId ? { ...r, payment_status: "Paid" } : r))
-      );
-      // Re-fetch to reflect any server-side status updates after payment
       handleRefresh();
     } catch (e) {
       console.error("Pay failed", e);
@@ -309,7 +288,6 @@ export default function BookingsPage() {
         prev.map((r) => (r.id === bookingId ? { ...r, booking_status: "Cancelled" } : r))
       );
       closeCancelModal();
-      // Re-fetch so UI matches DB
       handleRefresh();
     } catch (e) {
       console.error("Cancel failed", e);
@@ -434,7 +412,6 @@ export default function BookingsPage() {
     "px-4 py-2.5 rounded-2xl text-sm font-semibold border " +
     "transition-all duration-300 ease-out transform active:scale-95 shadow-sm hover:shadow-md";
 
-  // Fade ONLY body (keep header stable)
   const fadeWrapClass = fadeState === "in" ? "opacity-100" : "opacity-0";
   const transitionClass = "transition-opacity duration-600 ease-[cubic-bezier(.22,1,.36,1)]";
 
@@ -555,15 +532,15 @@ export default function BookingsPage() {
                       </tr>
                     ) : (
                       pageRows.map((b) => {
-                        const cancelled = b.booking_status === "Cancelled";
-                        const paid = b.payment_status === "Paid";
-                        const unpaid = b.payment_status === "Unpaid";
-
-                        const uiStatus = displayStatus(b);
-                        const completed = uiStatus === "Completed";
+                        const statusText = displayStatus(b);
+                        const cancelled = statusText === "Cancelled";
+                        const completed = statusText === "Completed";
+                        const approved = statusText === "Approved";
+                        const paid = String(b.payment_status || "") === "Paid";
+                        const unpaid = String(b.payment_status || "") === "Unpaid";
                         const rowBusy = busyId === b.id;
 
-                        const canPay = unpaid && !cancelled && b.booking_status === "Approved";
+                        const canPay = unpaid && !cancelled && approved;
 
                         return (
                           <tr key={b.id} className="hover:bg-gray-50/60 transition-colors">
@@ -593,7 +570,7 @@ export default function BookingsPage() {
                             <td className="px-4 py-5">
                               <div className="flex items-center gap-2">
                                 <span className="text-[11px] text-gray-500 font-semibold">Current:</span>
-                                <StatusBadge status={uiStatus} />
+                                <StatusBadge status={statusText} />
                               </div>
                             </td>
 
@@ -606,7 +583,7 @@ export default function BookingsPage() {
                                 {canPay && (
                                   <button
                                     disabled={rowBusy}
-                                    onClick={() => navigate(`/payment/${b.id}`)}
+                                    onClick={() => handlePayNow(b.id)}
                                     className={[
                                       "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200",
                                       "hover:-translate-y-[1px] hover:shadow-md active:translate-y-0 active:shadow-sm",
@@ -702,7 +679,6 @@ export default function BookingsPage() {
           )}
         </div>
 
-        {/* Modals unchanged */}
         {cancelModal.open && (
           <div
             className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 px-4"

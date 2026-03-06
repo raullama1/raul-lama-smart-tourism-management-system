@@ -23,7 +23,6 @@ import {
 } from "../../api/agencyToursApi";
 import { toPublicImageUrl, FALLBACK_TOUR_IMG } from "../../utils/publicImageUrl";
 
-/* ---------------- Toast (same style as TouristProfilePage) ---------------- */
 function Toast({ open, type = "success", message, onClose }) {
   const boxClass =
     type === "success"
@@ -110,7 +109,6 @@ function IconBtn({ children, tone = "default", ...props }) {
   );
 }
 
-/* ModalShell (scrollable body + max height) */
 function ModalShell({
   open,
   title,
@@ -180,13 +178,11 @@ function splitDatesFromRow(r) {
   const raw = String(r?.available_dates || "").trim();
   if (!raw) return { start: "", end: "" };
 
-  // Old format: "YYYY-MM-DD|YYYY-MM-DD"
   if (raw.includes("|")) {
     const [a, b] = raw.split("|");
     return { start: a ? a.trim() : "", end: b ? b.trim() : "" };
   }
 
-  // Current format: CSV "YYYY-MM-DD,YYYY-MM-DD,..."
   if (raw.includes(",")) {
     const parts = raw
       .split(",")
@@ -208,14 +204,15 @@ function normalizeText(v) {
     .replace(/\s+/g, " ");
 }
 
-/* ---- Date helpers (same as AgencyAddTourPage) ---- */
 function pad2(n) {
   return String(n).padStart(2, "0");
 }
+
 function toYMD(date) {
   const d = new Date(date);
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
+
 function addMonths(date, months) {
   const d = new Date(date);
   const day = d.getDate();
@@ -223,26 +220,31 @@ function addMonths(date, months) {
   if (d.getDate() < day) d.setDate(0);
   return d;
 }
+
 function isValidDateString(ymd) {
   if (!ymd) return false;
-  const d = new Date(ymd);
-  return !Number.isNaN(d.getTime());
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(ymd).trim());
+  if (!m) return false;
+
+  const d = new Date(`${ymd}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return false;
+
+  return (
+    d.getFullYear() === Number(m[1]) &&
+    d.getMonth() + 1 === Number(m[2]) &&
+    d.getDate() === Number(m[3])
+  );
 }
+
 function blockManualDateInput(e) {
   if (e.type === "keydown" && e.key === "Tab") return;
   e.preventDefault();
 }
 
-/**
- * Lazy-loaded map picker:
- * Leaflet + react-leaflet are imported only when this component renders (Edit modal open)
- */
 function LazyNepalMapPicker({
   coords,
   setCoords,
-  latInput,
   setLatInput,
-  lngInput,
   setLngInput,
   setErr,
   showToast,
@@ -264,7 +266,7 @@ function LazyNepalMapPicker({
 
         if (!alive) return;
         setMods({ rl, L });
-      } catch (e) {
+      } catch {
         const m = "Failed to load map. Please try again.";
         setErr(m);
         showToast("error", m);
@@ -307,7 +309,7 @@ function LazyNepalMapPicker({
         const lng = e.latlng.lng;
 
         if (!isInsideNepal(lat, lng)) {
-          const m = "Please select a location.";
+          const m = "Please select a location inside Nepal.";
           setErr(m);
           showToast("error", m);
           return;
@@ -319,25 +321,28 @@ function LazyNepalMapPicker({
       },
     });
 
-    if (!coords) return null;
-    return <Marker position={[coords.lat, coords.lng]} icon={markerIcon} />;
+    return null;
   }
 
   function FlyToMarker({ active }) {
     const map = useMap();
-    if (!active) return null;
-    if (!coords?.lat || !coords?.lng) return null;
 
-    map.flyTo([coords.lat, coords.lng], 12, { duration: 0.8 });
-    setShouldFly(false);
+    useEffect(() => {
+      if (!active) return;
+      if (!coords?.lat || !coords?.lng) return;
+
+      map.flyTo([coords.lat, coords.lng], 12, { duration: 0.8 });
+      setShouldFly(false);
+    }, [active, coords, map, setShouldFly]);
+
     return null;
   }
 
   return (
     <div className="h-[220px]">
       <MapContainer
-        center={[28.3949, 84.124]}
-        zoom={7}
+        center={coords?.lat && coords?.lng ? [coords.lat, coords.lng] : [28.3949, 84.124]}
+        zoom={coords?.lat && coords?.lng ? 12 : 7}
         style={{ height: "100%", width: "100%" }}
       >
         <TileLayer
@@ -346,6 +351,7 @@ function LazyNepalMapPicker({
         />
 
         <FlyToMarker active={shouldFly} />
+        <PickMarker />
 
         {coords ? (
           <Marker
@@ -355,12 +361,14 @@ function LazyNepalMapPicker({
             eventHandlers={{
               dragend: (e) => {
                 const p = e.target.getLatLng();
+
                 if (!isInsideNepal(p.lat, p.lng)) {
                   const m = "Marker must stay inside Nepal.";
                   setErr(m);
                   showToast("error", m);
                   return;
                 }
+
                 setCoords({ lat: p.lat, lng: p.lng });
                 setLatInput(String(Number(p.lat).toFixed(7)));
                 setLngInput(String(Number(p.lng).toFixed(7)));
@@ -368,8 +376,6 @@ function LazyNepalMapPicker({
             }}
           />
         ) : null}
-
-        <PickMarker />
       </MapContainer>
     </div>
   );
@@ -415,10 +421,13 @@ export default function AgencyManageToursPage() {
   const [imageFile, setImageFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState("");
 
-  /* Baseline values to detect changes in edit modal */
   const [editInitial, setEditInitial] = useState(null);
 
-  const [toast, setToast] = useState({ open: false, type: "success", message: "" });
+  const [toast, setToast] = useState({
+    open: false,
+    type: "success",
+    message: "",
+  });
 
   const showToast = (type, message) => {
     setToast({ open: true, type, message });
@@ -430,25 +439,13 @@ export default function AgencyManageToursPage() {
 
   const params = useMemo(() => ({ q, status, sort }), [q, status, sort]);
 
-  /* ---- Calendar rules (same as Add Tour) ---- */
   const todayYMD = useMemo(() => toYMD(new Date()), []);
-  const startMaxYMD = useMemo(() => toYMD(addMonths(new Date(), 3)), []);
+  const startMaxYMD = useMemo(() => toYMD(addMonths(new Date(), 6)), []);
+  const endMaxYMD = useMemo(() => toYMD(addMonths(new Date(), 3)), []);
 
-  const endMinYMD = useMemo(() => {
-    if (!isValidDateString(editStartDate)) return "";
-    return toYMD(addMonths(new Date(editStartDate), 1));
-  }, [editStartDate]);
-
-  const endMaxYMD = useMemo(() => {
-    if (!isValidDateString(editStartDate)) return "";
-    return toYMD(addMonths(new Date(editStartDate), 3));
-  }, [editStartDate]);
-
-  /* Shared grid for header + rows to keep perfect alignment */
   const TABLE_GRID =
     "grid grid-cols-[120px_minmax(0,1.8fr)_125px_160px_110px_360px]";
 
-  /* Consistent left alignment for all columns */
   const CELL_LEFT = "flex items-center justify-start";
   const HEADER_LEFT = "text-left";
 
@@ -579,12 +576,13 @@ export default function AgencyManageToursPage() {
     setLatInput("");
     setLngInput("");
     setShouldFly(false);
-
     setImageFile(null);
 
-    if (previewUrl?.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
-    setPreviewUrl("");
+    if (previewUrl?.startsWith("blob:")) {
+      URL.revokeObjectURL(previewUrl);
+    }
 
+    setPreviewUrl("");
     setEditInitial(null);
   };
 
@@ -614,25 +612,25 @@ export default function AgencyManageToursPage() {
       st === "paused" ? "paused" : st === "completed" ? "completed" : "active";
     setEditStatus(safeStatus);
 
-const dates = splitDatesFromRow(r);
-setEditStartDate(dates.start);
-setEditEndDate(dates.end);
+    const dates = splitDatesFromRow(r);
+    setEditStartDate(dates.start);
+    setEditEndDate(dates.end);
 
     const la =
       r.latitude !== null && r.latitude !== undefined ? Number(r.latitude) : null;
     const lo =
-      r.longitude !== null && r.longitude !== undefined
-        ? Number(r.longitude)
-        : null;
+      r.longitude !== null && r.longitude !== undefined ? Number(r.longitude) : null;
 
     if (Number.isFinite(la) && Number.isFinite(lo)) {
       setCoords({ lat: la, lng: lo });
       setLatInput(String(la.toFixed(7)));
       setLngInput(String(lo.toFixed(7)));
+      setShouldFly(true);
     } else {
       setCoords(null);
       setLatInput("");
       setLngInput("");
+      setShouldFly(false);
     }
 
     setImageFile(null);
@@ -696,6 +694,8 @@ setEditEndDate(dates.end);
     }
 
     setCoords({ lat: la, lng: lo });
+    setLatInput(String(Number(la).toFixed(7)));
+    setLngInput(String(Number(lo).toFixed(7)));
     setShouldFly(true);
   };
 
@@ -720,7 +720,10 @@ setEditEndDate(dates.end);
 
     setImageFile(file);
 
-    if (previewUrl?.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
+    if (previewUrl?.startsWith("blob:")) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
   };
@@ -730,8 +733,9 @@ setEditEndDate(dates.end);
     if (!editTitle.trim()) return "Tour title is required.";
     if (!editDesc.trim()) return "Description is required.";
     if (!editLocation.trim()) return "Location is required.";
-    if (!editLocation.toLowerCase().endsWith("nepal"))
+    if (!editLocation.toLowerCase().endsWith("nepal")) {
       return "Location must end with 'Nepal'.";
+    }
     if (!editType) return "Type is required.";
 
     const prRaw = String(editPrice ?? "").replace(/\D/g, "");
@@ -741,36 +745,43 @@ setEditEndDate(dates.end);
     const p = Number(prRaw);
     if (!Number.isFinite(p) || p <= 0) return "Price must be greater than 0.";
 
-    if (!editStartDate || !editEndDate)
+    if (!editStartDate || !editEndDate) {
       return "Start date and end date are required.";
+    }
 
     if (!isValidDateString(editStartDate)) return "Invalid start date.";
     if (!isValidDateString(editEndDate)) return "Invalid end date.";
 
-    const start = new Date(editStartDate);
-    const today = new Date(todayYMD);
-    const maxStart = new Date(startMaxYMD);
+    const start = new Date(`${editStartDate}T00:00:00`);
+    const end = new Date(`${editEndDate}T00:00:00`);
+    const today = new Date(`${todayYMD}T00:00:00`);
+    const maxStart = new Date(`${startMaxYMD}T00:00:00`);
+    const maxEnd = new Date(`${endMaxYMD}T00:00:00`);
 
     if (start < today) return "Start date cannot be in the past.";
-    if (start > maxStart)
-      return "Start date must be within 3 months from today.";
+    if (start > maxStart) return "Start date must be within 6 months from today.";
 
-    const end = new Date(editEndDate);
-    const minEnd = new Date(endMinYMD);
-    const maxEnd = new Date(endMaxYMD);
+    if (end < today) return "End date cannot be in the past.";
+    if (end > maxEnd) return "End date must be within 3 months from today.";
+    if (end < start) return "End date cannot be earlier than start date.";
 
-    if (end < minEnd) return "End date must be at least 1 month after start.";
-    if (end > maxEnd)
-      return "End date must be within 3 months after start.";
-
-    if (!coords?.lat || !coords?.lng)
+    if (
+      coords?.lat === null ||
+      coords?.lat === undefined ||
+      coords?.lng === null ||
+      coords?.lng === undefined
+    ) {
       return "Please pick location on map or type lat/lng.";
-    if (!isInsideNepal(coords.lat, coords.lng))
+    }
+
+    if (!isInsideNepal(coords.lat, coords.lng)) {
       return "Selected coordinates must be inside Nepal.";
+    }
 
     const st = String(editStatus || "").toLowerCase();
-    if (!["active", "paused", "completed"].includes(st))
+    if (!["active", "paused", "completed"].includes(st)) {
       return "Invalid status.";
+    }
 
     return "";
   };
@@ -787,8 +798,14 @@ setEditEndDate(dates.end);
       start: String(editStartDate || ""),
       end: String(editEndDate || ""),
       status: String(editStatus || "").toLowerCase(),
-      lat: coords?.lat ? Number(coords.lat).toFixed(7) : "",
-      lng: coords?.lng ? Number(coords.lng).toFixed(7) : "",
+      lat:
+        coords?.lat !== null && coords?.lat !== undefined
+          ? Number(coords.lat).toFixed(7)
+          : "",
+      lng:
+        coords?.lng !== null && coords?.lng !== undefined
+          ? Number(coords.lng).toFixed(7)
+          : "",
       imageChanged: Boolean(imageFile),
     };
 
@@ -846,19 +863,27 @@ setEditEndDate(dates.end);
       fd.append("description", editDesc.trim());
       fd.append("location", editLocation.trim());
       fd.append("type", editType);
-      fd.append("latitude", String(coords.lat));
-      fd.append("longitude", String(coords.lng));
+      fd.append("latitude", String(Number(coords.lat).toFixed(7)));
+      fd.append("longitude", String(Number(coords.lng).toFixed(7)));
       fd.append("price", String(String(editPrice ?? "").replace(/\D/g, "")));
       fd.append("start_date", editStartDate);
       fd.append("end_date", editEndDate);
       fd.append("listing_status", String(editStatus).toLowerCase());
-      if (imageFile) fd.append("image", imageFile);
+
+      if (imageFile) {
+        fd.append("image", imageFile);
+      }
 
       await updateAgencyTour(agencyTourId, fd);
 
       closeEdit();
       await load();
-      showToast("success", "Tour updated");
+
+      if (String(editStatus).toLowerCase() === "completed") {
+        showToast("success", "Tour updated");
+      } else {
+        showToast("success", "Tour updated");
+      }
     } catch (e) {
       const m = e?.response?.data?.message || "Failed to update tour.";
       setErr(m);
@@ -941,7 +966,6 @@ setEditEndDate(dates.end);
         ) : null}
 
         <div className="mt-5 overflow-hidden rounded-2xl border border-emerald-100">
-          {/* Header: enforce left alignment to match rows */}
           <div
             className={[
               TABLE_GRID,
@@ -973,7 +997,6 @@ setEditEndDate(dates.end);
                     key={r.agency_tour_id}
                     className={[TABLE_GRID, "items-center px-4 py-4"].join(" ")}
                   >
-                    {/* Column alignment: keep every cell left-aligned for consistent start */}
                     <div className={CELL_LEFT}>
                       <img
                         src={img}
@@ -1068,7 +1091,6 @@ setEditEndDate(dates.end);
         </div>
       </div>
 
-      {/* Delete Modal */}
       <ModalShell
         open={deleteOpen}
         title="Delete tour"
@@ -1101,16 +1123,13 @@ setEditEndDate(dates.end);
         }
       >
         <div className="text-sm text-gray-700">
-          Are you sure you want to delete this tour? This action cannot be
-          undone.
+          Are you sure you want to delete this tour? This action cannot be undone.
         </div>
         <div className="mt-2 text-xs text-gray-500">
-          If this tour already has bookings, deletion will be blocked and you
-          should pause it instead.
+          If this tour already has bookings, deletion will be blocked and you should pause it instead.
         </div>
       </ModalShell>
 
-      {/* Completed Confirmation Modal */}
       <ModalShell
         open={completeOpen}
         title="Mark tour as completed"
@@ -1141,12 +1160,10 @@ setEditEndDate(dates.end);
         }
       >
         <div className="text-sm text-gray-700">
-          After marking completed, this tour will be treated as finished and
-          cannot be toggled back from this page.
+          After marking completed, this tour will be treated as finished and cannot be toggled back from this page.
         </div>
       </ModalShell>
 
-      {/* Edit Modal */}
       <ModalShell
         open={editOpen}
         title="Edit tour"
@@ -1244,11 +1261,15 @@ setEditEndDate(dates.end);
                   const v = e.target.value;
                   setEditStartDate(v);
 
-                  if (v && editEndDate) {
-                    const end = new Date(editEndDate);
-                    const minEnd = new Date(toYMD(addMonths(new Date(v), 1)));
-                    const maxEnd = new Date(toYMD(addMonths(new Date(v), 3)));
-                    if (end < minEnd || end > maxEnd) setEditEndDate("");
+                  if (editEndDate && v) {
+                    const end = new Date(`${editEndDate}T00:00:00`);
+                    const start = new Date(`${v}T00:00:00`);
+                    const minEnd = new Date(`${todayYMD}T00:00:00`);
+                    const maxEnd = new Date(`${endMaxYMD}T00:00:00`);
+
+                    if (end < minEnd || end > maxEnd || end < start) {
+                      setEditEndDate("");
+                    }
                   }
                 }}
                 className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -1262,18 +1283,12 @@ setEditEndDate(dates.end);
               <input
                 type="date"
                 value={editEndDate}
-                min={endMinYMD || undefined}
-                max={endMaxYMD || undefined}
-                disabled={!editStartDate}
+                min={editStartDate || todayYMD}
+                max={endMaxYMD}
                 onKeyDown={blockManualDateInput}
                 onPaste={blockManualDateInput}
                 onChange={(e) => setEditEndDate(e.target.value)}
-                className={[
-                  "mt-2 w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500",
-                  !editStartDate
-                    ? "bg-gray-50 text-gray-600 cursor-not-allowed border-gray-200"
-                    : "border-gray-200",
-                ].join(" ")}
+                className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
           </div>
@@ -1344,9 +1359,7 @@ setEditEndDate(dates.end);
                   </div>
                   <input
                     value={latInput}
-                    onChange={(e) =>
-                      setLatInput(sanitizeDecimal(e.target.value))
-                    }
+                    onChange={(e) => setLatInput(sanitizeDecimal(e.target.value))}
                     className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     placeholder="e.g., 27.6727000"
                     inputMode="decimal"
@@ -1359,9 +1372,7 @@ setEditEndDate(dates.end);
                   </div>
                   <input
                     value={lngInput}
-                    onChange={(e) =>
-                      setLngInput(sanitizeDecimal(e.target.value))
-                    }
+                    onChange={(e) => setLngInput(sanitizeDecimal(e.target.value))}
                     className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     placeholder="e.g., 85.4298000"
                     inputMode="decimal"
@@ -1383,9 +1394,7 @@ setEditEndDate(dates.end);
                 <LazyNepalMapPicker
                   coords={coords}
                   setCoords={setCoords}
-                  latInput={latInput}
                   setLatInput={setLatInput}
-                  lngInput={lngInput}
                   setLngInput={setLngInput}
                   setErr={setErr}
                   showToast={showToast}
@@ -1396,11 +1405,15 @@ setEditEndDate(dates.end);
                 <div className="px-4 py-3 text-xs text-gray-600 flex flex-wrap gap-3">
                   <div>
                     <span className="font-semibold">Lat:</span>{" "}
-                    {coords?.lat ? Number(coords.lat).toFixed(6) : "—"}
+                    {coords?.lat !== null && coords?.lat !== undefined
+                      ? Number(coords.lat).toFixed(6)
+                      : "—"}
                   </div>
                   <div>
                     <span className="font-semibold">Lng:</span>{" "}
-                    {coords?.lng ? Number(coords.lng).toFixed(6) : "—"}
+                    {coords?.lng !== null && coords?.lng !== undefined
+                      ? Number(coords.lng).toFixed(6)
+                      : "—"}
                   </div>
                 </div>
               </div>

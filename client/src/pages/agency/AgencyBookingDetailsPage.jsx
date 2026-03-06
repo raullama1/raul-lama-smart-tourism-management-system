@@ -160,23 +160,11 @@ export default function AgencyBookingDetailsPage() {
   }, [bookingId]);
 
   const derived = useMemo(() => {
-    const tourListingStatus = String(row?.tour_listing_status || "")
-      .trim()
-      .toLowerCase();
-
-    const bookingStatusRaw = String(row?.booking_status || "")
-      .trim()
-      .toLowerCase();
-
-    // If the tour listing is completed, force the UI status to completed.
-    const effectiveStatus =
-      tourListingStatus === "completed" ? "completed" : bookingStatusRaw;
-
+    const bookingStatus = String(row?.booking_status || "").trim().toLowerCase();
     const paymentStatus = String(row?.payment_status || "").toLowerCase();
 
-    const canApprove =
-      effectiveStatus === "pending" && paymentStatus === "unpaid";
-    const canReject = effectiveStatus === "pending";
+    const canApprove = bookingStatus === "pending" && paymentStatus === "unpaid";
+    const canReject = bookingStatus === "pending";
 
     const scheduleLabel = row?.selected_date_label?.trim();
     const fromAgencyDates = splitDates(row?.agency_available_dates);
@@ -188,7 +176,7 @@ export default function AgencyBookingDetailsPage() {
 
     const img = toPublicImageUrl(row?.tour_image_url) || FALLBACK_TOUR_IMG;
 
-    const statusLabel = uiStatus(effectiveStatus);
+    const statusLabel = uiStatus(bookingStatus);
 
     const paymentLabel = String(row?.payment_status || "Unpaid");
     const paymentTone =
@@ -197,24 +185,24 @@ export default function AgencyBookingDetailsPage() {
         : "gray";
 
     const topStatusTone =
-      effectiveStatus === "completed"
+      bookingStatus === "completed"
         ? "green"
-        : effectiveStatus === "confirmed"
+        : bookingStatus === "confirmed"
           ? "orange"
-          : effectiveStatus === "approved"
+          : bookingStatus === "approved"
             ? "green"
             : "gray";
 
     const steps = {
-      requested: effectiveStatus !== "cancelled",
+      requested: bookingStatus !== "cancelled",
       approved:
-        effectiveStatus === "approved" ||
-        effectiveStatus === "confirmed" ||
-        effectiveStatus === "completed",
-      payment: String(row?.payment_status || "").toLowerCase() === "paid",
-      inProgress: effectiveStatus === "confirmed",
-      completed: effectiveStatus === "completed",
-      cancelled: effectiveStatus === "cancelled",
+        bookingStatus === "approved" ||
+        bookingStatus === "confirmed" ||
+        bookingStatus === "completed",
+      payment: paymentStatus === "paid",
+      inProgress: bookingStatus === "confirmed",
+      completed: bookingStatus === "completed",
+      cancelled: bookingStatus === "cancelled",
     };
 
     return {
@@ -226,7 +214,7 @@ export default function AgencyBookingDetailsPage() {
       paymentLabel,
       paymentTone,
       topStatusTone,
-      effectiveStatus,
+      bookingStatus,
       steps,
     };
   }, [row]);
@@ -296,7 +284,6 @@ export default function AgencyBookingDetailsPage() {
           <div className="mt-6 text-sm text-gray-600">Booking not found.</div>
         ) : (
           <>
-            {/* Top summary card */}
             <div className="mt-6 rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4">
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div className="flex items-center gap-3">
@@ -335,7 +322,6 @@ export default function AgencyBookingDetailsPage() {
               </div>
             </div>
 
-            {/* Overview */}
             <div className="mt-5 rounded-2xl border border-emerald-100 bg-white p-5">
               <div className="text-sm font-extrabold text-gray-900">
                 Booking Overview
@@ -412,7 +398,6 @@ export default function AgencyBookingDetailsPage() {
               </div>
             </div>
 
-            {/* Price & schedule */}
             <div className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div className="rounded-2xl border border-emerald-100 bg-white p-5">
                 <div className="text-sm font-extrabold text-gray-900">
@@ -465,7 +450,42 @@ export default function AgencyBookingDetailsPage() {
               </div>
             </div>
 
-            {/* Bottom actions */}
+            <div className="mt-6 rounded-2xl border border-emerald-100 bg-white p-5">
+              <div className="text-sm font-extrabold text-gray-900 mb-4">
+                Progress
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                <Step label="Requested" done={derived.steps.requested} />
+                <Step
+                  label="Approved"
+                  active={derived.bookingStatus === "approved"}
+                  done={derived.steps.approved}
+                />
+                <Step
+                  label="Paid"
+                  active={String(row?.payment_status || "").toLowerCase() === "paid"}
+                  done={derived.steps.payment}
+                />
+                <Step
+                  label="In Progress"
+                  active={derived.bookingStatus === "confirmed"}
+                  done={derived.steps.inProgress}
+                />
+                <Step
+                  label="Completed"
+                  active={derived.bookingStatus === "completed"}
+                  done={derived.steps.completed}
+                />
+              </div>
+
+              {derived.steps.cancelled ? (
+                <div className="mt-4">
+                  <StatusChip label="This booking is Cancelled" tone="gray" />
+                </div>
+              ) : null}
+            </div>
+
             <div className="mt-6 flex justify-end">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
                 <button

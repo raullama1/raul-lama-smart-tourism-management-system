@@ -1,13 +1,10 @@
 // server/models/bookingModel.js
 import { db } from "../db.js";
 
-/* =========================
-   HELPERS
-   ========================= */
 function safeYMD(v) {
   const s = String(v || "").trim();
   if (!s) return "";
-  return s.slice(0, 10); // supports YYYY-MM-DD and datetime strings
+  return s.slice(0, 10);
 }
 
 function parsePipeRange(raw) {
@@ -24,9 +21,6 @@ function makeRangeLabel(start, end) {
   return `${a} → ${b}`;
 }
 
-/* =========================
-   LIST USER BOOKINGS
-   ========================= */
 export async function getUserBookings(userId, filters = {}) {
   const { q = "", status = "All", date = "All" } = filters;
 
@@ -81,24 +75,56 @@ export async function getUserBookings(userId, filters = {}) {
   return rows;
 }
 
-/* =========================
-   MARK BOOKING AS PAID
-   ========================= */
 export async function markBookingPaid(userId, bookingId) {
-  const [res] = await db.query(
+  const [[row]] = await db.query(
     `
-    UPDATE bookings
-    SET payment_status = 'Paid'
-    WHERE id = ? AND user_id = ? AND booking_status <> 'Cancelled'
+    SELECT
+      b.id,
+      b.booking_status,
+      b.payment_status,
+      at.listing_status
+    FROM bookings b
+    INNER JOIN agency_tours at ON at.id = b.agency_tour_id
+    WHERE b.id = ? AND b.user_id = ?
+    LIMIT 1
     `,
     [Number(bookingId), Number(userId)]
   );
+
+  if (!row) return false;
+
+  const bookingStatus = String(row.booking_status || "");
+  const paymentStatus = String(row.payment_status || "");
+  const listingStatus = String(row.listing_status || "").toLowerCase();
+
+  if (bookingStatus === "Cancelled" || bookingStatus === "Completed") {
+    return false;
+  }
+
+  if (paymentStatus === "Paid") {
+    return true;
+  }
+
+  let nextBookingStatus = bookingStatus;
+
+  if (listingStatus === "completed") {
+    nextBookingStatus = "Completed";
+  } else if (bookingStatus === "Approved") {
+    nextBookingStatus = "Confirmed";
+  }
+
+  const [res] = await db.query(
+    `
+    UPDATE bookings
+    SET payment_status = 'Paid', booking_status = ?
+    WHERE id = ? AND user_id = ? AND booking_status <> 'Cancelled'
+    `,
+    [nextBookingStatus, Number(bookingId), Number(userId)]
+  );
+
   return res.affectedRows > 0;
 }
 
-/* =========================
-   CANCEL BOOKING
-   ========================= */
 export async function cancelBooking(userId, bookingId) {
   const [res] = await db.query(
     `
@@ -111,9 +137,6 @@ export async function cancelBooking(userId, bookingId) {
   return res.affectedRows > 0;
 }
 
-/* =========================
-   BOOKING PREVIEW DATA
-   ========================= */
 export async function fetchBookingPreviewByAgencyTourId(agencyTourId) {
   const [rows] = await db.query(
     `
@@ -142,8 +165,6 @@ export async function fetchBookingPreviewByAgencyTourId(agencyTourId) {
   if (!rows[0]) return null;
 
   const r = rows[0];
-
-  // Normalize start/end for frontend (fallback for old rows)
   const start = safeYMD(r.start_date) || parsePipeRange(r.available_dates).start;
   const end = safeYMD(r.end_date) || parsePipeRange(r.available_dates).end;
 
@@ -154,9 +175,6 @@ export async function fetchBookingPreviewByAgencyTourId(agencyTourId) {
   };
 }
 
-/* =========================
-   GENERATE BOOKING REF
-   ========================= */
 function makeBookingRef(tourTitle = "") {
   const code = (tourTitle || "TOUR")
     .toUpperCase()
@@ -168,9 +186,6 @@ function makeBookingRef(tourTitle = "") {
   return `NP-${code}-${num}`;
 }
 
-/* =========================
-   CREATE BOOKING
-   ========================= */
 export async function insertBooking({
   userId,
   agencyTourId,
@@ -179,9 +194,8 @@ export async function insertBooking({
   selectedDateLabel,
 }) {
   const preview = await fetchBookingPreviewByAgencyTourId(Number(agencyTourId));
-  if (!preview) return null; // includes active-only rule
+  if (!preview) return null;
 
-  // Validate selectedDateLabel must match the listing’s season
   const expectedLabel = makeRangeLabel(preview.start_date, preview.end_date);
   if (!expectedLabel) return null;
 
@@ -225,7 +239,6 @@ export async function insertBooking({
     ]
   );
 
-  // Return what we actually saved (helps debug traveler mismatch)
   return {
     id: res.insertId,
     ref_code: bookingRef,

@@ -21,22 +21,36 @@ function normalizeStatus(v) {
 function isValidDateStr(s) {
   const v = String(s || "").trim();
   if (!v) return false;
-  const d = new Date(v);
-  return !Number.isNaN(d.getTime());
+
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+  if (!m) return false;
+
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+
+  const date = new Date(`${v}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return false;
+
+  return (
+    date.getFullYear() === y &&
+    date.getMonth() + 1 === mo &&
+    date.getDate() === d
+  );
 }
 
 function startMaxDateYMD() {
   const d = new Date();
   const day = d.getDate();
-  d.setMonth(d.getMonth() + 3);
+  d.setMonth(d.getMonth() + 6);
   if (d.getDate() < day) d.setDate(0);
   return d;
 }
 
-function addMonths(date, months) {
-  const d = new Date(date);
+function endMaxDateYMD() {
+  const d = new Date();
   const day = d.getDate();
-  d.setMonth(d.getMonth() + months);
+  d.setMonth(d.getMonth() + 3);
   if (d.getDate() < day) d.setDate(0);
   return d;
 }
@@ -48,7 +62,6 @@ function toYMD(date) {
   return `${d.getFullYear()}-${mm}-${dd}`;
 }
 
-/* Option 2: store all dates as CSV in available_dates */
 function buildAvailableDatesCsv(startYmd, endYmd) {
   const start = new Date(`${String(startYmd).slice(0, 10)}T00:00:00`);
   const end = new Date(`${String(endYmd).slice(0, 10)}T00:00:00`);
@@ -67,7 +80,6 @@ function buildAvailableDatesCsv(startYmd, endYmd) {
   return out.join(",");
 }
 
-/* Shared tour identity */
 function slugifyTour(title, location, type) {
   const raw = `${String(title || "")} ${String(location || "")} ${String(type || "")}`
     .toLowerCase()
@@ -95,9 +107,30 @@ async function agencyHasActiveOrPausedListing(agencyId, tourId) {
   return !!row;
 }
 
-/* -------------------------
-   Create "New Tour" flow:
--------------------------- */
+async function syncCompletedListingBookings(conn, agencyTourId) {
+  await conn.query(
+    `
+    UPDATE bookings
+    SET booking_status = 'Completed'
+    WHERE agency_tour_id = ?
+      AND booking_status <> 'Cancelled'
+      AND payment_status = 'Paid'
+    `,
+    [agencyTourId]
+  );
+
+  await conn.query(
+    `
+    UPDATE bookings
+    SET booking_status = 'Cancelled'
+    WHERE agency_tour_id = ?
+      AND booking_status <> 'Cancelled'
+      AND payment_status <> 'Paid'
+    `,
+    [agencyTourId]
+  );
+}
+
 export async function createAgencyTourController(req, res) {
   try {
     const agencyId = requireAgency(req, res);
@@ -125,44 +158,66 @@ export async function createAgencyTourController(req, res) {
       return res.status(400).json({ message: "Price must be greater than 0." });
     }
 
-    if (!start_date || !end_date || !isValidDateStr(start_date) || !isValidDateStr(end_date)) {
-      return res.status(400).json({ message: "Start date and end date are required." });
+    if (
+      !start_date ||
+      !end_date ||
+      !isValidDateStr(start_date) ||
+      !isValidDateStr(end_date)
+    ) {
+      return res
+        .status(400)
+        .json({ message: "Start date and end date are required." });
     }
 
-    if (new Date(end_date) < new Date(start_date)) {
-      return res.status(400).json({ message: "End date must be after start date." });
-    }
-
-    /* Date window rules */
-    const today = new Date(toYMD(new Date()));
-    const start = new Date(start_date);
-    const startMax = new Date(toYMD(startMaxDateYMD()));
+    const today = new Date(`${toYMD(new Date())}T00:00:00`);
+    const start = new Date(`${start_date}T00:00:00`);
+    const end = new Date(`${end_date}T00:00:00`);
+    const startMax = new Date(`${toYMD(startMaxDateYMD())}T00:00:00`);
+    const endMax = new Date(`${toYMD(endMaxDateYMD())}T00:00:00`);
 
     if (start < today) {
-      return res.status(400).json({ message: "Start date cannot be in the past." });
+      return res
+        .status(400)
+        .json({ message: "Start date cannot be in the past." });
     }
+
     if (start > startMax) {
-      return res.status(400).json({ message: "Start date must be within 3 months from today." });
+      return res
+        .status(400)
+        .json({ message: "Start date must be within 6 months from today." });
     }
 
-    const minEnd = new Date(toYMD(addMonths(start_date, 1)));
-    const maxEnd = new Date(toYMD(addMonths(start_date, 3)));
-    const end = new Date(end_date);
-
-    if (end < minEnd) {
-      return res.status(400).json({ message: "End date must be at least 1 month after start." });
+    if (end < today) {
+      return res
+        .status(400)
+        .json({ message: "End date cannot be in the past." });
     }
-    if (end > maxEnd) {
-      return res.status(400).json({ message: "End date must be within 3 months after start." });
+
+    if (end > endMax) {
+      return res
+        .status(400)
+        .json({ message: "End date must be within 3 months from today." });
+    }
+
+    if (end < start) {
+      return res
+        .status(400)
+        .json({ message: "End date cannot be earlier than start date." });
     }
 
     const la =
-      latitude !== undefined && latitude !== null && latitude !== "" ? Number(latitude) : null;
+      latitude !== undefined && latitude !== null && latitude !== ""
+        ? Number(latitude)
+        : null;
     const lo =
-      longitude !== undefined && longitude !== null && longitude !== "" ? Number(longitude) : null;
+      longitude !== undefined && longitude !== null && longitude !== ""
+        ? Number(longitude)
+        : null;
 
     if (la === null || lo === null || !Number.isFinite(la) || !Number.isFinite(lo)) {
-      return res.status(400).json({ message: "Latitude and longitude are required." });
+      return res
+        .status(400)
+        .json({ message: "Latitude and longitude are required." });
     }
 
     const st = listing_status ? normalizeStatus(listing_status) : "active";
@@ -175,7 +230,10 @@ export async function createAgencyTourController(req, res) {
       return res.status(400).json({ message: "Invalid tour details." });
     }
 
-    const [[existing]] = await db.query(`SELECT id FROM tours WHERE slug = ? LIMIT 1`, [slug]);
+    const [[existing]] = await db.query(
+      `SELECT id FROM tours WHERE slug = ? LIMIT 1`,
+      [slug]
+    );
 
     if (existing?.id) {
       return res.status(409).json({
@@ -185,7 +243,9 @@ export async function createAgencyTourController(req, res) {
     }
 
     const img = req.file ? `/uploads/tours/${req.file.filename}` : "";
-    if (!img) return res.status(400).json({ message: "Cover image is required." });
+    if (!img) {
+      return res.status(400).json({ message: "Cover image is required." });
+    }
 
     const [tourIns] = await db.query(
       `INSERT INTO tours
@@ -234,9 +294,6 @@ export async function createAgencyTourController(req, res) {
   }
 }
 
-/* -------------------------
-   Manage Tours list
--------------------------- */
 export async function listAgencyManageToursController(req, res) {
   try {
     const agencyId = requireAgency(req, res);
@@ -268,7 +325,10 @@ export async function listAgencyManageToursController(req, res) {
     }
 
     const whereSql = `WHERE ${where.join(" AND ")}`;
-    const orderBy = sort === "oldest" ? "ORDER BY at.created_at ASC" : "ORDER BY at.created_at DESC";
+    const orderBy =
+      sort === "oldest"
+        ? "ORDER BY at.created_at ASC"
+        : "ORDER BY at.created_at DESC";
 
     const [rows] = await db.query(
       `
@@ -309,9 +369,6 @@ export async function listAgencyManageToursController(req, res) {
   }
 }
 
-/* -------------------------
-   Update listing status (Active/Paused/Completed)
--------------------------- */
 export async function updateAgencyTourStatusController(req, res) {
   const conn = await db.getConnection();
   try {
@@ -363,16 +420,7 @@ export async function updateAgencyTourStatusController(req, res) {
     );
 
     if (next === "completed") {
-      await conn.query(
-        `
-        UPDATE bookings
-        SET booking_status = 'Completed'
-        WHERE agency_tour_id = ?
-          AND booking_status <> 'Cancelled'
-          AND payment_status = 'Paid'
-        `,
-        [agencyTourId]
-      );
+      await syncCompletedListingBookings(conn, agencyTourId);
     }
 
     await conn.commit();
@@ -388,9 +436,6 @@ export async function updateAgencyTourStatusController(req, res) {
   }
 }
 
-/* -------------------------
-   Update listing
--------------------------- */
 export async function updateAgencyTourController(req, res) {
   const conn = await db.getConnection();
   try {
@@ -415,17 +460,60 @@ export async function updateAgencyTourController(req, res) {
       listing_status,
     } = req.body;
 
+    if (!title || !description || !location || !type) {
+      return res.status(400).json({ message: "Missing required fields." });
+    }
+
     const p = Number(price);
     if (!Number.isFinite(p) || p <= 0) {
       return res.status(400).json({ message: "Price must be greater than 0." });
     }
 
-    if (!start_date || !end_date || !isValidDateStr(start_date) || !isValidDateStr(end_date)) {
-      return res.status(400).json({ message: "Start date and end date are required." });
+    if (
+      !start_date ||
+      !end_date ||
+      !isValidDateStr(start_date) ||
+      !isValidDateStr(end_date)
+    ) {
+      return res
+        .status(400)
+        .json({ message: "Start date and end date are required." });
     }
 
-    if (new Date(end_date) < new Date(start_date)) {
-      return res.status(400).json({ message: "End date must be after start date." });
+    const start = new Date(`${start_date}T00:00:00`);
+    const end = new Date(`${end_date}T00:00:00`);
+    const today = new Date(`${toYMD(new Date())}T00:00:00`);
+    const startMax = new Date(`${toYMD(startMaxDateYMD())}T00:00:00`);
+    const endMax = new Date(`${toYMD(endMaxDateYMD())}T00:00:00`);
+
+    if (start < today) {
+      return res
+        .status(400)
+        .json({ message: "Start date cannot be in the past." });
+    }
+
+    if (start > startMax) {
+      return res
+        .status(400)
+        .json({ message: "Start date must be within 6 months from today." });
+    }
+
+    if (end < today) {
+      return res
+        .status(400)
+        .json({ message: "End date cannot be in the past." });
+    }
+
+    if (end > endMax) {
+      return res
+        .status(400)
+        .json({ message: "End date must be within 3 months from today." });
+    }
+
+    if (end < start) {
+      return res
+        .status(400)
+        .json({ message: "End date cannot be earlier than start date." });
     }
 
     const st = normalizeStatus(listing_status);
@@ -433,35 +521,19 @@ export async function updateAgencyTourController(req, res) {
       return res.status(400).json({ message: "Invalid status." });
     }
 
-    const today = new Date(toYMD(new Date()));
-    const start = new Date(start_date);
-    const startMax = new Date(toYMD(startMaxDateYMD()));
-
-    if (start < today) {
-      return res.status(400).json({ message: "Start date cannot be in the past." });
-    }
-    if (start > startMax) {
-      return res.status(400).json({ message: "Start date must be within 3 months from today." });
-    }
-
-    const minEnd = new Date(toYMD(addMonths(start_date, 1)));
-    const maxEnd = new Date(toYMD(addMonths(start_date, 3)));
-    const end = new Date(end_date);
-
-    if (end < minEnd) {
-      return res.status(400).json({ message: "End date must be at least 1 month after start." });
-    }
-    if (end > maxEnd) {
-      return res.status(400).json({ message: "End date must be within 3 months after start." });
-    }
-
     const la =
-      latitude !== undefined && latitude !== null && latitude !== "" ? Number(latitude) : null;
+      latitude !== undefined && latitude !== null && latitude !== ""
+        ? Number(latitude)
+        : null;
     const lo =
-      longitude !== undefined && longitude !== null && longitude !== "" ? Number(longitude) : null;
+      longitude !== undefined && longitude !== null && longitude !== ""
+        ? Number(longitude)
+        : null;
 
     if (la === null || lo === null || !Number.isFinite(la) || !Number.isFinite(lo)) {
-      return res.status(400).json({ message: "Latitude and longitude are required." });
+      return res
+        .status(400)
+        .json({ message: "Latitude and longitude are required." });
     }
 
     const newImage = req.file ? `/uploads/tours/${req.file.filename}` : null;
@@ -474,7 +546,12 @@ export async function updateAgencyTourController(req, res) {
     await conn.beginTransaction();
 
     const [[row]] = await conn.query(
-      `SELECT tour_id FROM agency_tours WHERE id = ? AND agency_id = ? LIMIT 1`,
+      `
+      SELECT tour_id, listing_status
+      FROM agency_tours
+      WHERE id = ? AND agency_id = ?
+      LIMIT 1
+      `,
       [agencyTourId, agencyId]
     );
 
@@ -483,11 +560,18 @@ export async function updateAgencyTourController(req, res) {
       return res.status(404).json({ message: "Tour not found." });
     }
 
+    const previousStatus = String(row.listing_status || "").toLowerCase();
     const tourId = Number(row.tour_id);
 
-    const [[countRow]] = await conn.query(`SELECT COUNT(*) AS c FROM agency_tours WHERE tour_id = ?`, [
-      tourId,
-    ]);
+    if (previousStatus === "completed" && st !== "completed") {
+      await conn.rollback();
+      return res.status(400).json({ message: "Completed tours cannot be changed back." });
+    }
+
+    const [[countRow]] = await conn.query(
+      `SELECT COUNT(*) AS c FROM agency_tours WHERE tour_id = ?`,
+      [tourId]
+    );
 
     const isShared = Number(countRow?.c || 0) > 1;
 
@@ -545,6 +629,10 @@ export async function updateAgencyTourController(req, res) {
       throw e;
     }
 
+    if (st === "completed") {
+      await syncCompletedListingBookings(conn, agencyTourId);
+    }
+
     await conn.commit();
     return res.json({
       message: isShared
@@ -562,12 +650,6 @@ export async function updateAgencyTourController(req, res) {
   }
 }
 
-/* -------------------------
-   Delete tour listing:
-   Allow only if:
-   - listing_status is active/paused
-   - bookings_count (non-cancelled) is 0
--------------------------- */
 export async function deleteAgencyTourController(req, res) {
   const conn = await db.getConnection();
   try {
@@ -599,7 +681,6 @@ export async function deleteAgencyTourController(req, res) {
     const tourId = Number(row.tour_id);
     const st = String(row.listing_status || "").toLowerCase();
 
-    /* Only active/paused tours can be deleted */
     if (st !== "active" && st !== "paused") {
       await conn.rollback();
       return res.status(400).json({
@@ -607,7 +688,6 @@ export async function deleteAgencyTourController(req, res) {
       });
     }
 
-    /* Match UI rule: bookings_count excludes Cancelled */
     const [[b]] = await conn.query(
       `
       SELECT COUNT(*) AS c
@@ -630,9 +710,10 @@ export async function deleteAgencyTourController(req, res) {
       agencyId,
     ]);
 
-    const [[left]] = await conn.query(`SELECT COUNT(*) AS c FROM agency_tours WHERE tour_id = ?`, [
-      tourId,
-    ]);
+    const [[left]] = await conn.query(
+      `SELECT COUNT(*) AS c FROM agency_tours WHERE tour_id = ?`,
+      [tourId]
+    );
 
     if (Number(left?.c || 0) === 0) {
       await conn.query(`DELETE FROM tours WHERE id = ?`, [tourId]);
@@ -651,7 +732,6 @@ export async function deleteAgencyTourController(req, res) {
   }
 }
 
-/* Existing tours library */
 export async function listExistingToursLibraryController(req, res) {
   try {
     const agencyId = requireAgency(req, res);
@@ -697,10 +777,12 @@ export async function listExistingToursLibraryController(req, res) {
       orderBy = "ORDER BY COALESCE(t.created_at, t.id) ASC, t.id ASC";
     }
     if (sort === "price-asc") {
-      orderBy = "ORDER BY CAST(COALESCE(t.starting_price, 0) AS DECIMAL(10,2)) ASC, t.id DESC";
+      orderBy =
+        "ORDER BY CAST(COALESCE(t.starting_price, 0) AS DECIMAL(10,2)) ASC, t.id DESC";
     }
     if (sort === "price-desc") {
-      orderBy = "ORDER BY CAST(COALESCE(t.starting_price, 0) AS DECIMAL(10,2)) DESC, t.id DESC";
+      orderBy =
+        "ORDER BY CAST(COALESCE(t.starting_price, 0) AS DECIMAL(10,2)) DESC, t.id DESC";
     }
 
     const [[countRow]] = await db.query(
@@ -795,39 +877,61 @@ export async function addExistingTourListingController(req, res) {
       return res.status(400).json({ message: "Price must be greater than 0." });
     }
 
-    if (!start_date || !end_date || !isValidDateStr(start_date) || !isValidDateStr(end_date)) {
-      return res.status(400).json({ message: "Start date and end date are required." });
+    if (
+      !start_date ||
+      !end_date ||
+      !isValidDateStr(start_date) ||
+      !isValidDateStr(end_date)
+    ) {
+      return res
+        .status(400)
+        .json({ message: "Start date and end date are required." });
     }
 
-    const today = new Date(toYMD(new Date()));
-    const start = new Date(start_date);
-    const startMax = new Date(toYMD(startMaxDateYMD()));
+    const today = new Date(`${toYMD(new Date())}T00:00:00`);
+    const start = new Date(`${start_date}T00:00:00`);
+    const end = new Date(`${end_date}T00:00:00`);
+    const startMax = new Date(`${toYMD(startMaxDateYMD())}T00:00:00`);
+    const endMax = new Date(`${toYMD(endMaxDateYMD())}T00:00:00`);
 
     if (start < today) {
-      return res.status(400).json({ message: "Start date cannot be in the past." });
+      return res
+        .status(400)
+        .json({ message: "Start date cannot be in the past." });
     }
 
     if (start > startMax) {
-      return res.status(400).json({ message: "Start date must be within 3 months from today." });
+      return res
+        .status(400)
+        .json({ message: "Start date must be within 6 months from today." });
     }
 
-    const minEnd = new Date(toYMD(addMonths(start_date, 1)));
-    const maxEnd = new Date(toYMD(addMonths(start_date, 3)));
-    const end = new Date(end_date);
-
-    if (end < minEnd) {
-      return res.status(400).json({ message: "End date must be at least 1 month after start." });
+    if (end < today) {
+      return res
+        .status(400)
+        .json({ message: "End date cannot be in the past." });
     }
 
-    if (end > maxEnd) {
-      return res.status(400).json({ message: "End date must be within 3 months after start." });
+    if (end > endMax) {
+      return res
+        .status(400)
+        .json({ message: "End date must be within 3 months from today." });
+    }
+
+    if (end < start) {
+      return res
+        .status(400)
+        .json({ message: "End date cannot be earlier than start date." });
     }
 
     if (!st || st === "completed") {
       return res.status(400).json({ message: "Invalid status." });
     }
 
-    const [[tour]] = await db.query(`SELECT id FROM tours WHERE id = ? LIMIT 1`, [tourId]);
+    const [[tour]] = await db.query(`SELECT id FROM tours WHERE id = ? LIMIT 1`, [
+      tourId,
+    ]);
+
     if (!tour) {
       return res.status(404).json({ message: "Tour not found." });
     }
