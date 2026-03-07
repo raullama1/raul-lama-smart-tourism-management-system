@@ -2,12 +2,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   FiArrowLeft,
+  FiBell,
   FiCheckCircle,
   FiMessageSquare,
   FiXCircle,
 } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import AgencyLayout from "../../components/agency/AgencyLayout";
+import { useAgencyNotifications } from "../../context/AgencyNotificationContext";
 import {
   approveAgencyBooking,
   fetchAgencyBookingDetails,
@@ -116,9 +118,10 @@ function Step({ label, active = false, done = false }) {
   );
 }
 
-export default function AgencyBookingDetailsPage() {
+function AgencyBookingDetailsPageContent({ openNotifications }) {
   const { bookingId } = useParams();
   const navigate = useNavigate();
+  const { unreadCount, refresh } = useAgencyNotifications();
 
   const [loading, setLoading] = useState(true);
   const [row, setRow] = useState(null);
@@ -228,7 +231,7 @@ export default function AgencyBookingDetailsPage() {
     } catch (e) {
       showToast(
         "error",
-        e?.response?.data?.message || "Failed to approve booking.",
+        e?.response?.data?.message || "Failed to approve booking."
       );
     } finally {
       setBusy(false);
@@ -244,15 +247,25 @@ export default function AgencyBookingDetailsPage() {
     } catch (e) {
       showToast(
         "error",
-        e?.response?.data?.message || "Failed to reject booking.",
+        e?.response?.data?.message || "Failed to reject booking."
       );
     } finally {
       setBusy(false);
     }
   };
 
+  const handleOpenNotifications = async () => {
+    try {
+      await refresh?.();
+    } catch {
+      // ignore
+    }
+
+    openNotifications?.();
+  };
+
   return (
-    <AgencyLayout>
+    <>
       <div className="bg-white rounded-2xl border border-emerald-100 shadow-sm p-6">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -264,14 +277,32 @@ export default function AgencyBookingDetailsPage() {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={() => navigate("/agency/bookings")}
-            className="h-10 rounded-2xl border border-emerald-100 bg-white px-4 text-sm font-black text-emerald-900 hover:bg-emerald-50 inline-flex items-center gap-2"
-          >
-            <FiArrowLeft />
-            Back to Bookings
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleOpenNotifications}
+              className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-100 bg-white text-slate-700 transition hover:bg-emerald-50"
+              aria-label="Notifications"
+              title="Notifications"
+            >
+              <FiBell size={18} />
+
+              {Number(unreadCount || 0) > 0 && (
+                <span className="absolute -right-1 -top-1 grid min-h-[22px] min-w-[22px] place-items-center rounded-full bg-red-500 px-1 text-[11px] font-bold text-white">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate("/agency/bookings")}
+              className="h-10 rounded-2xl border border-emerald-100 bg-white px-4 text-sm font-black text-emerald-900 hover:bg-emerald-50 inline-flex items-center gap-2"
+            >
+              <FiArrowLeft />
+              Back to Bookings
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -411,7 +442,7 @@ export default function AgencyBookingDetailsPage() {
                   <div className="mt-2 text-sm font-extrabold text-gray-900">
                     NPR{" "}
                     {Number(row.agency_price_per_person || 0).toLocaleString(
-                      "en-NP",
+                      "en-NP"
                     )}
                   </div>
 
@@ -515,7 +546,7 @@ export default function AgencyBookingDetailsPage() {
                     if (!touristId) {
                       showToast(
                         "error",
-                        "Tourist id not found for this booking.",
+                        "Tourist id not found for this booking."
                       );
                       return;
                     }
@@ -538,6 +569,16 @@ export default function AgencyBookingDetailsPage() {
         message={toast.message}
         onClose={() => setToast((p) => ({ ...p, open: false }))}
       />
+    </>
+  );
+}
+
+export default function AgencyBookingDetailsPage() {
+  return (
+    <AgencyLayout>
+      {({ openNotifications }) => (
+        <AgencyBookingDetailsPageContent openNotifications={openNotifications} />
+      )}
     </AgencyLayout>
   );
 }

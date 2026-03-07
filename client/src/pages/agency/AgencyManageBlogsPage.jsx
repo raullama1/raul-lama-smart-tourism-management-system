@@ -19,8 +19,9 @@ import {
   FiMessageSquare,
 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
-import AgencySidebar from "../../components/agency/AgencySidebar";
+import AgencyLayout from "../../components/agency/AgencyLayout";
 import { useAgencyAuth } from "../../context/AgencyAuthContext";
+import { useAgencyNotifications } from "../../context/AgencyNotificationContext";
 import {
   fetchAgencyBlogs,
   updateAgencyBlog,
@@ -657,9 +658,10 @@ function DeleteConfirmModal({ open, blog, onClose, onConfirm, deleting }) {
   );
 }
 
-export default function AgencyManageBlogsPage() {
+function AgencyManageBlogsPageContent({ openNotifications }) {
   const navigate = useNavigate();
   const { token } = useAgencyAuth();
+  const { unreadCount, refresh } = useAgencyNotifications();
 
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
@@ -746,169 +748,176 @@ export default function AgencyManageBlogsPage() {
   const GLASS_HEADER =
     "border-b border-white/40 bg-white/45 backdrop-blur-md supports-[backdrop-filter]:bg-emerald-100/35";
 
+  const handleOpenNotifications = async () => {
+    try {
+      await refresh?.();
+    } catch {
+      // ignore
+    }
+
+    openNotifications?.();
+  };
+
   return (
-    <div className="h-screen overflow-hidden bg-[#dfe9e2]">
-      <div className="flex h-full">
-        <div className="h-full shrink-0">
-          <AgencySidebar />
+    <>
+      <div className="rounded-3xl border border-emerald-100 bg-white shadow-sm">
+        <div className="flex flex-col gap-4 border-b border-emerald-100 px-6 py-5 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h1 className="text-lg font-semibold text-gray-900">
+              Manage Blogs
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-3 self-start">
+            <button
+              type="button"
+              onClick={handleOpenNotifications}
+              className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-100 bg-white text-emerald-900 transition hover:bg-emerald-50"
+              aria-label="Notifications"
+              title="Notifications"
+            >
+              <FiBell size={18} />
+              {Number(unreadCount || 0) > 0 && (
+                <span className="absolute -right-1 -top-1 grid h-6 min-w-[24px] place-items-center rounded-full bg-red-500 px-1 text-xs font-bold text-white">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate("/agency/blogs/add")}
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-800 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-900"
+            >
+              <FiPlus size={18} />
+              Add New Blog
+            </button>
+          </div>
         </div>
 
-        <main className="flex-1 overflow-y-auto p-6 md:p-8">
-          <div className="mx-auto max-w-6xl rounded-3xl border border-emerald-100 bg-white shadow-sm">
-            <div className="flex flex-col gap-4 border-b border-emerald-100 px-6 py-5 md:flex-row md:items-start md:justify-between">
-              <div>
-                <h1 className="text-lg font-semibold text-gray-900">
-                  Manage Blogs
-                </h1>
+        <div className="px-6 py-6">
+          <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex w-full flex-col gap-3 md:max-w-2xl md:flex-row">
+              <div className="relative flex-1">
+                <FiSearch
+                  size={18}
+                  className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+                />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search blogs..."
+                  className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-12 pr-4 text-sm font-medium text-gray-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+                />
               </div>
 
-              <div className="flex items-center gap-3 self-start">
-                <button
-                  type="button"
-                  className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-100 bg-white text-emerald-900 transition hover:bg-emerald-50"
-                >
-                  <FiBell size={18} />
-                  <span className="absolute -right-1 -top-1 grid h-6 w-6 place-items-center rounded-full bg-red-500 text-xs font-bold text-white">
-                    3
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => navigate("/agency/blogs/add")}
-                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-800 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-900"
-                >
-                  <FiPlus size={18} />
-                  Add New Blog
-                </button>
-              </div>
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value)}
+                className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
+              >
+                <option value="newest">Sort: Newest</option>
+                <option value="oldest">Sort: Oldest</option>
+              </select>
             </div>
 
-            <div className="px-6 py-6">
-              <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div className="flex w-full flex-col gap-3 md:max-w-2xl md:flex-row">
-                  <div className="relative flex-1">
-                    <FiSearch
-                      size={18}
-                      className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-                    />
-                    <input
-                      type="text"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Search blogs..."
-                      className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-12 pr-4 text-sm font-medium text-gray-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
-                    />
-                  </div>
-
-                  <select
-                    value={sort}
-                    onChange={(e) => setSort(e.target.value)}
-                    className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100"
-                  >
-                    <option value="newest">Sort: Newest</option>
-                    <option value="oldest">Sort: Oldest</option>
-                  </select>
-                </div>
-
-                <div className="inline-flex items-center gap-2 self-start rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
-                  <FiMessageSquare size={16} />
-                  Total Comments:{" "}
-                  {Number(summary.totalComments || 0).toLocaleString("en-US")}
-                </div>
-              </div>
-
-              {pageError ? (
-                <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-                  {pageError}
-                </div>
-              ) : null}
-
-              <div className="overflow-hidden rounded-2xl border border-emerald-100 bg-white">
-                <div
-                  className={[
-                    TABLE_GRID,
-                    GLASS_HEADER,
-                    "px-4 py-4 text-sm font-bold text-emerald-900/85",
-                  ].join(" ")}
-                >
-                  <div className="text-left">Title</div>
-                  <div className="text-left">Date posted</div>
-                  <div className="text-left">Comments</div>
-                  <div className="text-left">Actions</div>
-                </div>
-
-                {loading ? (
-                  <div className="px-4 py-10 text-center text-sm text-gray-500">
-                    Loading blogs...
-                  </div>
-                ) : formattedBlogs.length === 0 ? (
-                  <div className="px-4 py-10 text-center text-sm text-gray-500">
-                    No blogs found.
-                  </div>
-                ) : (
-                  formattedBlogs.map((blog, index) => (
-                    <div
-                      key={blog.id}
-                      className={[
-                        TABLE_GRID,
-                        "items-center px-4 py-4",
-                        index !== formattedBlogs.length - 1
-                          ? "border-b border-emerald-100"
-                          : "",
-                      ].join(" ")}
-                    >
-                      <div className="flex min-w-0 items-center gap-3">
-                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-emerald-100 bg-emerald-50 text-emerald-700">
-                          <FiFileText size={18} />
-                        </span>
-
-                        <div className="min-w-0">
-                          <div className="truncate text-base font-bold text-gray-900">
-                            {blog.title}
-                          </div>
-                          <div className="mt-1 text-sm text-gray-500">
-                            {blog.type}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center text-sm font-semibold text-gray-700">
-                        {blog.formattedDate}
-                      </div>
-
-                      <div className="flex items-center">
-                        <span className="inline-flex items-center justify-center rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-900 tabular-nums">
-                          {blog.formattedComments}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <button
-                          type="button"
-                          onClick={() => setEditBlog(blog)}
-                          className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-gray-800 transition hover:bg-gray-50"
-                        >
-                          <FiEdit2 size={16} />
-                          Edit
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setDeleteBlogItem(blog)}
-                          className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-bold text-red-700 transition hover:bg-red-50"
-                        >
-                          <FiTrash2 size={16} />
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
+            <div className="inline-flex items-center gap-2 self-start rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
+              <FiMessageSquare size={16} />
+              Total Comments:{" "}
+              {Number(summary.totalComments || 0).toLocaleString("en-US")}
             </div>
           </div>
-        </main>
+
+          {pageError ? (
+            <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+              {pageError}
+            </div>
+          ) : null}
+
+          <div className="overflow-hidden rounded-2xl border border-emerald-100 bg-white">
+            <div
+              className={[
+                TABLE_GRID,
+                GLASS_HEADER,
+                "px-4 py-4 text-sm font-bold text-emerald-900/85",
+              ].join(" ")}
+            >
+              <div className="text-left">Title</div>
+              <div className="text-left">Date posted</div>
+              <div className="text-left">Comments</div>
+              <div className="text-left">Actions</div>
+            </div>
+
+            {loading ? (
+              <div className="px-4 py-10 text-center text-sm text-gray-500">
+                Loading blogs...
+              </div>
+            ) : formattedBlogs.length === 0 ? (
+              <div className="px-4 py-10 text-center text-sm text-gray-500">
+                No blogs found.
+              </div>
+            ) : (
+              formattedBlogs.map((blog, index) => (
+                <div
+                  key={blog.id}
+                  className={[
+                    TABLE_GRID,
+                    "items-center px-4 py-4",
+                    index !== formattedBlogs.length - 1
+                      ? "border-b border-emerald-100"
+                      : "",
+                  ].join(" ")}
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-emerald-100 bg-emerald-50 text-emerald-700">
+                      <FiFileText size={18} />
+                    </span>
+
+                    <div className="min-w-0">
+                      <div className="truncate text-base font-bold text-gray-900">
+                        {blog.title}
+                      </div>
+                      <div className="mt-1 text-sm text-gray-500">
+                        {blog.type}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center text-sm font-semibold text-gray-700">
+                    {blog.formattedDate}
+                  </div>
+
+                  <div className="flex items-center">
+                    <span className="inline-flex items-center justify-center rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-900 tabular-nums">
+                      {blog.formattedComments}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setEditBlog(blog)}
+                      className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-gray-800 transition hover:bg-gray-50"
+                    >
+                      <FiEdit2 size={16} />
+                      Edit
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setDeleteBlogItem(blog)}
+                      className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-4 py-2.5 text-sm font-bold text-red-700 transition hover:bg-red-50"
+                    >
+                      <FiTrash2 size={16} />
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </div>
 
       <EditBlogModal
@@ -929,6 +938,16 @@ export default function AgencyManageBlogsPage() {
         onClose={() => setDeleteBlogItem(null)}
         onConfirm={handleDelete}
       />
-    </div>
+    </>
+  );
+}
+
+export default function AgencyManageBlogsPage() {
+  return (
+    <AgencyLayout>
+      {({ openNotifications }) => (
+        <AgencyManageBlogsPageContent openNotifications={openNotifications} />
+      )}
+    </AgencyLayout>
   );
 }

@@ -4,6 +4,7 @@ import { FiBell, FiPlus } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import AgencyLayout from "../../components/agency/AgencyLayout";
 import { useAgencyAuth } from "../../context/AgencyAuthContext";
+import { useAgencyNotifications } from "../../context/AgencyNotificationContext";
 import { getAgencyDashboard } from "../../api/agencyDashboardApi";
 
 function Pill({ children, tone = "neutral" }) {
@@ -66,9 +67,10 @@ function Panel({ title, children }) {
   );
 }
 
-export default function AgencyDashboardPage() {
+function AgencyDashboardPageContent({ openNotifications }) {
   const navigate = useNavigate();
   const { agency } = useAgencyAuth();
+  const { unreadCount, refresh } = useAgencyNotifications();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -116,157 +118,178 @@ export default function AgencyDashboardPage() {
   };
 
   const handleNewTour = () => {
-    // Navigate to the add-new-tour page
     navigate("/agency/tours/new");
   };
 
+  const handleOpenNotifications = async () => {
+    try {
+      await refresh?.();
+    } catch {
+      // ignore
+    }
+
+    openNotifications?.();
+  };
+
   return (
-    <AgencyLayout>
-      <div className="bg-white rounded-2xl shadow-sm border border-emerald-100 p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-lg md:text-xl font-semibold text-gray-900">
-              {title}
-            </h1>
-          </div>
+    <div className="bg-white rounded-2xl shadow-sm border border-emerald-100 p-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-lg md:text-xl font-semibold text-gray-900">
+            {title}
+          </h1>
+        </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              className="relative h-10 w-10 rounded-xl border border-gray-200 bg-white grid place-items-center text-gray-700 hover:bg-gray-50"
-              aria-label="Notifications"
-            >
-              <FiBell />
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleOpenNotifications}
+            className="relative h-10 w-10 rounded-xl border border-gray-200 bg-white grid place-items-center text-gray-700 hover:bg-gray-50"
+            aria-label="Notifications"
+            title="Notifications"
+          >
+            <FiBell />
+            {Number(unreadCount || 0) > 0 && (
               <span className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 rounded-full bg-red-600 text-white text-[10px] font-bold grid place-items-center">
-                3
+                {unreadCount > 99 ? "99+" : unreadCount}
               </span>
-            </button>
+            )}
+          </button>
 
-            <button
-              type="button"
-              onClick={handleNewTour}
-              className="h-10 rounded-xl bg-emerald-800 px-4 text-sm font-semibold text-white hover:bg-emerald-900"
-            >
-              <span className="inline-flex items-center gap-2">
-                <FiPlus />
-                New Tour
-              </span>
-            </button>
-          </div>
-        </div>
-
-        {error && (
-          <div className="mt-4 text-sm text-red-700 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
-            {error}
-          </div>
-        )}
-
-        <div className="mt-5 grid grid-cols-1 md:grid-cols-4 gap-3">
-          <KpiCard
-            icon={<span>🧭</span>}
-            label="Active Tours"
-            value={data.stats.activeTours}
-          />
-          <KpiCard
-            icon={<span>📅</span>}
-            label="Bookings"
-            value={data.stats.bookings}
-          />
-          <KpiCard
-            icon={<span>⏳</span>}
-            label="Pending Requests"
-            value={data.stats.pendingRequests}
-          />
-          <KpiCard
-            icon={<span>💳</span>}
-            label="Earnings (NPR)"
-            value={`NPR ${fmtNpr(data.stats.earningsNpr)}`}
-          />
-        </div>
-
-        <div className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Panel title="Recent Bookings">
-            <div className="rounded-xl border border-gray-100 bg-white">
-              <div className="max-h-[400px] overflow-y-auto p-3">
-                {loading ? (
-                  <div className="min-h-[320px] flex items-center justify-center text-sm text-gray-500">
-                    Loading...
-                  </div>
-                ) : data.recentBookings.length === 0 ? (
-                  <div className="min-h-[320px] flex items-center justify-center text-sm text-gray-500">
-                    No bookings yet.
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {data.recentBookings.map((b) => (
-                      <div
-                        key={b.id}
-                        className="rounded-xl border border-gray-100 bg-white px-3 py-2"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <div className="text-sm font-semibold text-gray-900">
-                              {b.tour_title} • {b.travelers}{" "}
-                              {b.travelers === 1 ? "Guest" : "Guests"}
-                            </div>
-                            <div className="text-[11px] text-gray-500 mt-0.5">
-                              by {b.user_name} • {b.booking_date_label} •{" "}
-                              {b.payment_label}
-                            </div>
-                          </div>
-                          <Pill tone={statusTone(b.booking_status)}>
-                            {b.booking_status}
-                          </Pill>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </Panel>
-
-          <Panel title="Recent Reviews">
-            <div className="rounded-xl border border-gray-100 bg-white">
-              <div className="max-h-[460px] overflow-y-auto p-3">
-                {loading ? (
-                  <div className="min-h-[320px] flex items-center justify-center text-sm text-gray-500">
-                    Loading...
-                  </div>
-                ) : data.recentReviews.length === 0 ? (
-                  <div className="min-h-[320px] flex items-center justify-center text-sm text-gray-500">
-                    No reviews yet.
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {data.recentReviews.map((r) => (
-                      <div
-                        key={r.id}
-                        className="rounded-xl border border-gray-100 bg-white px-3 py-2"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="w-full">
-                            <div className="flex items-center gap-2">
-                              <div className="text-sm font-semibold text-gray-900">
-                                {r.user_name}
-                              </div>
-                              <Stars value={r.rating} />
-                            </div>
-
-                            <div className="mt-1 text-[12px] text-gray-700">
-                              “{r.comment}”
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </Panel>
+          <button
+            type="button"
+            onClick={handleNewTour}
+            className="h-10 rounded-xl bg-emerald-800 px-4 text-sm font-semibold text-white hover:bg-emerald-900"
+          >
+            <span className="inline-flex items-center gap-2">
+              <FiPlus />
+              New Tour
+            </span>
+          </button>
         </div>
       </div>
+
+      {error && (
+        <div className="mt-4 text-sm text-red-700 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+          {error}
+        </div>
+      )}
+
+      <div className="mt-5 grid grid-cols-1 md:grid-cols-4 gap-3">
+        <KpiCard
+          icon={<span>🧭</span>}
+          label="Active Tours"
+          value={data.stats.activeTours}
+        />
+        <KpiCard
+          icon={<span>📅</span>}
+          label="Bookings"
+          value={data.stats.bookings}
+        />
+        <KpiCard
+          icon={<span>⏳</span>}
+          label="Pending Requests"
+          value={data.stats.pendingRequests}
+        />
+        <KpiCard
+          icon={<span>💳</span>}
+          label="Earnings (NPR)"
+          value={`NPR ${fmtNpr(data.stats.earningsNpr)}`}
+        />
+      </div>
+
+      <div className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Panel title="Recent Bookings">
+          <div className="rounded-xl border border-gray-100 bg-white">
+            <div className="max-h-[400px] overflow-y-auto p-3">
+              {loading ? (
+                <div className="min-h-[320px] flex items-center justify-center text-sm text-gray-500">
+                  Loading...
+                </div>
+              ) : data.recentBookings.length === 0 ? (
+                <div className="min-h-[320px] flex items-center justify-center text-sm text-gray-500">
+                  No bookings yet.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {data.recentBookings.map((b) => (
+                    <div
+                      key={b.id}
+                      className="rounded-xl border border-gray-100 bg-white px-3 py-2"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="text-sm font-semibold text-gray-900">
+                            {b.tour_title} • {b.travelers}{" "}
+                            {b.travelers === 1 ? "Guest" : "Guests"}
+                          </div>
+                          <div className="text-[11px] text-gray-500 mt-0.5">
+                            by {b.user_name} • {b.booking_date_label} •{" "}
+                            {b.payment_label}
+                          </div>
+                        </div>
+                        <Pill tone={statusTone(b.booking_status)}>
+                          {b.booking_status}
+                        </Pill>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </Panel>
+
+        <Panel title="Recent Reviews">
+          <div className="rounded-xl border border-gray-100 bg-white">
+            <div className="max-h-[460px] overflow-y-auto p-3">
+              {loading ? (
+                <div className="min-h-[320px] flex items-center justify-center text-sm text-gray-500">
+                  Loading...
+                </div>
+              ) : data.recentReviews.length === 0 ? (
+                <div className="min-h-[320px] flex items-center justify-center text-sm text-gray-500">
+                  No reviews yet.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {data.recentReviews.map((r) => (
+                    <div
+                      key={r.id}
+                      className="rounded-xl border border-gray-100 bg-white px-3 py-2"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="w-full">
+                          <div className="flex items-center gap-2">
+                            <div className="text-sm font-semibold text-gray-900">
+                              {r.user_name}
+                            </div>
+                            <Stars value={r.rating} />
+                          </div>
+
+                          <div className="mt-1 text-[12px] text-gray-700">
+                            “{r.comment}”
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </Panel>
+      </div>
+    </div>
+  );
+}
+
+export default function AgencyDashboardPage() {
+  return (
+    <AgencyLayout>
+      {({ openNotifications }) => (
+        <AgencyDashboardPageContent openNotifications={openNotifications} />
+      )}
     </AgencyLayout>
   );
 }

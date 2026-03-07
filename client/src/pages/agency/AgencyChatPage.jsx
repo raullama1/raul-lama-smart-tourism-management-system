@@ -1,12 +1,13 @@
 // client/src/pages/agency/AgencyChatPage.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { FiBell } from "react-icons/fi";
 import AgencyLayout from "../../components/agency/AgencyLayout";
 import AgencyChatSidebar from "../../components/agency/chat/AgencyChatSidebar";
 import AgencyChatWindow from "../../components/agency/chat/AgencyChatWindow";
 import NewAgencyChatModal from "../../components/agency/chat/NewAgencyChatModal";
-
 import { useAgencyAuth } from "../../context/AgencyAuthContext";
+import { useAgencyNotifications } from "../../context/AgencyNotificationContext";
 import {
   fetchAgencyConversations,
   startConversationAsAgency,
@@ -38,8 +39,9 @@ function hasAnyMessagePreview(c) {
   return Boolean(last || at);
 }
 
-export default function AgencyChatPage() {
+function AgencyChatPageContent({ openNotifications }) {
   const { token } = useAgencyAuth();
+  const { unreadCount, refresh } = useAgencyNotifications();
   const [searchParams] = useSearchParams();
 
   const [loadingConvos, setLoadingConvos] = useState(true);
@@ -690,34 +692,67 @@ export default function AgencyChatPage() {
     socketRef.current.emit("chat:stopTyping", { conversationId });
   };
 
+  const handleOpenNotifications = async () => {
+    try {
+      await refresh?.();
+    } catch {
+      // ignore
+    }
+
+    openNotifications?.();
+  };
+
   return (
-    <AgencyLayout>
-      <div className="mt-5 flex flex-col md:flex-row gap-4">
-        <AgencyChatSidebar
-          search={search}
-          onSearch={setSearch}
-          conversations={filteredConvos}
-          selectedId={selectedId}
-          onSelect={handleSelect}
-          onStartNew={() => setShowNewChat(true)}
-        />
+    <>
+      <div className="bg-white rounded-2xl border border-emerald-100 shadow-sm p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="text-lg font-extrabold text-gray-900">Chat</div>
+          </div>
 
-        <AgencyChatWindow
-          selected={selected}
-          messages={messages}
-          loading={msgLoading}
-          hasMore={!!pagination?.hasMore}
-          onLoadMore={loadOlder}
-          onSend={handleSend}
-          typingText={typingText}
-          onTyping={handleTyping}
-          onStopTyping={handleStopTyping}
-          onDeleteMessage={handleDeleteMessage}
-          onDeleteConversation={handleDeleteConversation}
-        />
+          <button
+            type="button"
+            onClick={handleOpenNotifications}
+            className="h-10 w-10 rounded-2xl border border-emerald-100 bg-white grid place-items-center text-emerald-900 hover:bg-emerald-50 relative"
+            title="Notifications"
+            aria-label="Notifications"
+          >
+            <FiBell />
+            {Number(unreadCount || 0) > 0 && (
+              <span className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 rounded-full bg-red-600 text-white text-[11px] font-black grid place-items-center">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
+          </button>
+        </div>
+
+        <div className="mt-5 flex flex-col md:flex-row gap-4">
+          <AgencyChatSidebar
+            search={search}
+            onSearch={setSearch}
+            conversations={filteredConvos}
+            selectedId={selectedId}
+            onSelect={handleSelect}
+            onStartNew={() => setShowNewChat(true)}
+          />
+
+          <AgencyChatWindow
+            selected={selected}
+            messages={messages}
+            loading={msgLoading}
+            hasMore={!!pagination?.hasMore}
+            onLoadMore={loadOlder}
+            onSend={handleSend}
+            typingText={typingText}
+            onTyping={handleTyping}
+            onStopTyping={handleStopTyping}
+            onDeleteMessage={handleDeleteMessage}
+            onDeleteConversation={handleDeleteConversation}
+          />
+        </div>
+
+        {loadingConvos && <div className="mt-3 text-xs text-gray-500">Loading chats...</div>}
       </div>
-
-      {loadingConvos && <div className="mt-3 text-xs text-gray-500">Loading chats...</div>}
 
       <NewAgencyChatModal
         open={showNewChat}
@@ -725,6 +760,16 @@ export default function AgencyChatPage() {
         onPickTourist={handlePickTourist}
         excludeTouristIds={excludeTouristIds}
       />
+    </>
+  );
+}
+
+export default function AgencyChatPage() {
+  return (
+    <AgencyLayout>
+      {({ openNotifications }) => (
+        <AgencyChatPageContent openNotifications={openNotifications} />
+      )}
     </AgencyLayout>
   );
 }

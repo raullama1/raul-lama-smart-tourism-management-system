@@ -11,6 +11,7 @@ import {
 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import AgencyLayout from "../../components/agency/AgencyLayout";
+import { useAgencyNotifications } from "../../context/AgencyNotificationContext";
 import {
   approveAgencyBooking,
   fetchAgencyBookings,
@@ -111,8 +112,9 @@ function formatYMD(value) {
   return `${y}-${m}-${da}`;
 }
 
-export default function AgencyBookingsPage() {
+function AgencyBookingsPageContent({ openNotifications }) {
   const navigate = useNavigate();
+  const { unreadCount, refresh } = useAgencyNotifications();
 
   const [status, setStatus] = useState("all");
   const [payment, setPayment] = useState("all");
@@ -212,8 +214,18 @@ export default function AgencyBookingsPage() {
     }
   };
 
+  const handleOpenNotifications = async () => {
+    try {
+      await refresh?.();
+    } catch {
+      // ignore
+    }
+
+    openNotifications?.();
+  };
+
   return (
-    <AgencyLayout>
+    <>
       <div className="bg-white rounded-2xl border border-emerald-100 shadow-sm p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -222,13 +234,17 @@ export default function AgencyBookingsPage() {
 
           <button
             type="button"
+            onClick={handleOpenNotifications}
             className="h-10 w-10 rounded-2xl border border-emerald-100 bg-white grid place-items-center text-emerald-900 hover:bg-emerald-50 relative"
             title="Notifications"
+            aria-label="Notifications"
           >
             <FiBell />
-            <span className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 rounded-full bg-red-600 text-white text-[11px] font-black grid place-items-center">
-              3
-            </span>
+            {Number(unreadCount || 0) > 0 && (
+              <span className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 rounded-full bg-red-600 text-white text-[11px] font-black grid place-items-center">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
           </button>
         </div>
 
@@ -458,6 +474,16 @@ export default function AgencyBookingsPage() {
         message={toast.message}
         onClose={() => setToast((p) => ({ ...p, open: false }))}
       />
+    </>
+  );
+}
+
+export default function AgencyBookingsPage() {
+  return (
+    <AgencyLayout>
+      {({ openNotifications }) => (
+        <AgencyBookingsPageContent openNotifications={openNotifications} />
+      )}
     </AgencyLayout>
   );
 }

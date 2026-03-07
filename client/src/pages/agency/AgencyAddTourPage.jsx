@@ -1,12 +1,12 @@
 // client/src/pages/agency/AgencyAddTourPage.jsx
 import { useMemo, useRef, useState } from "react";
-import { FiUploadCloud, FiMapPin, FiSave } from "react-icons/fi";
+import { FiUploadCloud, FiMapPin, FiSave, FiBell } from "react-icons/fi";
 import AgencyLayout from "../../components/agency/AgencyLayout";
+import { useAgencyNotifications } from "../../context/AgencyNotificationContext";
 import { createAgencyTour } from "../../api/agencyToursApi";
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 
-/* Toast (same style as other pages) */
 function Toast({ open, type = "success", message, onClose }) {
   const boxClass =
     type === "success"
@@ -63,7 +63,9 @@ function PickMarker({ value, onChange, onInvalid }) {
       const lng = e.latlng.lng;
 
       if (!isInsideNepal(lat, lng)) {
-        if (typeof onInvalid === "function") onInvalid("Please select a location inside Nepal only.");
+        if (typeof onInvalid === "function") {
+          onInvalid("Please select a location inside Nepal only.");
+        }
         return;
       }
 
@@ -142,7 +144,8 @@ function blockManualDateInput(e) {
   e.preventDefault();
 }
 
-export default function AgencyAddTourPage() {
+function AgencyAddTourPageContent({ openNotifications }) {
+  const { unreadCount, refresh } = useAgencyNotifications();
   const dropRef = useRef(null);
 
   /* Refs used for auto-scroll to first invalid field */
@@ -184,7 +187,11 @@ export default function AgencyAddTourPage() {
 
   const [saving, setSaving] = useState(false);
 
-  const [toast, setToast] = useState({ open: false, type: "success", message: "" });
+  const [toast, setToast] = useState({
+    open: false,
+    type: "success",
+    message: "",
+  });
 
   const [fieldErr, setFieldErr] = useState({
     title: "",
@@ -345,10 +352,13 @@ export default function AgencyAddTourPage() {
     if (!desc.trim()) next.desc = "Required";
 
     const p = Number(price);
-    if (!price || !Number.isFinite(p) || p <= 0) next.price = "Enter a valid price";
+    if (!price || !Number.isFinite(p) || p <= 0) {
+      next.price = "Enter a valid price";
+    }
 
-    if (!startDate) next.startDate = "Required";
-    else {
+    if (!startDate) {
+      next.startDate = "Required";
+    } else {
       const start = new Date(startDate);
       const today = new Date(todayYMD);
       const max = new Date(startMaxYMD);
@@ -356,8 +366,9 @@ export default function AgencyAddTourPage() {
       else if (start > max) next.startDate = "Start date must be within 3 months from today";
     }
 
-    if (!endDate) next.endDate = "Required";
-    else if (startDate && isValidDateString(startDate)) {
+    if (!endDate) {
+      next.endDate = "Required";
+    } else if (startDate && isValidDateString(startDate)) {
       const end = new Date(endDate);
       const minEnd = new Date(endMinYMD);
       const maxEnd = new Date(endMaxYMD);
@@ -495,25 +506,53 @@ export default function AgencyAddTourPage() {
     }
   };
 
+  const handleOpenNotifications = async () => {
+    try {
+      await refresh?.();
+    } catch {
+      // ignore
+    }
+
+    openNotifications?.();
+  };
+
   return (
-    <AgencyLayout>
+    <>
       <div className="bg-white rounded-2xl border border-emerald-100 shadow-sm p-6">
         <div className="flex items-center justify-between gap-3">
           <div>
             <div className="text-lg font-semibold text-gray-900">Add Tour</div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving}
-            className="h-10 rounded-xl bg-emerald-800 px-4 text-sm font-semibold text-white hover:bg-emerald-900 disabled:opacity-60"
-          >
-            <span className="inline-flex items-center gap-2">
-              <FiSave />
-              {saving ? "Saving..." : "Save Tour"}
-            </span>
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleOpenNotifications}
+              className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-100 bg-white text-slate-700 transition hover:bg-emerald-50"
+              aria-label="Notifications"
+              title="Notifications"
+            >
+              <FiBell size={18} />
+
+              {Number(unreadCount || 0) > 0 && (
+                <span className="absolute -right-1 -top-1 grid min-h-[22px] min-w-[22px] place-items-center rounded-full bg-red-500 px-1 text-[11px] font-bold text-white">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="h-10 rounded-xl bg-emerald-800 px-4 text-sm font-semibold text-white hover:bg-emerald-900 disabled:opacity-60"
+            >
+              <span className="inline-flex items-center gap-2">
+                <FiSave />
+                {saving ? "Saving..." : "Save Tour"}
+              </span>
+            </button>
+          </div>
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-4">
@@ -528,11 +567,15 @@ export default function AgencyAddTourPage() {
               }}
               className={[
                 "mt-2 w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2",
-                fieldErr.title ? "border-red-300 focus:ring-red-400" : "border-gray-200 focus:ring-emerald-500",
+                fieldErr.title
+                  ? "border-red-300 focus:ring-red-400"
+                  : "border-gray-200 focus:ring-emerald-500",
               ].join(" ")}
               placeholder="Enter tour title"
             />
-            {fieldErr.title ? <div className="mt-1 text-xs font-semibold text-red-600">{fieldErr.title}</div> : null}
+            {fieldErr.title ? (
+              <div className="mt-1 text-xs font-semibold text-red-600">{fieldErr.title}</div>
+            ) : null}
           </div>
 
           <div ref={refDesc}>
@@ -546,11 +589,15 @@ export default function AgencyAddTourPage() {
               rows={4}
               className={[
                 "mt-2 w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2",
-                fieldErr.desc ? "border-red-300 focus:ring-red-400" : "border-gray-200 focus:ring-emerald-500",
+                fieldErr.desc
+                  ? "border-red-300 focus:ring-red-400"
+                  : "border-gray-200 focus:ring-emerald-500",
               ].join(" ")}
               placeholder="Enter tour description"
             />
-            {fieldErr.desc ? <div className="mt-1 text-xs font-semibold text-red-600">{fieldErr.desc}</div> : null}
+            {fieldErr.desc ? (
+              <div className="mt-1 text-xs font-semibold text-red-600">{fieldErr.desc}</div>
+            ) : null}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -567,12 +614,16 @@ export default function AgencyAddTourPage() {
                 maxLength={7}
                 className={[
                   "mt-2 w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2",
-                  fieldErr.price ? "border-red-300 focus:ring-red-400" : "border-gray-200 focus:ring-emerald-500",
+                  fieldErr.price
+                    ? "border-red-300 focus:ring-red-400"
+                    : "border-gray-200 focus:ring-emerald-500",
                 ].join(" ")}
                 placeholder="Enter price"
                 inputMode="numeric"
               />
-              {fieldErr.price ? <div className="mt-1 text-xs font-semibold text-red-600">{fieldErr.price}</div> : null}
+              {fieldErr.price ? (
+                <div className="mt-1 text-xs font-semibold text-red-600">{fieldErr.price}</div>
+              ) : null}
             </div>
 
             <div ref={refStartDate}>
@@ -599,7 +650,9 @@ export default function AgencyAddTourPage() {
                 }}
                 className={[
                   "mt-2 w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2",
-                  fieldErr.startDate ? "border-red-300 focus:ring-red-400" : "border-gray-200 focus:ring-emerald-500",
+                  fieldErr.startDate
+                    ? "border-red-300 focus:ring-red-400"
+                    : "border-gray-200 focus:ring-emerald-500",
                 ].join(" ")}
               />
               {fieldErr.startDate ? (
@@ -625,10 +678,14 @@ export default function AgencyAddTourPage() {
                 className={[
                   "mt-2 w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2",
                   !startDate ? "bg-gray-50 text-gray-600 cursor-not-allowed border-gray-200" : "",
-                  fieldErr.endDate ? "border-red-300 focus:ring-red-400" : "border-gray-200 focus:ring-emerald-500",
+                  fieldErr.endDate
+                    ? "border-red-300 focus:ring-red-400"
+                    : "border-gray-200 focus:ring-emerald-500",
                 ].join(" ")}
               />
-              {fieldErr.endDate ? <div className="mt-1 text-xs font-semibold text-red-600">{fieldErr.endDate}</div> : null}
+              {fieldErr.endDate ? (
+                <div className="mt-1 text-xs font-semibold text-red-600">{fieldErr.endDate}</div>
+              ) : null}
             </div>
           </div>
 
@@ -643,7 +700,9 @@ export default function AgencyAddTourPage() {
                 }}
                 className={[
                   "mt-2 w-full rounded-xl border px-4 py-3 text-sm bg-white focus:outline-none focus:ring-2",
-                  fieldErr.location ? "border-red-300 focus:ring-red-400" : "border-gray-200 focus:ring-emerald-500",
+                  fieldErr.location
+                    ? "border-red-300 focus:ring-red-400"
+                    : "border-gray-200 focus:ring-emerald-500",
                 ].join(" ")}
               >
                 <option value="">Select a place</option>
@@ -668,7 +727,9 @@ export default function AgencyAddTourPage() {
                 }}
                 className={[
                   "mt-2 w-full rounded-xl border px-4 py-3 text-sm bg-white focus:outline-none focus:ring-2",
-                  fieldErr.type ? "border-red-300 focus:ring-red-400" : "border-gray-200 focus:ring-emerald-500",
+                  fieldErr.type
+                    ? "border-red-300 focus:ring-red-400"
+                    : "border-gray-200 focus:ring-emerald-500",
                 ].join(" ")}
               >
                 <option value="">Select type</option>
@@ -677,7 +738,9 @@ export default function AgencyAddTourPage() {
                 <option value="Nature">Nature</option>
                 <option value="Religious">Religious</option>
               </select>
-              {fieldErr.type ? <div className="mt-1 text-xs font-semibold text-red-600">{fieldErr.type}</div> : null}
+              {fieldErr.type ? (
+                <div className="mt-1 text-xs font-semibold text-red-600">{fieldErr.type}</div>
+              ) : null}
             </div>
           </div>
 
@@ -691,7 +754,9 @@ export default function AgencyAddTourPage() {
               }}
               className={[
                 "mt-2 w-full rounded-xl border px-4 py-3 text-sm bg-white focus:outline-none focus:ring-2",
-                fieldErr.listingStatus ? "border-red-300 focus:ring-red-400" : "border-gray-200 focus:ring-emerald-500",
+                fieldErr.listingStatus
+                  ? "border-red-300 focus:ring-red-400"
+                  : "border-gray-200 focus:ring-emerald-500",
               ].join(" ")}
             >
               <option value="">Select status</option>
@@ -712,7 +777,9 @@ export default function AgencyAddTourPage() {
               <div className="text-xs text-gray-600">Click map / drag marker OR type lat/lng.</div>
             </div>
 
-            {fieldErr.coords ? <div className="mt-2 text-xs font-semibold text-red-600">{fieldErr.coords}</div> : null}
+            {fieldErr.coords ? (
+              <div className="mt-2 text-xs font-semibold text-red-600">{fieldErr.coords}</div>
+            ) : null}
 
             <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
@@ -722,12 +789,16 @@ export default function AgencyAddTourPage() {
                   onChange={(e) => setLatInput(sanitizeDecimal(e.target.value))}
                   className={[
                     "mt-2 w-full rounded-xl border px-4 py-2.5 text-sm focus:outline-none focus:ring-2",
-                    fieldErr.lat ? "border-red-300 focus:ring-red-400" : "border-gray-200 focus:ring-emerald-500",
+                    fieldErr.lat
+                      ? "border-red-300 focus:ring-red-400"
+                      : "border-gray-200 focus:ring-emerald-500",
                   ].join(" ")}
                   placeholder="e.g., 27.6727000"
                   inputMode="decimal"
                 />
-                {fieldErr.lat ? <div className="mt-1 text-xs font-semibold text-red-600">{fieldErr.lat}</div> : null}
+                {fieldErr.lat ? (
+                  <div className="mt-1 text-xs font-semibold text-red-600">{fieldErr.lat}</div>
+                ) : null}
               </div>
 
               <div>
@@ -737,12 +808,16 @@ export default function AgencyAddTourPage() {
                   onChange={(e) => setLngInput(sanitizeDecimal(e.target.value))}
                   className={[
                     "mt-2 w-full rounded-xl border px-4 py-2.5 text-sm focus:outline-none focus:ring-2",
-                    fieldErr.lng ? "border-red-300 focus:ring-red-400" : "border-gray-200 focus:ring-emerald-500",
+                    fieldErr.lng
+                      ? "border-red-300 focus:ring-red-400"
+                      : "border-gray-200 focus:ring-emerald-500",
                   ].join(" ")}
                   placeholder="e.g., 85.4298000"
                   inputMode="decimal"
                 />
-                {fieldErr.lng ? <div className="mt-1 text-xs font-semibold text-red-600">{fieldErr.lng}</div> : null}
+                {fieldErr.lng ? (
+                  <div className="mt-1 text-xs font-semibold text-red-600">{fieldErr.lng}</div>
+                ) : null}
               </div>
 
               <div className="flex items-end">
@@ -763,9 +838,17 @@ export default function AgencyAddTourPage() {
                   zoom={7}
                   style={{ height: "100%", width: "100%" }}
                 >
-                  <TileLayer attribution="&copy; OpenStreetMap" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                  <TileLayer
+                    attribution="&copy; OpenStreetMap"
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
 
-                  <FlyToMarker coords={coords} zoom={12} active={shouldFly} onDone={() => setShouldFly(false)} />
+                  <FlyToMarker
+                    coords={coords}
+                    zoom={12}
+                    active={shouldFly}
+                    onDone={() => setShouldFly(false)}
+                  />
 
                   {coords ? (
                     <Marker
@@ -777,7 +860,10 @@ export default function AgencyAddTourPage() {
                           const p = e.target.getLatLng();
                           if (!isInsideNepal(p.lat, p.lng)) {
                             showToast("error", "Marker must stay inside Nepal.");
-                            setFieldErr((prev) => ({ ...prev, coords: "Pick a location inside Nepal." }));
+                            setFieldErr((prev) => ({
+                              ...prev,
+                              coords: "Pick a location inside Nepal.",
+                            }));
                             return;
                           }
                           setCoordsBoth({ lat: p.lat, lng: p.lng });
@@ -802,10 +888,12 @@ export default function AgencyAddTourPage() {
 
               <div className="px-4 py-3 text-xs text-gray-600 flex flex-wrap gap-3">
                 <div>
-                  <span className="font-semibold">Lat:</span> {coords?.lat ? Number(coords.lat).toFixed(6) : "—"}
+                  <span className="font-semibold">Lat:</span>{" "}
+                  {coords?.lat ? Number(coords.lat).toFixed(6) : "—"}
                 </div>
                 <div>
-                  <span className="font-semibold">Lng:</span> {coords?.lng ? Number(coords.lng).toFixed(6) : "—"}
+                  <span className="font-semibold">Lng:</span>{" "}
+                  {coords?.lng ? Number(coords.lng).toFixed(6) : "—"}
                 </div>
               </div>
             </div>
@@ -838,15 +926,21 @@ export default function AgencyAddTourPage() {
                     <FiUploadCloud size={18} />
                   </div>
                   <div>
-                    <div className="text-sm font-semibold text-gray-900">Drag & drop image here, or click to choose</div>
+                    <div className="text-sm font-semibold text-gray-900">
+                      Drag & drop image here, or click to choose
+                    </div>
                     <div className="text-xs text-gray-500">PNG/JPG/WEBP • max 2MB</div>
                   </div>
                 </div>
 
-                <div className="text-xs font-semibold text-emerald-800">{imageFile ? "Selected" : "No file"}</div>
+                <div className="text-xs font-semibold text-emerald-800">
+                  {imageFile ? "Selected" : "No file"}
+                </div>
               </div>
 
-              {fieldErr.image ? <div className="mt-2 text-xs font-semibold text-red-600">{fieldErr.image}</div> : null}
+              {fieldErr.image ? (
+                <div className="mt-2 text-xs font-semibold text-red-600">{fieldErr.image}</div>
+              ) : null}
 
               {previewUrl ? (
                 <div className="mt-4 overflow-hidden rounded-2xl border border-gray-100">
@@ -878,6 +972,16 @@ export default function AgencyAddTourPage() {
         message={toast.message}
         onClose={() => setToast((p) => ({ ...p, open: false }))}
       />
+    </>
+  );
+}
+
+export default function AgencyAddTourPage() {
+  return (
+    <AgencyLayout>
+      {({ openNotifications }) => (
+        <AgencyAddTourPageContent openNotifications={openNotifications} />
+      )}
     </AgencyLayout>
   );
 }

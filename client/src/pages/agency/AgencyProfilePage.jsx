@@ -2,7 +2,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FiBell, FiKey, FiSave } from "react-icons/fi";
 import AgencySidebar from "../../components/agency/AgencySidebar";
+import AgencyNotificationsDrawer from "../../components/agency/AgencyNotificationsDrawer";
 import { useAgencyAuth } from "../../context/AgencyAuthContext";
+import { useAgencyNotifications } from "../../context/AgencyNotificationContext";
 import {
   buildAgencyAvatarUrl,
   changeAgencyPassword,
@@ -258,7 +260,10 @@ function validateAddress(raw) {
 
 export default function AgencyProfilePage() {
   const { token } = useAgencyAuth();
+  const { unreadCount, refresh } = useAgencyNotifications();
   const fileRef = useRef(null);
+
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -332,6 +337,16 @@ export default function AgencyProfilePage() {
   useEffect(() => {
     load();
   }, [token]);
+
+  const handleOpenNotifications = async () => {
+    setDrawerOpen(true);
+
+    try {
+      await refresh?.();
+    } catch {
+      // ignore
+    }
+  };
 
   const onPickFile = async (file) => {
     if (!file || !token) return;
@@ -454,12 +469,17 @@ export default function AgencyProfilePage() {
 
                 <button
                   type="button"
+                  onClick={handleOpenNotifications}
                   className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-100 bg-white text-slate-700 transition hover:bg-emerald-50"
+                  aria-label="Notifications"
+                  title="Notifications"
                 >
                   <FiBell size={18} />
-                  <span className="absolute -right-1 -top-1 grid h-6 w-6 place-items-center rounded-full bg-red-500 text-xs font-bold text-white">
-                    3
-                  </span>
+                  {Number(unreadCount || 0) > 0 && (
+                    <span className="absolute -right-1 -top-1 grid h-6 min-w-[24px] place-items-center rounded-full bg-red-500 px-1 text-xs font-bold text-white">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
                 </button>
               </div>
 
@@ -633,6 +653,11 @@ export default function AgencyProfilePage() {
           </main>
         </div>
       </div>
+
+      <AgencyNotificationsDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+      />
 
       <Toast
         open={toast.open}

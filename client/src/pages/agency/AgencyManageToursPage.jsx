@@ -15,6 +15,7 @@ import {
 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import AgencyLayout from "../../components/agency/AgencyLayout";
+import { useAgencyNotifications } from "../../context/AgencyNotificationContext";
 import {
   deleteAgencyTour,
   fetchAgencyManageTours,
@@ -381,9 +382,10 @@ function LazyNepalMapPicker({
   );
 }
 
-export default function AgencyManageToursPage() {
+function AgencyManageToursPageContent({ openNotifications }) {
   const navigate = useNavigate();
   const fileRef = useRef(null);
+  const { unreadCount, refresh } = useAgencyNotifications();
 
   const [q, setQ] = useState("");
   const [status, setStatus] = useState("all");
@@ -878,12 +880,7 @@ export default function AgencyManageToursPage() {
 
       closeEdit();
       await load();
-
-      if (String(editStatus).toLowerCase() === "completed") {
-        showToast("success", "Tour updated");
-      } else {
-        showToast("success", "Tour updated");
-      }
+      showToast("success", "Tour updated");
     } catch (e) {
       const m = e?.response?.data?.message || "Failed to update tour.";
       setErr(m);
@@ -893,8 +890,18 @@ export default function AgencyManageToursPage() {
     }
   };
 
+  const handleOpenNotifications = async () => {
+    try {
+      await refresh?.();
+    } catch {
+      // ignore
+    }
+
+    openNotifications?.();
+  };
+
   return (
-    <AgencyLayout>
+    <>
       <div className="bg-white rounded-2xl border border-emerald-100 shadow-sm p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -904,12 +911,16 @@ export default function AgencyManageToursPage() {
           <button
             type="button"
             className="relative h-10 w-10 rounded-xl border border-emerald-100 bg-white grid place-items-center text-emerald-900 hover:bg-emerald-50"
-            onClick={() => {}}
+            onClick={handleOpenNotifications}
+            aria-label="Notifications"
+            title="Notifications"
           >
             <FiBell />
-            <span className="absolute -top-2 -right-2 h-5 min-w-[20px] px-1 rounded-full bg-red-600 text-white text-[11px] font-bold grid place-items-center">
-              3
-            </span>
+            {Number(unreadCount || 0) > 0 && (
+              <span className="absolute -top-2 -right-2 h-5 min-w-[20px] px-1 rounded-full bg-red-600 text-white text-[11px] font-bold grid place-items-center">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
           </button>
         </div>
 
@@ -1466,6 +1477,16 @@ export default function AgencyManageToursPage() {
         message={toast.message}
         onClose={() => setToast((p) => ({ ...p, open: false }))}
       />
+    </>
+  );
+}
+
+export default function AgencyManageToursPage() {
+  return (
+    <AgencyLayout>
+      {({ openNotifications }) => (
+        <AgencyManageToursPageContent openNotifications={openNotifications} />
+      )}
     </AgencyLayout>
   );
 }

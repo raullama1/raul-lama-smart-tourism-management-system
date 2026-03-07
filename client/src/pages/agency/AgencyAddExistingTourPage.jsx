@@ -1,7 +1,8 @@
 // client/src/pages/agency/AgencyAddExistingTourPage.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FiPlus, FiSearch, FiX, FiSave, FiRefreshCw } from "react-icons/fi";
+import { FiPlus, FiSearch, FiX, FiSave, FiRefreshCw, FiBell } from "react-icons/fi";
 import AgencyLayout from "../../components/agency/AgencyLayout";
+import { useAgencyNotifications } from "../../context/AgencyNotificationContext";
 import {
   addExistingTourListing,
   fetchExistingToursLibrary,
@@ -218,7 +219,9 @@ function uniqStrings(list) {
   return out;
 }
 
-export default function AgencyAddExistingTourPage() {
+function AgencyAddExistingTourPageContent({ openNotifications }) {
+  const { unreadCount, refresh } = useAgencyNotifications();
+
   const cached = useMemo(() => readCache(), []);
 
   const [q, setQ] = useState(cached?.filters?.q ?? "");
@@ -238,7 +241,6 @@ export default function AgencyAddExistingTourPage() {
   const [meta, setMeta] = useState(cached?.meta ?? { total: cached?.rows?.length ?? 0 });
   const [err, setErr] = useState("");
 
-  // ✅ Show Nepal places immediately (even if cache empty)
   const [locations, setLocations] = useState(() => {
     const cachedLocs = Array.isArray(cached?.locations) ? cached.locations : [];
     const merged = uniqStrings([...NEPAL_PLACES, ...cachedLocs]);
@@ -314,14 +316,11 @@ export default function AgencyAddExistingTourPage() {
     try {
       const res = await fetchExistingToursLocations();
       const apiList = normalizeLocationList(res?.data);
-
-      // ✅ ALWAYS include Nepal places + add API unique ones
       const finalList = uniqStrings([...NEPAL_PLACES, ...apiList]);
 
       setLocations(finalList);
       persist({ locations: finalList });
     } catch {
-      // ✅ still keep Nepal list
       const finalList = uniqStrings([...NEPAL_PLACES, ...locations]);
       setLocations(finalList);
       persist({ locations: finalList });
@@ -363,7 +362,6 @@ export default function AgencyAddExistingTourPage() {
   };
 
   useEffect(() => {
-    // ✅ Always refresh locations once on mount (won't remove Nepal list)
     loadLocations();
     load({ first: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -465,11 +463,21 @@ export default function AgencyAddExistingTourPage() {
     }
   };
 
+  const handleOpenNotifications = async () => {
+    try {
+      await refresh?.();
+    } catch {
+      // ignore
+    }
+
+    openNotifications?.();
+  };
+
   const isDirty =
     q.trim() !== "" || type !== "all" || location !== "all" || sort !== "newest";
 
   return (
-    <AgencyLayout>
+    <>
       <div className="bg-white rounded-2xl border border-emerald-100 shadow-sm p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -478,14 +486,32 @@ export default function AgencyAddExistingTourPage() {
             </div>
           </div>
 
-          {fetching ? (
-            <div className="inline-flex items-center gap-2 text-xs font-semibold text-gray-600">
-              <span className="animate-spin">
-                <FiRefreshCw />
-              </span>
-              Updating...
-            </div>
-          ) : null}
+          <div className="flex items-center gap-3">
+            {fetching ? (
+              <div className="inline-flex items-center gap-2 text-xs font-semibold text-gray-600">
+                <span className="animate-spin">
+                  <FiRefreshCw />
+                </span>
+                Updating...
+              </div>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={handleOpenNotifications}
+              className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-100 bg-white text-slate-700 transition hover:bg-emerald-50"
+              aria-label="Notifications"
+              title="Notifications"
+            >
+              <FiBell size={18} />
+
+              {Number(unreadCount || 0) > 0 && (
+                <span className="absolute -right-1 -top-1 grid min-h-[22px] min-w-[22px] place-items-center rounded-full bg-red-500 px-1 text-[11px] font-bold text-white">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
 
         <div className="mt-5 flex flex-col lg:flex-row lg:items-center gap-3">
@@ -752,6 +778,16 @@ export default function AgencyAddExistingTourPage() {
         message={toast.message}
         onClose={() => setToast((p) => ({ ...p, open: false }))}
       />
+    </>
+  );
+}
+
+export default function AgencyAddExistingTourPage() {
+  return (
+    <AgencyLayout>
+      {({ openNotifications }) => (
+        <AgencyAddExistingTourPageContent openNotifications={openNotifications} />
+      )}
     </AgencyLayout>
   );
 }
