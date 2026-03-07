@@ -27,6 +27,26 @@ const avatarStorage = multer.diskStorage({
   },
 });
 
+const agencyAvatarStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, avatarsDir);
+  },
+
+  filename: (req, file, cb) => {
+    if (!req.user?.id) {
+      return cb(new Error("Unauthorized upload attempt"));
+    }
+
+    const ext = path.extname(file.originalname || "").toLowerCase();
+    const safeExt = [".png", ".jpg", ".jpeg", ".webp"].includes(ext)
+      ? ext
+      : ".jpg";
+
+    const filename = `ag${req.user.id}-${Date.now()}${safeExt}`;
+    cb(null, filename);
+  },
+});
+
 function fileFilter(req, file, cb) {
   const allowed = [
     "image/png",
@@ -44,6 +64,14 @@ function fileFilter(req, file, cb) {
 
 export const uploadAvatar = multer({
   storage: avatarStorage,
+  fileFilter,
+  limits: {
+    fileSize: 2 * 1024 * 1024,
+  },
+});
+
+export const uploadAgencyAvatar = multer({
+  storage: agencyAvatarStorage,
   fileFilter,
   limits: {
     fileSize: 2 * 1024 * 1024,

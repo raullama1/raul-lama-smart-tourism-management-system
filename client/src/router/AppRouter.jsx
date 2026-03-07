@@ -44,6 +44,7 @@ import AgencyAddBlogPage from "../pages/agency/AgencyAddBlogPage";
 import AgencyManageBlogsPage from "../pages/agency/AgencyManageBlogsPage";
 import AgencyReviewsPage from "../pages/agency/AgencyReviewsPage";
 import AgencyEarningsPage from "../pages/agency/AgencyEarningsPage";
+import AgencyProfilePage from "../pages/agency/AgencyProfilePage";
 
 function PrivateRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -408,6 +409,15 @@ export default function AppRouter() {
           element={
             <AgencyPrivateRoute>
               <AgencyEarningsPage />
+            </AgencyPrivateRoute>
+          }
+        />
+
+        <Route
+          path="/agency/profile"
+          element={
+            <AgencyPrivateRoute>
+              <AgencyProfilePage />
             </AgencyPrivateRoute>
           }
         />

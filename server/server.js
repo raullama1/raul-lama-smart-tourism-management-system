@@ -28,6 +28,7 @@ import agencyBookingsRoutes from "./routes/agencyBookingsRoutes.js";
 import agencyBlogsRoutes from "./routes/agencyBlogsRoutes.js";
 import agencyReviewsRoutes from "./routes/agencyReviewsRoutes.js";
 import agencyEarningsRoutes from "./routes/agencyEarningsRoutes.js";
+import agencyProfileRoutes from "./routes/agencyProfileRoutes.js";
 
 import { initChatSocket } from "./sockets/chatSocket.js";
 
@@ -102,6 +103,9 @@ app.use("/api/agency/reviews", agencyReviewsRoutes);
 
 // Agency Earnings
 app.use("/api/agency/earnings", agencyEarningsRoutes);
+
+// Agency Profile
+app.use("/api/agency/profile", agencyProfileRoutes);
 
 // Socket.IO
 const server = http.createServer(app);
