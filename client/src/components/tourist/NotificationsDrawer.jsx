@@ -136,19 +136,6 @@ export default function NotificationsDrawer({ open, onClose }) {
             </div>
           )}
         </div>
-
-        <div className="p-5 border-t border-gray-100">
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              navigate("/notifications");
-            }}
-            className="w-full rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white px-5 py-3 text-sm font-semibold"
-          >
-            View All Notifications
-          </button>
-        </div>
       </aside>
     </div>
   );
