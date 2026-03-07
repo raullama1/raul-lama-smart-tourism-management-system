@@ -236,7 +236,7 @@ export function initChatSocket(io) {
               : refreshedConvo.agency_name || "Agency";
 
           const notifTitle = `New message from ${senderName}`;
-          const notifBody = safeText(text);
+          const notifBody = "";
 
           const actionPath =
             receiverRole === "agency"

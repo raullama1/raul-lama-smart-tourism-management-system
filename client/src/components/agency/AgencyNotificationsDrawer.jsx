@@ -1,4 +1,3 @@
-// client/src/components/agency/AgencyNotificationsDrawer.jsx
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAgencyNotifications } from "../../context/AgencyNotificationContext";
@@ -35,7 +34,7 @@ export default function AgencyNotificationsDrawer({ open, onClose }) {
         await markRead(notification.id);
       }
     } catch {
-      // ignore
+      // Ignore read update failure.
     }
 
     onClose();
@@ -53,7 +52,7 @@ export default function AgencyNotificationsDrawer({ open, onClose }) {
         await markRead(notification.id);
       }
     } catch {
-      // ignore
+      // Ignore read update failure.
     }
 
     await removeNotification(notification.id);
@@ -118,17 +117,7 @@ export default function AgencyNotificationsDrawer({ open, onClose }) {
                       onClick={() => handleOpen(n)}
                       className="w-full text-left p-4 hover:bg-black/[0.02]"
                     >
-                      <div className="flex items-start gap-3">
-                        <div
-                          className={`mt-1 h-9 w-9 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 ${
-                            isRead
-                              ? "bg-gray-100 text-gray-500"
-                              : "bg-emerald-700 text-white"
-                          }`}
-                        >
-                          AG
-                        </div>
-
+                      <div className="flex items-start">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-3">
                             <div className="text-sm font-semibold text-gray-900">{n.title}</div>
@@ -137,7 +126,9 @@ export default function AgencyNotificationsDrawer({ open, onClose }) {
                             </div>
                           </div>
 
-                          <div className="mt-1 text-sm text-gray-700 break-words">{n.message}</div>
+                          <div className="mt-1 text-sm text-gray-700 break-words">
+                            {n.message}
+                          </div>
 
                           {n.action_path && (
                             <div className="mt-3 text-xs font-semibold text-emerald-700">

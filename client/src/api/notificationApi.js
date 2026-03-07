@@ -1,14 +1,6 @@
 // client/src/api/notificationApi.js
 import api from "./apiClient";
 
-/*
-  Notes:
-  - This file exports BOTH:
-    - the "new" names used by NotificationContext.jsx
-    - and the older names you already had
-  - This prevents import errors and keeps your code backwards compatible.
-*/
-
 /* ---------------------- Existing exports (keep) ---------------------- */
 
 export function fetchMyNotifications(token, { limit = 10, offset = 0 } = {}) {
@@ -37,7 +29,6 @@ export function markAllNotificationsRead(token) {
 
 /*
   Fetch notifications (default limit/offset).
-  Your controller can ignore limit/offset if not implemented.
 */
 export function fetchNotifications(token, { limit = 10, offset = 0 } = {}) {
   return fetchMyNotifications(token, { limit, offset });
@@ -55,8 +46,6 @@ export function markAllAsRead(token) {
 
 /*
   Delete one notification.
-  Requires backend route: DELETE /api/notifications/:id
-  If you didn't build delete route, remove usage from context.
 */
 export function deleteOneNotification(token, id) {
   return api.delete(`/notifications/${id}`, {
@@ -66,7 +55,6 @@ export function deleteOneNotification(token, id) {
 
 /*
   Get unread count.
-  Requires backend route: GET /api/notifications/unread-count
 */
 export function fetchUnreadCount(token) {
   return api.get(`/notifications/unread-count`, {
