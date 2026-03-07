@@ -18,20 +18,37 @@ import {
 function requireRole(req, res, role) {
   const id = req.user?.id;
   const r = req.user?.role;
+
   if (!id || r !== role) {
     res.status(403).json({ message: `${role[0].toUpperCase() + role.slice(1)} access only.` });
     return null;
   }
+
   return Number(id);
 }
 
 function canAccessConversation(user, convo) {
   const role = user?.role;
   const id = Number(user?.id);
+
   if (!role || !id) return false;
 
   if (role === "tourist") return Number(convo.tourist_id) === id;
   if (role === "agency") return Number(convo.agency_id) === id;
+
+  return false;
+}
+
+function isConversationVisibleToUser(user, convo) {
+  if (!canAccessConversation(user, convo)) return false;
+
+  if (user?.role === "tourist") {
+    return Number(convo?.deleted_for_tourist || 0) === 0;
+  }
+
+  if (user?.role === "agency") {
+    return Number(convo?.deleted_for_agency || 0) === 0;
+  }
 
   return false;
 }
@@ -99,11 +116,16 @@ export async function startConversationController(req, res) {
     if (!userId) return;
 
     const { agencyId } = req.body;
-
     const agencyIdNum = Number(agencyId);
-    if (!agencyIdNum) return res.status(400).json({ message: "agencyId is required." });
 
-    const convo = await createOrGetConversation(userId, agencyIdNum);
+    if (!agencyIdNum) {
+      return res.status(400).json({ message: "agencyId is required." });
+    }
+
+    const convo = await createOrGetConversation(userId, agencyIdNum, {
+      restoreForRole: "tourist",
+    });
+
     res.json({ conversation: convo });
   } catch (err) {
     console.error("startConversationController error", err);
@@ -118,11 +140,16 @@ export async function startConversationAsAgencyController(req, res) {
     if (!agencyId) return;
 
     const { touristId } = req.body;
-
     const touristIdNum = Number(touristId);
-    if (!touristIdNum) return res.status(400).json({ message: "touristId is required." });
 
-    const convo = await createOrGetConversation(touristIdNum, agencyId);
+    if (!touristIdNum) {
+      return res.status(400).json({ message: "touristId is required." });
+    }
+
+    const convo = await createOrGetConversation(touristIdNum, agencyId, {
+      restoreForRole: "agency",
+    });
+
     res.json({ conversation: convo });
   } catch (err) {
     console.error("startConversationAsAgencyController error", err);
@@ -145,13 +172,19 @@ export async function deleteConversationController(req, res) {
     });
 
     if (!result.ok) {
-      if (result.reason === "not_found") return res.status(404).json({ message: "Conversation not found." });
-      if (result.reason === "not_allowed") return res.status(403).json({ message: "Not allowed." });
-      if (result.reason === "not_empty") return res.status(200).json({ ok: false, reason: "not_empty" });
+      if (result.reason === "not_found") {
+        return res.status(404).json({ message: "Conversation not found." });
+      }
+      if (result.reason === "not_allowed") {
+        return res.status(403).json({ message: "Not allowed." });
+      }
+      if (result.reason === "not_empty") {
+        return res.status(200).json({ ok: false, reason: "not_empty" });
+      }
       return res.status(400).json({ message: "Delete failed." });
     }
 
-    res.json({ ok: true });
+    res.json({ ok: true, mode: result.mode || "hidden" });
   } catch (err) {
     console.error("deleteConversationController error", err);
     res.status(500).json({ message: "Failed to delete conversation." });
@@ -173,13 +206,19 @@ export async function deleteConversationAsAgencyController(req, res) {
     });
 
     if (!result.ok) {
-      if (result.reason === "not_found") return res.status(404).json({ message: "Conversation not found." });
-      if (result.reason === "not_allowed") return res.status(403).json({ message: "Not allowed." });
-      if (result.reason === "not_empty") return res.status(200).json({ ok: false, reason: "not_empty" });
+      if (result.reason === "not_found") {
+        return res.status(404).json({ message: "Conversation not found." });
+      }
+      if (result.reason === "not_allowed") {
+        return res.status(403).json({ message: "Not allowed." });
+      }
+      if (result.reason === "not_empty") {
+        return res.status(200).json({ ok: false, reason: "not_empty" });
+      }
       return res.status(400).json({ message: "Delete failed." });
     }
 
-    res.json({ ok: true });
+    res.json({ ok: true, mode: result.mode || "hidden" });
   } catch (err) {
     console.error("deleteConversationAsAgencyController error", err);
     res.status(500).json({ message: "Failed to delete conversation." });
@@ -191,9 +230,18 @@ export async function getConversationDetailsController(req, res) {
   try {
     const user = req.user;
     const convo = await getConversationById(req.params.conversationId);
-    if (!convo) return res.status(404).json({ message: "Conversation not found." });
 
-    if (!canAccessConversation(user, convo)) return res.status(403).json({ message: "Not allowed." });
+    if (!convo) {
+      return res.status(404).json({ message: "Conversation not found." });
+    }
+
+    if (!canAccessConversation(user, convo)) {
+      return res.status(403).json({ message: "Not allowed." });
+    }
+
+    if (!isConversationVisibleToUser(user, convo)) {
+      return res.status(404).json({ message: "Conversation not found." });
+    }
 
     res.json({ conversation: convo });
   } catch (err) {
@@ -207,11 +255,24 @@ export async function getMessagesController(req, res) {
   try {
     const user = req.user;
     const convo = await getConversationById(req.params.conversationId);
-    if (!convo) return res.status(404).json({ message: "Conversation not found." });
 
-    if (!canAccessConversation(user, convo)) return res.status(403).json({ message: "Not allowed." });
+    if (!convo) {
+      return res.status(404).json({ message: "Conversation not found." });
+    }
 
-    const result = await getMessages(req.params.conversationId, req.query);
+    if (!canAccessConversation(user, convo)) {
+      return res.status(403).json({ message: "Not allowed." });
+    }
+
+    if (!isConversationVisibleToUser(user, convo)) {
+      return res.status(404).json({ message: "Conversation not found." });
+    }
+
+    const result = await getMessages(req.params.conversationId, {
+      ...req.query,
+      viewerRole: user.role,
+    });
+
     res.json(result);
   } catch (err) {
     console.error("getMessagesController error", err);
@@ -224,12 +285,23 @@ export async function postMessageController(req, res) {
   try {
     const user = req.user;
     const convo = await getConversationById(req.params.conversationId);
-    if (!convo) return res.status(404).json({ message: "Conversation not found." });
 
-    if (!canAccessConversation(user, convo)) return res.status(403).json({ message: "Not allowed." });
+    if (!convo) {
+      return res.status(404).json({ message: "Conversation not found." });
+    }
+
+    if (!canAccessConversation(user, convo)) {
+      return res.status(403).json({ message: "Not allowed." });
+    }
+
+    if (!isConversationVisibleToUser(user, convo)) {
+      return res.status(404).json({ message: "Conversation not found." });
+    }
 
     const text = String(req.body?.message || "").trim();
-    if (!text) return res.status(400).json({ message: "Message is required." });
+    if (!text) {
+      return res.status(400).json({ message: "Message is required." });
+    }
 
     const row = await addMessage(req.params.conversationId, {
       senderId: user.id,
@@ -249,9 +321,18 @@ export async function markReadController(req, res) {
   try {
     const user = req.user;
     const convo = await getConversationById(req.params.conversationId);
-    if (!convo) return res.status(404).json({ message: "Conversation not found." });
 
-    if (!canAccessConversation(user, convo)) return res.status(403).json({ message: "Not allowed." });
+    if (!convo) {
+      return res.status(404).json({ message: "Conversation not found." });
+    }
+
+    if (!canAccessConversation(user, convo)) {
+      return res.status(403).json({ message: "Not allowed." });
+    }
+
+    if (!isConversationVisibleToUser(user, convo)) {
+      return res.status(404).json({ message: "Conversation not found." });
+    }
 
     if (user.role === "tourist") {
       await markAgencyMessagesRead(req.params.conversationId);
@@ -271,9 +352,18 @@ export async function deleteMessageController(req, res) {
   try {
     const user = req.user;
     const convo = await getConversationById(req.params.conversationId);
-    if (!convo) return res.status(404).json({ message: "Conversation not found." });
 
-    if (!canAccessConversation(user, convo)) return res.status(403).json({ message: "Not allowed." });
+    if (!convo) {
+      return res.status(404).json({ message: "Conversation not found." });
+    }
+
+    if (!canAccessConversation(user, convo)) {
+      return res.status(403).json({ message: "Not allowed." });
+    }
+
+    if (!isConversationVisibleToUser(user, convo)) {
+      return res.status(404).json({ message: "Conversation not found." });
+    }
 
     const result = await deleteMessageForAll(
       req.params.conversationId,
@@ -283,8 +373,12 @@ export async function deleteMessageController(req, res) {
     );
 
     if (!result.ok) {
-      if (result.reason === "not_found") return res.status(404).json({ message: "Message not found." });
-      if (result.reason === "not_allowed") return res.status(403).json({ message: "You can only delete your own message." });
+      if (result.reason === "not_found") {
+        return res.status(404).json({ message: "Message not found." });
+      }
+      if (result.reason === "not_allowed") {
+        return res.status(403).json({ message: "You can only delete your own message." });
+      }
       return res.status(400).json({ message: "Delete failed." });
     }
 

@@ -2,9 +2,22 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchChatTourists } from "../../../api/chatApi";
 import { useAgencyAuth } from "../../../context/AgencyAuthContext";
+import { toPublicImageUrl } from "../../../utils/publicImageUrl";
 
-function Avatar({ name }) {
+function Avatar({ name, image }) {
   const letter = (name || "T").trim().charAt(0).toUpperCase();
+  const src = toPublicImageUrl(image);
+
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt={name || "Tourist"}
+        className="h-11 w-11 rounded-xl object-cover border border-emerald-200 bg-white"
+      />
+    );
+  }
+
   return (
     <div className="h-11 w-11 rounded-xl bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center justify-center font-extrabold">
       {letter}
@@ -47,8 +60,6 @@ export default function NewAgencyChatModal({
 
     try {
       setLoading(true);
-
-      // Must pass agency token explicitly (do not rely on interceptor)
       const res = await fetchChatTourists(token, { search: q });
 
       if (myReq !== reqRef.current) return;
@@ -131,6 +142,7 @@ export default function NewAgencyChatModal({
               const name = t.name || "Tourist";
               const email = t.email || "";
               const phone = t.phone || "";
+              const image = t.profile_image || t.tourist_profile_image || "";
 
               return (
                 <div
@@ -138,7 +150,7 @@ export default function NewAgencyChatModal({
                   className="rounded-2xl border border-gray-200 bg-[#f3faf6] p-3 flex items-center justify-between gap-3"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <Avatar name={name} />
+                    <Avatar name={name} image={image} />
                     <div className="min-w-0">
                       <div className="text-sm font-extrabold text-gray-900 truncate">{name}</div>
                       <div className="text-xs text-gray-600 truncate mt-0.5">

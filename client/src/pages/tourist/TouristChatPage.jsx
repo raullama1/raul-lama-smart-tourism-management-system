@@ -213,7 +213,9 @@ export default function TouristChatPage() {
         clearCacheFor(conversationId);
       }
     } finally {
-      if (!silent && reqId === activeConvoReqRef.current) setMsgLoading(false);
+      if (reqId === activeConvoReqRef.current) {
+        setMsgLoading(false);
+      }
     }
   };
 
@@ -226,10 +228,15 @@ export default function TouristChatPage() {
     const onChatMessage = ({ conversationId, message }) => {
       markConvoNotEmpty(conversationId);
 
+      let found = false;
+
       setConvos((prev) => {
         const next = [...(prev || [])];
         const idx = next.findIndex((x) => Number(getConvoId(x)) === Number(conversationId));
+
         if (idx >= 0) {
+          found = true;
+
           const updated = {
             ...next[idx],
             last_message: message?.is_deleted ? "This message was deleted" : message?.message,
@@ -246,20 +253,28 @@ export default function TouristChatPage() {
           const [item] = next.splice(idx, 1);
           next.unshift(item);
         }
+
         return next;
       });
 
+      if (!found) {
+        loadConvos({ silent: true });
+      }
+
       const isOpen = Number(selectedIdRef.current) === Number(conversationId);
       if (!isOpen) return;
-
       if (message?.sender_role === "tourist") return;
 
       setMessages((prev) => {
+        const exists = (prev || []).some((m) => Number(m.id) === Number(message?.id));
+        if (exists) return prev;
+
         const next = [...(prev || []), message];
         writeCache(conversationId, next, paginationRef.current);
         return next;
       });
 
+      setMsgLoading(false);
       markConversationRead(conversationId);
     };
 
@@ -331,6 +346,7 @@ export default function TouristChatPage() {
       }
       socketRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const selected = useMemo(() => {
@@ -374,6 +390,7 @@ export default function TouristChatPage() {
 
     setSelectedId(nextId);
     setTypingText("");
+    setMessages([]);
 
     const cached = readCache(nextId);
     if (cached) {
@@ -428,6 +445,8 @@ export default function TouristChatPage() {
       }
       return next;
     });
+
+    setMsgLoading(false);
 
     if (socketRef.current?.connected) {
       socketRef.current.emit("chat:send", { conversationId, message: text }, (ack) => {
@@ -534,6 +553,7 @@ export default function TouristChatPage() {
       setMessages([]);
       setPagination({ page: 1, limit: PAGE_LIMIT, hasMore: false });
       setTypingText("");
+      setMsgLoading(false);
     }
 
     try {
@@ -580,6 +600,7 @@ export default function TouristChatPage() {
       const agencyId = Number(agency?.id);
       const agencyName = String(agency?.name || "Agency");
       const agencyAddress = String(agency?.address || "Nepal");
+      const agencyProfileImage = String(agency?.profile_image || "");
 
       if (!agencyId) {
         alert("Invalid agency.");
@@ -614,6 +635,7 @@ export default function TouristChatPage() {
         agency_id: Number(agencyId),
         agency_name: agencyName,
         agency_address: agencyAddress,
+        agency_profile_image: agencyProfileImage,
         last_message: "",
         last_message_at: "",
         last_message_sender_role: "",
@@ -621,18 +643,16 @@ export default function TouristChatPage() {
       };
 
       setConvos((prev) => [newConvo, ...(prev || [])]);
-
+      setMessages([]);
       setSelectedId(convoId);
       setTypingText("");
-
       setPagination({ page: 1, limit: PAGE_LIMIT, hasMore: false });
-      setMsgLoading(true);
 
       if (socketRef.current?.connected) {
         socketRef.current.emit("chat:join", { conversationId: convoId });
       }
 
-      loadMessagesPage(convoId, 1, { silent: true });
+      loadMessagesPage(convoId, 1, { silent: false });
     } catch (e) {
       console.error("start chat error", e);
       alert("Failed to start chat.");

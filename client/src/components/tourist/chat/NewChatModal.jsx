@@ -3,9 +3,22 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { FaPaperPlane } from "react-icons/fa";
 import { fetchChatAgencies } from "../../../api/chatApi";
 import { useAuth } from "../../../context/AuthContext";
+import { toPublicImageUrl } from "../../../utils/publicImageUrl";
 
-function Avatar({ name }) {
+function Avatar({ name, image }) {
   const letter = (name || "A").trim().charAt(0).toUpperCase();
+  const src = toPublicImageUrl(image);
+
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt={name || "Agency"}
+        className="h-11 w-11 rounded-xl object-cover border border-emerald-200 bg-white"
+      />
+    );
+  }
+
   return (
     <div className="h-11 w-11 rounded-xl bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center justify-center font-semibold">
       {letter}
@@ -22,11 +35,10 @@ export default function NewChatModal({
   const { token } = useAuth();
 
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(false); // used for spinner label, but don't hide list
+  const [loading, setLoading] = useState(false);
   const [agencies, setAgencies] = useState([]);
   const [startingId, setStartingId] = useState(null);
 
-  // prevents old slow responses from overriding latest search
   const reqRef = useRef(0);
 
   const excludeSet = useMemo(() => {
@@ -52,25 +64,17 @@ export default function NewChatModal({
       setLoading(true);
       const res = await fetchChatAgencies(token, { search: q });
 
-      // ignore stale response
       if (myReq !== reqRef.current) return;
 
-      // ✅ keep list stable; just replace with latest results
       setAgencies(res.data || []);
     } catch (e) {
-      // ignore stale response
       if (myReq !== reqRef.current) return;
-
       console.error("fetchChatAgencies error", e);
-
-      // ✅ IMPORTANT: do NOT clear agencies here (prevents flicker)
-      // keep previous list visible
     } finally {
       if (myReq === reqRef.current) setLoading(false);
     }
   };
 
-  // On open: load once
   useEffect(() => {
     if (!open) return;
     setSearch("");
@@ -78,7 +82,6 @@ export default function NewChatModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // Debounced search
   useEffect(() => {
     if (!open) return;
     const t = setTimeout(() => loadAgencies(search), 250);
@@ -86,7 +89,6 @@ export default function NewChatModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, open]);
 
-  // Esc close
   useEffect(() => {
     if (!open) return;
     const onKey = (e) => e.key === "Escape" && onClose?.();
@@ -96,8 +98,7 @@ export default function NewChatModal({
 
   if (!open) return null;
 
-  const showEmpty =
-    !loading && (shown?.length || 0) === 0; // show empty msg only when not loading
+  const showEmpty = !loading && (shown?.length || 0) === 0;
 
   return (
     <div className="fixed inset-0 z-[90]">
@@ -107,9 +108,7 @@ export default function NewChatModal({
         <div className="px-5 py-4 flex items-center justify-between border-b border-gray-200">
           <div className="flex items-center gap-3">
             <div className="text-lg font-semibold text-gray-900">Start New Chat</div>
-            {loading && (
-              <div className="text-xs text-gray-500">Searching...</div>
-            )}
+            {loading && <div className="text-xs text-gray-500">Searching...</div>}
           </div>
 
           <button
@@ -140,6 +139,7 @@ export default function NewChatModal({
               const id = Number(a.id);
               const name = a.name || "Agency";
               const address = a.address || "Nepal";
+              const image = a.profile_image || a.agency_profile_image || "";
 
               return (
                 <div
@@ -147,7 +147,7 @@ export default function NewChatModal({
                   className="rounded-2xl border border-gray-200 bg-[#f4fbf7] p-3 flex items-center justify-between gap-3"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <Avatar name={name} />
+                    <Avatar name={name} image={image} />
 
                     <div className="min-w-0">
                       <div className="text-sm font-semibold text-gray-900 truncate">
@@ -164,7 +164,7 @@ export default function NewChatModal({
                     onClick={async () => {
                       try {
                         setStartingId(id);
-                        await onPickAgency?.(a); // pass full agency object
+                        await onPickAgency?.(a);
                       } finally {
                         setStartingId(null);
                       }

@@ -29,6 +29,7 @@ function safeText(input, max = 90) {
 function canAccessConversation(user, convo) {
   const role = user?.role;
   const id = Number(user?.id);
+
   if (!role || !id) return false;
 
   if (role === "tourist") return Number(convo.tourist_id) === id;
@@ -37,10 +38,20 @@ function canAccessConversation(user, convo) {
   return false;
 }
 
-/**
- * Namespaced account rooms prevent ID collision (tourist 5 vs agency 5).
- * Example: acct:tourist:5, acct:agency:5
- */
+function isConversationVisibleToUser(user, convo) {
+  if (!canAccessConversation(user, convo)) return false;
+
+  if (user?.role === "tourist") {
+    return Number(convo?.deleted_for_tourist || 0) === 0;
+  }
+
+  if (user?.role === "agency") {
+    return Number(convo?.deleted_for_agency || 0) === 0;
+  }
+
+  return false;
+}
+
 function acctRoom(role, id) {
   return `acct:${role}:${Number(id)}`;
 }
@@ -58,10 +69,7 @@ export function initChatSocket(io) {
 
     socket.user = user;
 
-    // Personal rooms: used for real-time sidebar updates even when no convo is open.
     socket.join(acctRoom(user.role, user.id));
-
-    // Kept for backwards compatibility with existing notification code paths.
     socket.join(`user:${user.id}`);
 
     const displayName = user.name || (user.role === "agency" ? "Agency" : "Tourist");
@@ -76,12 +84,17 @@ export function initChatSocket(io) {
         const convo = await getConversationById(conversationId);
         if (!convo) return;
         if (!canAccessConversation(user, convo)) return;
+        if (!isConversationVisibleToUser(user, convo)) return;
 
         socket.join(`convo:${conversationId}`);
 
-        // Persist read-state on join.
-        if (user.role === "tourist") await markAgencyMessagesRead(conversationId);
-        if (user.role === "agency") await markTouristMessagesRead(conversationId);
+        if (user.role === "tourist") {
+          await markAgencyMessagesRead(conversationId);
+        }
+
+        if (user.role === "agency") {
+          await markTouristMessagesRead(conversationId);
+        }
 
         const payload = {
           conversationId,
@@ -89,16 +102,19 @@ export function initChatSocket(io) {
           at: new Date().toISOString(),
         };
 
-        // Send to the other participant if they are currently in the convo room.
-        socket.to(`convo:${conversationId}`).emit("chat:read", payload);
-
-        // Sidebar unread updates for both sides (exclude current socket for sender side).
         const touristRoom = acctRoom("tourist", convo.tourist_id);
         const agencyRoom = acctRoom("agency", convo.agency_id);
 
-        socket.to(touristRoom).emit("chat:read", payload);
-        socket.to(agencyRoom).emit("chat:read", payload);
-        io.to(user.role === "tourist" ? agencyRoom : touristRoom).emit("chat:read", payload);
+        const touristVisible = Number(convo?.deleted_for_tourist || 0) === 0;
+        const agencyVisible = Number(convo?.deleted_for_agency || 0) === 0;
+
+        if (user.role === "tourist") {
+          if (agencyVisible) io.to(agencyRoom).emit("chat:read", payload);
+          socket.to(touristRoom).emit("chat:read", payload);
+        } else {
+          if (touristVisible) io.to(touristRoom).emit("chat:read", payload);
+          socket.to(agencyRoom).emit("chat:read", payload);
+        }
       } catch (e) {
         console.error("chat:join error", e);
       }
@@ -111,9 +127,18 @@ export function initChatSocket(io) {
     socket.on("chat:typing", async ({ conversationId }) => {
       try {
         if (!conversationId) return;
+
         const convo = await getConversationById(conversationId);
         if (!convo) return;
         if (!canAccessConversation(user, convo)) return;
+        if (!isConversationVisibleToUser(user, convo)) return;
+
+        const otherSideVisible =
+          user.role === "tourist"
+            ? Number(convo?.deleted_for_agency || 0) === 0
+            : Number(convo?.deleted_for_tourist || 0) === 0;
+
+        if (!otherSideVisible) return;
 
         socket.to(`convo:${conversationId}`).emit("chat:typing", {
           conversationId,
@@ -127,9 +152,18 @@ export function initChatSocket(io) {
     socket.on("chat:stopTyping", async ({ conversationId }) => {
       try {
         if (!conversationId) return;
+
         const convo = await getConversationById(conversationId);
         if (!convo) return;
         if (!canAccessConversation(user, convo)) return;
+        if (!isConversationVisibleToUser(user, convo)) return;
+
+        const otherSideVisible =
+          user.role === "tourist"
+            ? Number(convo?.deleted_for_agency || 0) === 0
+            : Number(convo?.deleted_for_tourist || 0) === 0;
+
+        if (!otherSideVisible) return;
 
         socket.to(`convo:${conversationId}`).emit("chat:stopTyping", { conversationId });
       } catch (e) {
@@ -144,7 +178,12 @@ export function initChatSocket(io) {
 
         const convo = await getConversationById(conversationId);
         if (!convo) return ack?.({ ok: false, message: "Conversation not found." });
-        if (!canAccessConversation(user, convo)) return ack?.({ ok: false, message: "Not allowed." });
+        if (!canAccessConversation(user, convo)) {
+          return ack?.({ ok: false, message: "Not allowed." });
+        }
+        if (!isConversationVisibleToUser(user, convo)) {
+          return ack?.({ ok: false, message: "Conversation not found." });
+        }
 
         const saved = await addMessage(conversationId, {
           senderId: user.id,
@@ -152,47 +191,64 @@ export function initChatSocket(io) {
           message: text,
         });
 
+        const refreshedConvo = await getConversationById(conversationId);
+        if (!refreshedConvo) {
+          return ack?.({ ok: false, message: "Conversation not found." });
+        }
+
         const payload = { conversationId, message: saved };
 
-        const touristRoom = acctRoom("tourist", convo.tourist_id);
-        const agencyRoom = acctRoom("agency", convo.agency_id);
+        const touristRoom = acctRoom("tourist", refreshedConvo.tourist_id);
+        const agencyRoom = acctRoom("agency", refreshedConvo.agency_id);
 
-        // Do not echo the message back to the same socket (prevents duplicates).
-        // 1) Deliver to the other participant if they have the chat open.
-        socket.to(`convo:${conversationId}`).emit("chat:message", payload);
+        const touristVisible = Number(refreshedConvo?.deleted_for_tourist || 0) === 0;
+        const agencyVisible = Number(refreshedConvo?.deleted_for_agency || 0) === 0;
 
-        // 2) Deliver to the other participant’s sidebar (even if they do not have chat open).
-        io.to(user.role === "tourist" ? agencyRoom : touristRoom).emit("chat:message", payload);
+        if (user.role === "tourist") {
+          if (agencyVisible) {
+            io.to(agencyRoom).emit("chat:message", payload);
+          }
+          socket.to(touristRoom).emit("chat:message", payload);
+        } else {
+          if (touristVisible) {
+            io.to(touristRoom).emit("chat:message", payload);
+          }
+          socket.to(agencyRoom).emit("chat:message", payload);
+        }
 
-        // 3) Deliver to sender’s other tabs/devices for sidebar updates (exclude current socket).
-        socket.to(acctRoom(user.role, user.id)).emit("chat:message", payload);
-
-        // Acknowledge sender so client can replace optimistic temp message.
         ack?.({ ok: true, message: saved });
 
-        // Optional notifications (may fail if receiver is not in users table).
         const receiverId =
-          user.role === "tourist" ? Number(convo.agency_id) : Number(convo.tourist_id);
+          user.role === "tourist"
+            ? Number(refreshedConvo.agency_id)
+            : Number(refreshedConvo.tourist_id);
 
-        const notifTitle =
-          user.role === "tourist" ? "New message from Tourist" : "New message from Agency";
-        const notifBody = safeText(text);
+        const receiverVisible =
+          user.role === "tourist"
+            ? Number(refreshedConvo?.deleted_for_agency || 0) === 0
+            : Number(refreshedConvo?.deleted_for_tourist || 0) === 0;
 
-        try {
-          const created = await createNotification({
-            userId: receiverId,
-            type: "chat",
-            title: notifTitle,
-            message: notifBody,
-            meta: JSON.stringify({
-              conversationId: Number(conversationId),
-              senderRole: user.role,
-            }),
-          });
+        if (receiverVisible) {
+          const notifTitle =
+            user.role === "tourist" ? "New message from Tourist" : "New message from Agency";
+          const notifBody = safeText(text);
 
-          io.to(`user:${receiverId}`).emit("notification:new", created);
-        } catch (e) {
-          console.error("createNotification(chat) error", e);
+          try {
+            const created = await createNotification({
+              userId: receiverId,
+              type: "chat",
+              title: notifTitle,
+              message: notifBody,
+              meta: JSON.stringify({
+                conversationId: Number(conversationId),
+                senderRole: user.role,
+              }),
+            });
+
+            io.to(`user:${receiverId}`).emit("notification:new", created);
+          } catch (e) {
+            console.error("createNotification(chat) error", e);
+          }
         }
       } catch (e) {
         console.error("chat:send error", e);
@@ -205,9 +261,15 @@ export function initChatSocket(io) {
         const convo = await getConversationById(conversationId);
         if (!convo) return;
         if (!canAccessConversation(user, convo)) return;
+        if (!isConversationVisibleToUser(user, convo)) return;
 
-        if (user.role === "tourist") await markAgencyMessagesRead(conversationId);
-        if (user.role === "agency") await markTouristMessagesRead(conversationId);
+        if (user.role === "tourist") {
+          await markAgencyMessagesRead(conversationId);
+        }
+
+        if (user.role === "agency") {
+          await markTouristMessagesRead(conversationId);
+        }
 
         const payload = {
           conversationId,
@@ -218,9 +280,16 @@ export function initChatSocket(io) {
         const touristRoom = acctRoom("tourist", convo.tourist_id);
         const agencyRoom = acctRoom("agency", convo.agency_id);
 
-        socket.to(`convo:${conversationId}`).emit("chat:read", payload);
-        io.to(user.role === "tourist" ? agencyRoom : touristRoom).emit("chat:read", payload);
-        socket.to(acctRoom(user.role, user.id)).emit("chat:read", payload);
+        const touristVisible = Number(convo?.deleted_for_tourist || 0) === 0;
+        const agencyVisible = Number(convo?.deleted_for_agency || 0) === 0;
+
+        if (user.role === "tourist") {
+          if (agencyVisible) io.to(agencyRoom).emit("chat:read", payload);
+          socket.to(touristRoom).emit("chat:read", payload);
+        } else {
+          if (touristVisible) io.to(touristRoom).emit("chat:read", payload);
+          socket.to(agencyRoom).emit("chat:read", payload);
+        }
       } catch (e) {
         console.error("chat:markRead error", e);
       }
@@ -228,11 +297,18 @@ export function initChatSocket(io) {
 
     socket.on("chat:delete", async ({ conversationId, messageId }, ack) => {
       try {
-        if (!conversationId || !messageId) return ack?.({ ok: false, message: "Missing params." });
+        if (!conversationId || !messageId) {
+          return ack?.({ ok: false, message: "Missing params." });
+        }
 
         const convo = await getConversationById(conversationId);
         if (!convo) return ack?.({ ok: false, message: "Conversation not found." });
-        if (!canAccessConversation(user, convo)) return ack?.({ ok: false, message: "Not allowed." });
+        if (!canAccessConversation(user, convo)) {
+          return ack?.({ ok: false, message: "Not allowed." });
+        }
+        if (!isConversationVisibleToUser(user, convo)) {
+          return ack?.({ ok: false, message: "Conversation not found." });
+        }
 
         const result = await deleteMessageForAll(conversationId, messageId, user.id, user.role);
 
@@ -254,9 +330,16 @@ export function initChatSocket(io) {
         const touristRoom = acctRoom("tourist", convo.tourist_id);
         const agencyRoom = acctRoom("agency", convo.agency_id);
 
-        socket.to(`convo:${conversationId}`).emit("chat:deleted", payload);
-        io.to(user.role === "tourist" ? agencyRoom : touristRoom).emit("chat:deleted", payload);
-        socket.to(acctRoom(user.role, user.id)).emit("chat:deleted", payload);
+        const touristVisible = Number(convo?.deleted_for_tourist || 0) === 0;
+        const agencyVisible = Number(convo?.deleted_for_agency || 0) === 0;
+
+        if (user.role === "tourist") {
+          if (agencyVisible) io.to(agencyRoom).emit("chat:deleted", payload);
+          socket.to(touristRoom).emit("chat:deleted", payload);
+        } else {
+          if (touristVisible) io.to(touristRoom).emit("chat:deleted", payload);
+          socket.to(agencyRoom).emit("chat:deleted", payload);
+        }
 
         ack?.({ ok: true });
       } catch (e) {

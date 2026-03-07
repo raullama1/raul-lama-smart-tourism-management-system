@@ -213,7 +213,9 @@ export default function AgencyChatPage() {
         clearCacheFor(conversationId);
       }
     } finally {
-      if (!silent && reqId === activeConvoReqRef.current) setMsgLoading(false);
+      if (reqId === activeConvoReqRef.current) {
+        setMsgLoading(false);
+      }
     }
   };
 
@@ -226,10 +228,14 @@ export default function AgencyChatPage() {
     const onChatMessage = ({ conversationId, message }) => {
       markConvoNotEmpty(conversationId);
 
+      let found = false;
+
       setConvos((prev) => {
         const next = [...(prev || [])];
         const idx = next.findIndex((x) => Number(getConvoId(x)) === Number(conversationId));
         if (idx >= 0) {
+          found = true;
+
           const updated = {
             ...next[idx],
             last_message: message?.is_deleted ? "This message was deleted" : message?.message,
@@ -250,17 +256,24 @@ export default function AgencyChatPage() {
         return next;
       });
 
+      if (!found) {
+        loadConvos({ silent: true });
+      }
+
       const isOpen = Number(selectedIdRef.current) === Number(conversationId);
       if (!isOpen) return;
-
       if (message?.sender_role === "agency") return;
 
       setMessages((prev) => {
+        const exists = (prev || []).some((m) => Number(m.id) === Number(message?.id));
+        if (exists) return prev;
+
         const next = [...(prev || []), message];
         writeCache(conversationId, next, paginationRef.current);
         return next;
       });
 
+      setMsgLoading(false);
       markConversationRead(conversationId);
     };
 
@@ -332,6 +345,7 @@ export default function AgencyChatPage() {
       }
       socketRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const selected = useMemo(() => {
@@ -375,6 +389,7 @@ export default function AgencyChatPage() {
 
     setSelectedId(nextId);
     setTypingText("");
+    setMessages([]);
 
     const cached = readCache(nextId);
     if (cached) {
@@ -429,6 +444,8 @@ export default function AgencyChatPage() {
       }
       return next;
     });
+
+    setMsgLoading(false);
 
     if (socketRef.current?.connected) {
       socketRef.current.emit("chat:send", { conversationId, message: text }, (ack) => {
@@ -535,6 +552,7 @@ export default function AgencyChatPage() {
       setMessages([]);
       setPagination({ page: 1, limit: PAGE_LIMIT, hasMore: false });
       setTypingText("");
+      setMsgLoading(false);
     }
 
     try {
@@ -581,6 +599,7 @@ export default function AgencyChatPage() {
       const touristId = Number(tourist?.id);
       const touristName = String(tourist?.name || "Tourist");
       const touristEmail = String(tourist?.email || "");
+      const touristProfileImage = String(tourist?.profile_image || "");
 
       if (!touristId) {
         alert("Invalid tourist.");
@@ -615,6 +634,7 @@ export default function AgencyChatPage() {
         tourist_id: Number(touristId),
         tourist_name: touristName,
         tourist_email: touristEmail,
+        tourist_profile_image: touristProfileImage,
         last_message: "",
         last_message_at: "",
         last_message_sender_role: "",
@@ -622,18 +642,16 @@ export default function AgencyChatPage() {
       };
 
       setConvos((prev) => [newConvo, ...(prev || [])]);
-
+      setMessages([]);
       setSelectedId(convoId);
       setTypingText("");
-
       setPagination({ page: 1, limit: PAGE_LIMIT, hasMore: false });
-      setMsgLoading(true);
 
       if (socketRef.current?.connected) {
         socketRef.current.emit("chat:join", { conversationId: convoId });
       }
 
-      loadMessagesPage(convoId, 1, { silent: true });
+      loadMessagesPage(convoId, 1, { silent: false });
     } catch (e) {
       console.error("start chat error", e);
       alert("Failed to start chat.");

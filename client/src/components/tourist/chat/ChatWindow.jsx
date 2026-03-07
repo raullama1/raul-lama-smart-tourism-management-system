@@ -1,5 +1,6 @@
 // client/src/components/tourist/chat/ChatWindow.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
+import { toPublicImageUrl } from "../../../utils/publicImageUrl";
 
 function ConfirmModal({ open, title, message, dangerText = "Delete", onCancel, onConfirm }) {
   if (!open) return null;
@@ -91,6 +92,29 @@ function LoadingOverlay({ show }) {
   );
 }
 
+function Avatar({ name, image, size = "h-9 w-9", rounded = "rounded-full" }) {
+  const letter = (name || "A").trim().charAt(0).toUpperCase();
+  const src = toPublicImageUrl(image);
+
+  if (src) {
+    return (
+      <img
+        src={src}
+        alt={name || "Agency"}
+        className={`${size} ${rounded} object-cover border border-emerald-200 bg-white shrink-0`}
+      />
+    );
+  }
+
+  return (
+    <div
+      className={`${size} ${rounded} bg-emerald-200 flex items-center justify-center font-semibold text-emerald-900 border border-emerald-200 shrink-0`}
+    >
+      {letter}
+    </div>
+  );
+}
+
 export default function ChatWindow({
   selected,
   messages = [],
@@ -117,7 +141,6 @@ export default function ChatWindow({
   const typingTimerRef = useRef(null);
   const typingActiveRef = useRef(false);
 
-  // --- delayed close for unsend menu ---
   const msgMenuCloseTimerRef = useRef(null);
   const scheduleCloseMsgMenu = (delayMs = 300) => {
     if (msgMenuCloseTimerRef.current) clearTimeout(msgMenuCloseTimerRef.current);
@@ -134,6 +157,7 @@ export default function ChatWindow({
   const prevScrollHeightRef = useRef(0);
 
   const title = selected?.agency_name || "";
+  const profileImage = selected?.agency_profile_image || selected?.profile_image || "";
   const subtitle = useMemo(() => {
     if (!selected) return "";
     const addr = selected.agency_address || selected.agency_location;
@@ -285,27 +309,25 @@ export default function ChatWindow({
   return (
     <section className="flex-1 min-h-0 bg-white rounded-2xl border border-gray-100 h-[570px] flex flex-col overflow-hidden">
       <div className="px-4 md:px-5 py-3 border-b border-gray-100 bg-emerald-50 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-emerald-200 flex items-center justify-center font-semibold text-emerald-900">
-            {title?.[0]?.toUpperCase() || "A"}
-          </div>
-          <div>
-            <div className="font-semibold text-gray-900 text-sm md:text-base">{title}</div>
-            <div className="text-[11px] text-gray-500">
-              {new Date().toLocaleDateString("en-GB", {
-                weekday: "short",
-                day: "2-digit",
-                month: "short",
-                year: "numeric",
-              })}
-            </div>
+        <div className="flex items-center gap-3 min-w-0">
+          <Avatar name={title} image={profileImage} size="h-10 w-10" />
+          <div className="min-w-0">
+            <div className="font-semibold text-gray-900 text-sm md:text-base truncate">{title}</div>
+            <div className="text-[11px] text-gray-500 truncate">{subtitle}</div>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="text-[11px] text-emerald-900/70">{subtitle}</div>
+          <div className="text-[11px] text-emerald-900/70 hidden md:block">
+            {new Date().toLocaleDateString("en-GB", {
+              weekday: "short",
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            })}
+          </div>
 
-          <div className="relative" data-headmenu>
+          {/* <div className="relative" data-headmenu>
             <button
               type="button"
               onClick={() => setHeaderMenuOpen((v) => !v)}
@@ -323,7 +345,7 @@ export default function ChatWindow({
                 setConfirmDeleteChat(true);
               }}
             />
-          </div>
+          </div> */}
         </div>
       </div>
 
@@ -355,76 +377,79 @@ export default function ChatWindow({
 
               return (
                 <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                  <div className="relative group max-w-[80%]">
-                    <div
-                      className={`rounded-2xl px-4 py-3 text-sm leading-relaxed
-                        ${
+                  <div className={`flex items-end gap-2 max-w-[85%] ${mine ? "flex-row-reverse" : ""}`}>
+                    {!mine && <Avatar name={title} image={profileImage} size="h-8 w-8" />}
+
+                    <div className="relative group max-w-[80%]">
+                      <div
+                        className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                           isDeleted
                             ? "bg-gray-50 text-gray-500 italic border border-gray-100"
                             : mine
                             ? "bg-emerald-700 text-white"
                             : "bg-emerald-100 text-emerald-900"
                         }`}
-                    >
-                      <div className="whitespace-pre-line">
-                        {isDeleted ? "This message was deleted" : m.message}
-                      </div>
-
-                      <div
-                        className={`mt-1 text-[10px] ${
-                          isDeleted
-                            ? "text-gray-400"
-                            : mine
-                            ? "text-white/70"
-                            : "text-emerald-900/60"
-                        }`}
                       >
-                        {new Date(m.created_at).toLocaleTimeString("en-GB", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </div>
-                    </div>
+                        <div className="whitespace-pre-line">
+                          {isDeleted ? "This message was deleted" : m.message}
+                        </div>
 
-                    {mine && !isDeleted && !String(m.id).startsWith("tmp-") && (
-                      <div
-                        className="absolute -left-10 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition"
-                        data-msgmenu
-                        onMouseEnter={cancelCloseMsgMenu}
-                        onMouseLeave={() => scheduleCloseMsgMenu(320)}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => {
-                            cancelCloseMsgMenu();
-                            setOpenMenuId((prev) => (prev === m.id ? null : m.id));
-                          }}
-                          className="h-8 w-8 rounded-full border border-gray-100 bg-white text-gray-700 hover:bg-gray-50 flex items-center justify-center shadow-sm"
-                          title="More"
+                        <div
+                          className={`mt-1 text-[10px] ${
+                            isDeleted
+                              ? "text-gray-400"
+                              : mine
+                              ? "text-white/70"
+                              : "text-emerald-900/60"
+                          }`}
                         >
-                          ⋯
-                        </button>
-
-                        {openMenuId === m.id && (
-                          <div
-                            className="absolute bottom-full mb-2 right-0 w-36 rounded-xl border border-gray-100 bg-white shadow-lg overflow-hidden"
-                            onMouseEnter={cancelCloseMsgMenu}
-                            onMouseLeave={() => scheduleCloseMsgMenu(320)}
-                          >
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setOpenMenuId(null);
-                                setConfirmUnsend({ open: true, messageId: m.id });
-                              }}
-                              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                            >
-                              Unsend
-                            </button>
-                          </div>
-                        )}
+                          {new Date(m.created_at).toLocaleTimeString("en-GB", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </div>
                       </div>
-                    )}
+
+                      {mine && !isDeleted && !String(m.id).startsWith("tmp-") && (
+                        <div
+                          className="absolute -left-10 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition"
+                          data-msgmenu
+                          onMouseEnter={cancelCloseMsgMenu}
+                          onMouseLeave={() => scheduleCloseMsgMenu(320)}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => {
+                              cancelCloseMsgMenu();
+                              setOpenMenuId((prev) => (prev === m.id ? null : m.id));
+                            }}
+                            className="h-8 w-8 rounded-full border border-gray-100 bg-white text-gray-700 hover:bg-gray-50 flex items-center justify-center shadow-sm"
+                            title="More"
+                          >
+                            ⋯
+                          </button>
+
+                          {openMenuId === m.id && (
+                            <div
+                              className="absolute bottom-full mb-2 right-0 w-36 rounded-xl border border-gray-100 bg-white shadow-lg overflow-hidden"
+                              onMouseEnter={cancelCloseMsgMenu}
+                              onMouseLeave={() => scheduleCloseMsgMenu(320)}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOpenMenuId(null);
+                                  setConfirmUnsend({ open: true, messageId: m.id });
+                                }}
+                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                              >
+                                Unsend
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -485,7 +510,7 @@ export default function ChatWindow({
       <ConfirmModal
         open={confirmDeleteChat}
         title="Delete this chat?"
-        message="This will permanently delete the whole conversation and all messages."
+        message="This will remove this chat only from your side. The other person will still keep the old history. If you start this chat again later, it will open as a fresh chat for you."
         dangerText="Delete"
         onCancel={() => setConfirmDeleteChat(false)}
         onConfirm={() => {
