@@ -214,19 +214,19 @@ export default function AgencyEarningsPage() {
                       ].join(" ")}
                     >
                       <div className={[TABLE_GRID, "items-center"].join(" ")}>
-                        <div className="font-bold text-slate-800">
+                        <div className="text-sm font-medium leading-6 text-slate-700">
                           {item.payment_id}
                         </div>
 
-                        <div className="font-semibold text-slate-800">
+                        <div className="text-sm font-medium leading-6 text-slate-700">
                           {item.tourist_name}
                         </div>
 
-                        <div className="font-semibold text-slate-800">
+                        <div className="text-sm font-medium leading-6 text-slate-700">
                           {item.tour_name}
                         </div>
 
-                        <div className="font-bold text-slate-800">
+                        <div className="text-sm font-medium leading-6 text-slate-700">
                           {item.formattedAmount}
                         </div>
 
