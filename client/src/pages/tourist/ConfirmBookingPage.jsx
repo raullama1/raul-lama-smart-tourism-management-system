@@ -1,11 +1,44 @@
 // client/src/pages/tourist/ConfirmBookingPage.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import NavbarTourist from "../../components/tourist/NavbarTourist";
 import FooterTourist from "../../components/tourist/FooterTourist";
 import { useAuth } from "../../context/AuthContext";
 import { fetchBookingPreview, createBooking } from "../../api/bookingApi";
 import { FaCheckCircle } from "react-icons/fa";
+
+function Toast({ open, type = "success", message, onClose }) {
+  const boxClass =
+    type === "success"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+      : "border-red-200 bg-red-50 text-red-900";
+
+  return (
+    <div className="fixed top-5 right-5 z-[200] pointer-events-none">
+      <div
+        className={[
+          "pointer-events-auto relative w-[320px] rounded-2xl border px-4 py-3 shadow-lg",
+          "transition-all duration-300 ease-out",
+          open ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2",
+          boxClass,
+        ].join(" ")}
+        role="status"
+        aria-live="polite"
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-2 right-2 inline-flex h-7 w-7 items-center justify-center rounded-lg text-gray-700/70 hover:text-gray-900 hover:bg-black/5"
+          aria-label="Close notification"
+        >
+          ✕
+        </button>
+
+        <div className="pr-8 text-sm font-semibold">{message}</div>
+      </div>
+    </div>
+  );
+}
 
 function safeYMD(v) {
   const s = String(v || "").trim();
@@ -43,13 +76,39 @@ export default function ConfirmBookingPage() {
   const agencyTourId = sp.get("agencyTourId");
   const dateFromUrl = sp.get("date") || "";
 
+  const redirectTimerRef = useRef(null);
+  const toastTimerRef = useRef(null);
+
   const [preview, setPreview] = useState(null);
-  const [travelers, setTravelers] = useState("1"); // keep as string for input UX
+  const [travelers, setTravelers] = useState("1");
   const [notes, setNotes] = useState("");
   const [selectedDateLabel, setSelectedDateLabel] = useState(dateFromUrl);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  const [toast, setToast] = useState({
+    open: false,
+    type: "success",
+    message: "",
+  });
+
+  const showToast = (type, message) => {
+    setToast({ open: true, type, message });
+
+    window.clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = window.setTimeout(() => {
+      setToast((prev) => ({ ...prev, open: false }));
+    }, 2200);
+  };
+
+  const redirectWithToast = (type, message, path, delay = 1000) => {
+    showToast(type, message);
+    window.clearTimeout(redirectTimerRef.current);
+    redirectTimerRef.current = window.setTimeout(() => {
+      navigate(path);
+    }, delay);
+  };
 
   const availableDates = useMemo(() => {
     if (!preview) return [];
@@ -71,8 +130,15 @@ export default function ConfirmBookingPage() {
     return unitPrice * (Number.isNaN(n) ? 1 : n);
   }, [unitPrice, travelers]);
 
-  const unitPriceText = useMemo(() => `NPR ${unitPrice.toLocaleString("en-NP")}`, [unitPrice]);
-  const totalPriceText = useMemo(() => `NPR ${totalPrice.toLocaleString("en-NP")}`, [totalPrice]);
+  const unitPriceText = useMemo(
+    () => `NPR ${unitPrice.toLocaleString("en-NP")}`,
+    [unitPrice]
+  );
+
+  const totalPriceText = useMemo(
+    () => `NPR ${totalPrice.toLocaleString("en-NP")}`,
+    [totalPrice]
+  );
 
   useEffect(() => {
     if (!preview) return;
@@ -94,14 +160,16 @@ export default function ConfirmBookingPage() {
         setLoading(true);
 
         if (!token) {
-          alert("Please login to continue booking.");
-          navigate("/login");
+          redirectWithToast("error", "Please login to continue booking.", "/login");
           return;
         }
 
         if (!agencyTourId) {
-          alert("Missing agency tour info. Please try again.");
-          navigate("/tours");
+          redirectWithToast(
+            "error",
+            "Missing agency tour info. Please try again.",
+            "/tours"
+          );
           return;
         }
 
@@ -109,26 +177,34 @@ export default function ConfirmBookingPage() {
         setPreview(res?.data || null);
       } catch (e) {
         console.error("Failed to load booking preview", e);
-        alert(e?.response?.data?.message || "Failed to load booking preview.");
-        navigate("/tours");
+        redirectWithToast(
+          "error",
+          e?.response?.data?.message || "Failed to load booking preview.",
+          "/tours"
+        );
       } finally {
         setLoading(false);
       }
     };
 
     load();
+
+    return () => {
+      window.clearTimeout(redirectTimerRef.current);
+      window.clearTimeout(toastTimerRef.current);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, agencyTourId]);
 
   const handleConfirm = async () => {
     if (!selectedDateLabel) {
-      alert("Please select a date first.");
+      showToast("error", "Please select a date first.");
       return;
     }
 
     const n = Number(String(travelers || "1").trim());
     if (!n || Number.isNaN(n) || n < 1 || n > 99) {
-      alert("Travelers must be between 1 and 99.");
+      showToast("error", "Travelers must be between 1 and 99.");
       return;
     }
 
@@ -143,16 +219,19 @@ export default function ConfirmBookingPage() {
       };
 
       const res = await createBooking(payload);
-
       const saved = res?.data || {};
-      alert(
-        `Booking confirmed ✅\nRef: ${saved?.ref_code || "-"}\nTravelers saved: ${saved?.travelers ?? "-"}`
-      );
 
-      navigate("/bookings");
+      redirectWithToast(
+        "success",
+        `Booking confirmed. Ref: ${saved?.ref_code || "-"} | Travelers: ${
+          saved?.travelers ?? "-"
+        }`,
+        "/bookings",
+        1200
+      );
     } catch (e) {
       console.error("Confirm booking failed", e);
-      alert(e?.response?.data?.message || "Booking failed. Please try again.");
+      showToast("error", e?.response?.data?.message || "Booking failed. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -266,16 +345,22 @@ export default function ConfirmBookingPage() {
 
                 <button
                   disabled={
-                    saving || loading || !preview || !selectedDateLabel || availableDates.length === 0
+                    saving ||
+                    loading ||
+                    !preview ||
+                    !selectedDateLabel ||
+                    availableDates.length === 0
                   }
                   onClick={handleConfirm}
-                  className={`inline-flex items-center gap-2 px-6 py-3 rounded-xl text-white font-semibold
-                    ${
-                      saving || loading || !preview || !selectedDateLabel || availableDates.length === 0
-                        ? "bg-emerald-300 cursor-not-allowed"
-                        : "bg-emerald-700 hover:bg-emerald-800"
-                    }
-                  `}
+                  className={`inline-flex items-center gap-2 px-6 py-3 rounded-xl text-white font-semibold ${
+                    saving ||
+                    loading ||
+                    !preview ||
+                    !selectedDateLabel ||
+                    availableDates.length === 0
+                      ? "bg-emerald-300 cursor-not-allowed"
+                      : "bg-emerald-700 hover:bg-emerald-800"
+                  }`}
                 >
                   <FaCheckCircle />
                   {saving ? "Confirming..." : "Confirm Booking"}
@@ -287,6 +372,13 @@ export default function ConfirmBookingPage() {
       </main>
 
       <FooterTourist />
+
+      <Toast
+        open={toast.open}
+        type={toast.type}
+        message={toast.message}
+        onClose={() => setToast((prev) => ({ ...prev, open: false }))}
+      />
     </>
   );
 }
