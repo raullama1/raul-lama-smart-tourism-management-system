@@ -1,31 +1,23 @@
 // client/src/socket.js
 import { io } from "socket.io-client";
 
-let socketInstance = null;
-let socketToken = null;
+const socketStore = new Map();
 
-export function getSocket(token) {
+function buildKey(scope, token) {
+  return `${scope}::${token}`;
+}
+
+export function getScopedSocket(scope, token) {
   const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
 
-  // Reuse same socket if token is same
-  if (socketInstance && socketToken === token) return socketInstance;
+  if (!scope || !token) return null;
 
-  // Token changed or first time -> disconnect old
-  if (socketInstance) {
-    try {
-      socketInstance.removeAllListeners();
-      socketInstance.disconnect();
-    } catch {
-      // ignore
-    }
-    socketInstance = null;
-    socketToken = null;
+  const key = buildKey(scope, token);
+  if (socketStore.has(key)) {
+    return socketStore.get(key);
   }
 
-  socketToken = token;
-
-  socketInstance = io(base, {
-    // Allow fallback. DO NOT force only websocket.
+  const socket = io(base, {
     transports: ["polling", "websocket"],
     auth: { token },
     withCredentials: true,
@@ -33,22 +25,48 @@ export function getSocket(token) {
     reconnection: true,
   });
 
-  socketInstance.on("connect", () => {
-    socketInstance.emit("user:join");
+  socket.on("connect", () => {
+    socket.emit("user:join");
   });
 
-  return socketInstance;
+  socketStore.set(key, socket);
+  return socket;
 }
 
-export function disconnectSocket() {
-  if (!socketInstance) return;
+export function getTouristSocket(token) {
+  return getScopedSocket("tourist", token);
+}
+
+export function getAgencySocket(token) {
+  return getScopedSocket("agency", token);
+}
+
+export function disconnectScopedSocket(scope, token) {
+  if (!scope || !token) return;
+
+  const key = buildKey(scope, token);
+  const socket = socketStore.get(key);
+  if (!socket) return;
+
   try {
-    socketInstance.removeAllListeners();
-    socketInstance.disconnect();
+    socket.removeAllListeners();
+    socket.disconnect();
   } catch {
     // ignore
   } finally {
-    socketInstance = null;
-    socketToken = null;
+    socketStore.delete(key);
+  }
+}
+
+export function disconnectAllSockets() {
+  for (const [key, socket] of socketStore.entries()) {
+    try {
+      socket.removeAllListeners();
+      socket.disconnect();
+    } catch {
+      // ignore
+    } finally {
+      socketStore.delete(key);
+    }
   }
 }

@@ -1,5 +1,6 @@
 // server/controllers/agencyBookingsController.js
 import { db } from "../db.js";
+import { createNotification } from "../models/notificationModel.js";
 
 function requireAgency(req, res) {
   const agencyId = req.user?.id;
@@ -9,7 +10,14 @@ function requireAgency(req, res) {
     res.status(401).json({ message: "Agency authentication required." });
     return null;
   }
+
   return agencyId;
+}
+
+function emitNotification(io, role, userId, notification) {
+  if (!io || !notification || !role || !userId) return;
+  io.to(`acct:${role}:${Number(userId)}`).emit("notification:new", notification);
+  io.to(`acct:${role}:${Number(userId)}`).emit("notification:refresh");
 }
 
 function normStatus(v) {
@@ -75,10 +83,7 @@ export async function listAgencyBookingsController(req, res) {
     }
 
     const whereSql = `WHERE ${where.join(" AND ")}`;
-    const orderSql =
-      sort === "oldest"
-        ? "ORDER BY b.created_at ASC"
-        : "ORDER BY b.created_at DESC";
+    const orderSql = sort === "oldest" ? "ORDER BY b.created_at ASC" : "ORDER BY b.created_at DESC";
 
     const [rows] = await db.query(
       `
@@ -116,10 +121,6 @@ export async function listAgencyBookingsController(req, res) {
   }
 }
 
-/**
- * Booking details for agency
- * Includes tour listing status to keep details status consistent when tour is completed.
- */
 export async function getAgencyBookingDetailsController(req, res) {
   try {
     const agencyId = requireAgency(req, res);
@@ -192,8 +193,15 @@ export async function approveAgencyBookingController(req, res) {
 
     const [[row]] = await db.query(
       `
-      SELECT b.id, b.booking_status, b.payment_status
+      SELECT
+        b.id,
+        b.ref_code,
+        b.user_id,
+        b.booking_status,
+        b.payment_status,
+        t.title AS tour_title
       FROM bookings b
+      INNER JOIN tours t ON t.id = b.tour_id
       WHERE b.id = ? AND b.agency_id = ?
       LIMIT 1
       `,
@@ -203,21 +211,35 @@ export async function approveAgencyBookingController(req, res) {
     if (!row) return res.status(404).json({ message: "Booking not found." });
 
     if (String(row.booking_status) !== "Pending") {
-      return res
-        .status(400)
-        .json({ message: "Only pending bookings can be approved." });
+      return res.status(400).json({ message: "Only pending bookings can be approved." });
     }
 
     if (String(row.payment_status) !== "Unpaid") {
-      return res
-        .status(400)
-        .json({ message: "Cannot approve: payment is already marked paid." });
+      return res.status(400).json({ message: "Cannot approve: payment is already marked paid." });
     }
 
     await db.query(
       `UPDATE bookings SET booking_status = 'Approved' WHERE id = ? AND agency_id = ?`,
       [bookingId, agencyId]
     );
+
+    const io = req.app.get("io");
+
+    const touristNotification = await createNotification({
+      userId: Number(row.user_id),
+      receiverRole: "tourist",
+      type: "booking_approved",
+      title: "Booking approved",
+      message: `Your booking ${row.ref_code} for ${row.tour_title} was approved. You can pay now.`,
+      actionPath: `/bookings`,
+      actionLabel: "View booking",
+      meta: {
+        bookingId: Number(row.id),
+        refCode: row.ref_code,
+      },
+    });
+
+    emitNotification(io, "tourist", row.user_id, touristNotification);
 
     return res.json({ message: "Booking approved." });
   } catch (err) {
@@ -238,8 +260,14 @@ export async function rejectAgencyBookingController(req, res) {
 
     const [[row]] = await db.query(
       `
-      SELECT b.id, b.booking_status
+      SELECT
+        b.id,
+        b.ref_code,
+        b.user_id,
+        b.booking_status,
+        t.title AS tour_title
       FROM bookings b
+      INNER JOIN tours t ON t.id = b.tour_id
       WHERE b.id = ? AND b.agency_id = ?
       LIMIT 1
       `,
@@ -249,15 +277,31 @@ export async function rejectAgencyBookingController(req, res) {
     if (!row) return res.status(404).json({ message: "Booking not found." });
 
     if (String(row.booking_status) !== "Pending") {
-      return res
-        .status(400)
-        .json({ message: "Only pending bookings can be rejected." });
+      return res.status(400).json({ message: "Only pending bookings can be rejected." });
     }
 
     await db.query(
       `UPDATE bookings SET booking_status = 'Cancelled' WHERE id = ? AND agency_id = ?`,
       [bookingId, agencyId]
     );
+
+    const io = req.app.get("io");
+
+    const touristNotification = await createNotification({
+      userId: Number(row.user_id),
+      receiverRole: "tourist",
+      type: "booking_rejected",
+      title: "Booking cancelled",
+      message: `Your booking ${row.ref_code} for ${row.tour_title} was cancelled by the agency.`,
+      actionPath: `/bookings`,
+      actionLabel: "View booking",
+      meta: {
+        bookingId: Number(row.id),
+        refCode: row.ref_code,
+      },
+    });
+
+    emitNotification(io, "tourist", row.user_id, touristNotification);
 
     return res.json({ message: "Booking rejected." });
   } catch (err) {

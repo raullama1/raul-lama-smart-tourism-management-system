@@ -1,5 +1,6 @@
 // client/src/pages/tourist/TouristChatPage.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import NavbarTourist from "../../components/tourist/NavbarTourist";
 import FooterTourist from "../../components/tourist/FooterTourist";
 import ChatSidebar from "../../components/tourist/chat/ChatSidebar";
@@ -15,7 +16,7 @@ import {
   deleteMessage,
   deleteConversation,
 } from "../../api/chatApi";
-import { getSocket } from "../../socket";
+import { getTouristSocket } from "../../socket";
 
 const PAGE_LIMIT = 20;
 
@@ -39,6 +40,7 @@ function hasAnyMessagePreview(c) {
 
 export default function TouristChatPage() {
   const { token } = useAuth();
+  const [searchParams] = useSearchParams();
 
   const [loadingConvos, setLoadingConvos] = useState(true);
   const [convos, setConvos] = useState([]);
@@ -59,6 +61,7 @@ export default function TouristChatPage() {
 
   const socketRef = useRef(null);
   const activeConvoReqRef = useRef(0);
+  const autoOpenedRef = useRef("");
 
   const selectedIdRef = useRef(null);
   useEffect(() => {
@@ -107,6 +110,7 @@ export default function TouristChatPage() {
 
     const curSelected = Number(selectedIdRef.current || 0);
     const selectedWasEmpty = empties.some((c) => Number(getConvoId(c)) === curSelected);
+
     if (selectedWasEmpty) {
       setSelectedId(null);
       setMessages([]);
@@ -117,6 +121,7 @@ export default function TouristChatPage() {
     for (const c of empties) {
       const cid = getConvoId(c);
       if (!cid) continue;
+
       try {
         await deleteConversation(token, cid, { onlyIfEmpty: true });
       } catch (e) {
@@ -222,7 +227,7 @@ export default function TouristChatPage() {
   useEffect(() => {
     if (!token) return;
 
-    const s = getSocket(token);
+    const s = getTouristSocket(token);
     socketRef.current = s;
 
     const onChatMessage = ({ conversationId, message }) => {
@@ -348,6 +353,21 @@ export default function TouristChatPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
+
+  useEffect(() => {
+    const paramId = Number(searchParams.get("conversationId") || 0);
+    if (!paramId || loadingConvos) return;
+
+    const key = String(paramId);
+    if (autoOpenedRef.current === key) return;
+
+    const target = (convos || []).find((c) => Number(getConvoId(c)) === Number(paramId));
+    if (!target) return;
+
+    autoOpenedRef.current = key;
+    handleSelect(target);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, convos, loadingConvos]);
 
   const selected = useMemo(() => {
     if (!selectedId) return null;
@@ -610,6 +630,7 @@ export default function TouristChatPage() {
       const existing = (convos || []).find(
         (c) => Number(getAgencyIdFromConvo(c)) === Number(agencyId)
       );
+
       if (existing) {
         handleSelect(existing);
         return;

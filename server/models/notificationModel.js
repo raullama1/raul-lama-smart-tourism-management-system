@@ -1,63 +1,47 @@
 // server/models/notificationModel.js
 import { db } from "../db.js";
 
-/*
-  Notification Model
-
-  Expected table columns:
-  - id
-  - user_id
-  - title
-  - message
-  - action_path (optional)
-  - action_label (optional)
-  - is_read (tinyint) OR read_at (timestamp)
-  - created_at
-*/
-
-/*
-  Normalize DB row: make sure frontend can rely on "is_read" (0/1).
-*/
-function normalizeRow(row) {
-  const hasIsRead = typeof row.is_read !== "undefined";
-  const hasReadAt = typeof row.read_at !== "undefined";
-
-  if (hasIsRead) return row;
-
-  if (hasReadAt) {
-    return {
-      ...row,
-      is_read: row.read_at ? 1 : 0,
-    };
-  }
-
-  return row;
+function normalizeRole(role) {
+  const r = String(role || "").trim().toLowerCase();
+  if (r === "tourist" || r === "agency" || r === "admin") return r;
+  return "";
 }
 
-/*
-  CREATE notification and return the inserted notification row.
-  This is important because sockets emit the created object to the client.
+function normalizeRow(row) {
+  return {
+    ...row,
+    is_read: Number(row?.is_read || 0),
+  };
+}
 
-  Usage examples:
-  - chat socket: new message alert
-  - booking updates
-  - payment updates
-  - password change alerts
-*/
 export async function createNotification({
   userId,
+  receiverRole,
+  type = "general",
   title,
   message,
   actionPath = null,
   actionLabel = null,
+  meta = null,
 }) {
+  const safeRole = normalizeRole(receiverRole);
+
   const [result] = await db.query(
     `
     INSERT INTO notifications
-    (user_id, title, message, action_path, action_label, is_read, created_at)
-    VALUES (?, ?, ?, ?, ?, 0, NOW())
+    (user_id, receiver_role, type, title, message, action_label, action_path, meta, is_read, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NOW())
     `,
-    [userId, title, message, actionPath, actionLabel]
+    [
+      Number(userId),
+      safeRole,
+      String(type || "general").trim(),
+      String(title || "").trim(),
+      String(message || "").trim(),
+      actionLabel ? String(actionLabel).trim() : null,
+      actionPath ? String(actionPath).trim() : null,
+      meta ? JSON.stringify(meta) : null,
+    ]
   );
 
   const insertId = result?.insertId;
@@ -76,122 +60,84 @@ export async function createNotification({
   return rows?.[0] ? normalizeRow(rows[0]) : null;
 }
 
-/*
-  List notifications for a user
-*/
-export async function listNotifications(userId, limit = 10, offset = 0) {
-  const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(50, limit)) : 10;
+export async function listNotifications({ userId, receiverRole, limit = 50, offset = 0 }) {
+  const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(100, limit)) : 50;
   const safeOffset = Number.isFinite(offset) ? Math.max(0, offset) : 0;
+  const safeRole = normalizeRole(receiverRole);
 
   const [rows] = await db.query(
     `
     SELECT *
     FROM notifications
     WHERE user_id = ?
+      AND receiver_role = ?
     ORDER BY created_at DESC, id DESC
     LIMIT ?
     OFFSET ?
     `,
-    [userId, safeLimit, safeOffset]
+    [Number(userId), safeRole, safeLimit, safeOffset]
   );
 
   return { notifications: rows.map(normalizeRow) };
 }
 
-/*
-  Mark one notification read
-*/
-export async function markNotificationRead(userId, notificationId) {
-  try {
-    await db.query(
-      `
-      UPDATE notifications
-      SET is_read = 1
-      WHERE id = ? AND user_id = ?
-      `,
-      [notificationId, userId]
-    );
-    return;
-  } catch (e) {
-    // If column is_read does not exist, fall back to read_at
-  }
+export async function markNotificationRead({ userId, receiverRole, notificationId }) {
+  const safeRole = normalizeRole(receiverRole);
 
   await db.query(
     `
     UPDATE notifications
-    SET read_at = NOW()
-    WHERE id = ? AND user_id = ?
+    SET is_read = 1
+    WHERE id = ?
+      AND user_id = ?
+      AND receiver_role = ?
     `,
-    [notificationId, userId]
+    [Number(notificationId), Number(userId), safeRole]
   );
 }
 
-/*
-  Mark all notifications read
-*/
-export async function markAllRead(userId) {
-  try {
-    await db.query(
-      `
-      UPDATE notifications
-      SET is_read = 1
-      WHERE user_id = ? AND (is_read = 0 OR is_read IS NULL)
-      `,
-      [userId]
-    );
-    return;
-  } catch (e) {
-    // If column is_read does not exist, fall back to read_at
-  }
+export async function markAllRead({ userId, receiverRole }) {
+  const safeRole = normalizeRole(receiverRole);
 
   await db.query(
     `
     UPDATE notifications
-    SET read_at = NOW()
-    WHERE user_id = ? AND read_at IS NULL
+    SET is_read = 1
+    WHERE user_id = ?
+      AND receiver_role = ?
+      AND is_read = 0
     `,
-    [userId]
+    [Number(userId), safeRole]
   );
 }
 
-/*
-  Get unread count
-*/
-export async function getUnreadCount(userId) {
-  try {
-    const [[row]] = await db.query(
-      `
-      SELECT COUNT(*) AS cnt
-      FROM notifications
-      WHERE user_id = ? AND (is_read = 0 OR is_read IS NULL)
-      `,
-      [userId]
-    );
-    return Number(row?.cnt || 0);
-  } catch (e) {
-    // If column is_read does not exist, fall back to read_at
-  }
+export async function getUnreadCount({ userId, receiverRole }) {
+  const safeRole = normalizeRole(receiverRole);
 
   const [[row]] = await db.query(
     `
     SELECT COUNT(*) AS cnt
     FROM notifications
-    WHERE user_id = ? AND read_at IS NULL
+    WHERE user_id = ?
+      AND receiver_role = ?
+      AND is_read = 0
     `,
-    [userId]
+    [Number(userId), safeRole]
   );
+
   return Number(row?.cnt || 0);
 }
 
-/*
-  Delete one notification
-*/
-export async function deleteNotification(userId, notificationId) {
+export async function deleteNotification({ userId, receiverRole, notificationId }) {
+  const safeRole = normalizeRole(receiverRole);
+
   await db.query(
     `
     DELETE FROM notifications
-    WHERE id = ? AND user_id = ?
+    WHERE id = ?
+      AND user_id = ?
+      AND receiver_role = ?
     `,
-    [notificationId, userId]
+    [Number(notificationId), Number(userId), safeRole]
   );
 }

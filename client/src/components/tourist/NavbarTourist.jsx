@@ -4,7 +4,7 @@ import { useRef, useEffect, useState } from "react";
 import { gsap } from "gsap";
 import { useAuth } from "../../context/AuthContext";
 import { FiBell } from "react-icons/fi";
-import { useNotifications } from "../../context/NotificationContext";
+import { useTouristNotifications } from "../../context/TouristNotificationContext";
 import NotificationsDrawer from "./NotificationsDrawer";
 
 export default function NavbarTourist() {
@@ -12,12 +12,9 @@ export default function NavbarTourist() {
   const navigate = useNavigate();
 
   const logoutRef = useRef(null);
-
-  // Notifications
-  const { unreadCount, refresh } = useNotifications();
+  const { unreadCount, refresh } = useTouristNotifications();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  // GSAP hover animation
   useEffect(() => {
     const btn = logoutRef.current;
     if (!btn) return;
@@ -75,7 +72,7 @@ export default function NavbarTourist() {
 
   const openDrawer = async () => {
     setDrawerOpen(true);
-    // Refresh notifications when opening so badge and list are always latest
+
     try {
       await refresh?.();
     } catch {
@@ -89,7 +86,6 @@ export default function NavbarTourist() {
     <>
       <header className="w-full bg-white shadow-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4 flex items-center justify-between">
-          {/* Logo */}
           <Link to="/home" className="flex items-center gap-2">
             <div className="h-10 w-10 rounded-full bg-emerald-100 flex items-center justify-center">
               <span className="text-emerald-700 text-lg font-bold">{initial}</span>
@@ -99,7 +95,6 @@ export default function NavbarTourist() {
             </span>
           </Link>
 
-          {/* Navigation Links */}
           <nav className="flex items-center gap-2 md:gap-6">
             {navItems.map((item) => (
               <NavLink
@@ -117,7 +112,6 @@ export default function NavbarTourist() {
               </NavLink>
             ))}
 
-            {/* Logout button (GSAP hover) */}
             <button
               ref={logoutRef}
               onClick={handleLogout}
@@ -127,7 +121,6 @@ export default function NavbarTourist() {
               Logout
             </button>
 
-            {/* Bell icon + badge */}
             <button
               type="button"
               onClick={openDrawer}
@@ -147,7 +140,6 @@ export default function NavbarTourist() {
         </div>
       </header>
 
-      {/* Drawer */}
       <NotificationsDrawer open={drawerOpen} onClose={closeDrawer} />
     </>
   );

@@ -1,7 +1,12 @@
 // server/controllers/paymentController.js
 import crypto from "crypto";
 import axios from "axios";
-import { getBookingForPayment, markBookingPaid } from "../models/paymentModel.js";
+import { createNotification } from "../models/notificationModel.js";
+import {
+  getBookingForPayment,
+  markBookingPaid,
+  getBookingNotificationInfo,
+} from "../models/paymentModel.js";
 
 function hmacBase64(secret, message) {
   return crypto.createHmac("sha256", secret).update(message).digest("base64");
@@ -26,15 +31,19 @@ function makeTransactionUuid(bookingId, refCode) {
 }
 
 function extractBookingIdFromTxn(txn) {
-  // txn: BK-21-NP-JANA-... => bookingId = 21
   const m = String(txn || "").match(/^BK-(\d+)-/);
   return m ? Number(m[1]) : null;
 }
 
+function emitNotification(io, role, userId, notification) {
+  if (!io || !notification || !role || !userId) return;
+  io.to(`acct:${role}:${Number(userId)}`).emit("notification:new", notification);
+  io.to(`acct:${role}:${Number(userId)}`).emit("notification:refresh");
+}
+
 async function verifyEsewaStatus({ product_code, total_amount, transaction_uuid }) {
   const statusUrl =
-    process.env.ESEWA_STATUS_URL ||
-    "https://rc.esewa.com.np/api/epay/transaction/status/"; // RC by default
+    process.env.ESEWA_STATUS_URL || "https://rc.esewa.com.np/api/epay/transaction/status/";
 
   try {
     const url = statusUrl.endsWith("/") ? statusUrl : `${statusUrl}/`;
@@ -66,17 +75,14 @@ export async function initiateEsewaPayment(req, res) {
 
     const productCode = process.env.ESEWA_PRODUCT_CODE || "EPAYTEST";
     const secretKey = process.env.ESEWA_SECRET_KEY || "";
-    const formUrl =
-      process.env.ESEWA_FORM_URL ||
-      "https://rc-epay.esewa.com.np/api/epay/main/v2/form";
+    const formUrl = process.env.ESEWA_FORM_URL || "https://rc-epay.esewa.com.np/api/epay/main/v2/form";
 
     const total = Number(booking.total_price || 0);
-    if (!total || total < 1) return res.status(400).json({ message: "Invalid total amount." });
+    if (!total || total < 1) {
+      return res.status(400).json({ message: "Invalid total amount." });
+    }
 
-    // New UUID on every attempt (prevents duplicate UUID issue)
     const transactionUuid = makeTransactionUuid(booking.id, booking.ref_code);
-
-    // IMPORTANT: Do NOT add bookingId in query. eSewa may drop it.
     const apiBase = process.env.API_BASE_URL || "http://localhost:5001";
 
     const payload = {
@@ -127,10 +133,9 @@ export async function esewaSuccess(req, res) {
       return res.redirect(`${process.env.CLIENT_URL}/payment/failure/0?reason=bad_txn_uuid`);
     }
 
-    // First accept callback COMPLETE
-    let statusOk = normalizeStatus(body.status) === "COMPLETE" || normalizeStatus(body.status) === "COMPLETED";
+    let statusOk =
+      normalizeStatus(body.status) === "COMPLETE" || normalizeStatus(body.status) === "COMPLETED";
 
-    // Then verify (recommended). If verify fails, but callback is COMPLETE, we still allow success in RC.
     const verify = await verifyEsewaStatus({
       product_code: body.product_code,
       total_amount: body.total_amount,
@@ -144,6 +149,44 @@ export async function esewaSuccess(req, res) {
     }
 
     await markBookingPaid(bookingId);
+
+    const info = await getBookingNotificationInfo(bookingId);
+    if (info) {
+      const io = req.app.get("io");
+
+      const touristNotification = await createNotification({
+        userId: Number(info.user_id),
+        receiverRole: "tourist",
+        type: "payment_success",
+        title: "Payment successful",
+        message: `Payment successful for booking ${info.ref_code}. Your ${info.tour_title} trip is confirmed.`,
+        actionPath: `/bookings`,
+        actionLabel: "View booking",
+        meta: {
+          bookingId: Number(info.id),
+          refCode: info.ref_code,
+        },
+      });
+
+      emitNotification(io, "tourist", info.user_id, touristNotification);
+
+      const agencyNotification = await createNotification({
+        userId: Number(info.agency_id),
+        receiverRole: "agency",
+        type: "payment_received",
+        title: "Payment received",
+        message: `Payment was completed for booking ${info.ref_code} (${info.tour_title}).`,
+        actionPath: `/agency/bookings`,
+        actionLabel: "View bookings",
+        meta: {
+          bookingId: Number(info.id),
+          refCode: info.ref_code,
+        },
+      });
+
+      emitNotification(io, "agency", info.agency_id, agencyNotification);
+    }
+
     return res.redirect(`${process.env.CLIENT_URL}/payment/success/${bookingId}`);
   } catch (err) {
     console.error("esewaSuccess error:", err);
@@ -152,7 +195,6 @@ export async function esewaSuccess(req, res) {
 }
 
 export async function esewaFailure(req, res) {
-  // eSewa often sends ?data=... even on failure. If present, extract bookingId from txn.
   try {
     const dataB64 = req.query.data;
     if (!dataB64) {

@@ -31,7 +31,6 @@ function canAccessConversation(user, convo) {
   const id = Number(user?.id);
 
   if (!role || !id) return false;
-
   if (role === "tourist") return Number(convo.tourist_id) === id;
   if (role === "agency") return Number(convo.agency_id) === id;
 
@@ -68,15 +67,10 @@ export function initChatSocket(io) {
     }
 
     socket.user = user;
-
     socket.join(acctRoom(user.role, user.id));
-    socket.join(`user:${user.id}`);
-
-    const displayName = user.name || (user.role === "agency" ? "Agency" : "Tourist");
 
     socket.on("user:join", () => {
       socket.join(acctRoom(user.role, user.id));
-      socket.join(`user:${user.id}`);
     });
 
     socket.on("chat:join", async ({ conversationId }) => {
@@ -133,6 +127,11 @@ export function initChatSocket(io) {
         if (!canAccessConversation(user, convo)) return;
         if (!isConversationVisibleToUser(user, convo)) return;
 
+        const senderName =
+          user.role === "tourist"
+            ? convo.tourist_name || "Tourist"
+            : convo.agency_name || "Agency";
+
         const otherSideVisible =
           user.role === "tourist"
             ? Number(convo?.deleted_for_agency || 0) === 0
@@ -142,7 +141,7 @@ export function initChatSocket(io) {
 
         socket.to(`convo:${conversationId}`).emit("chat:typing", {
           conversationId,
-          name: displayName,
+          name: senderName,
         });
       } catch (e) {
         console.error("chat:typing error", e);
@@ -223,29 +222,47 @@ export function initChatSocket(io) {
             ? Number(refreshedConvo.agency_id)
             : Number(refreshedConvo.tourist_id);
 
+        const receiverRole = user.role === "tourist" ? "agency" : "tourist";
+
         const receiverVisible =
           user.role === "tourist"
             ? Number(refreshedConvo?.deleted_for_agency || 0) === 0
             : Number(refreshedConvo?.deleted_for_tourist || 0) === 0;
 
         if (receiverVisible) {
-          const notifTitle =
-            user.role === "tourist" ? "New message from Tourist" : "New message from Agency";
+          const senderName =
+            user.role === "tourist"
+              ? refreshedConvo.tourist_name || "Tourist"
+              : refreshedConvo.agency_name || "Agency";
+
+          const notifTitle = `New message from ${senderName}`;
           const notifBody = safeText(text);
+
+          const actionPath =
+            receiverRole === "agency"
+              ? `/agency/chat?conversationId=${Number(conversationId)}`
+              : `/chat?conversationId=${Number(conversationId)}`;
 
           try {
             const created = await createNotification({
               userId: receiverId,
+              receiverRole,
               type: "chat",
               title: notifTitle,
               message: notifBody,
-              meta: JSON.stringify({
+              actionPath,
+              actionLabel: "Open chat",
+              meta: {
                 conversationId: Number(conversationId),
                 senderRole: user.role,
-              }),
+                senderName,
+              },
             });
 
-            io.to(`user:${receiverId}`).emit("notification:new", created);
+            if (created) {
+              io.to(acctRoom(receiverRole, receiverId)).emit("notification:new", created);
+              io.to(acctRoom(receiverRole, receiverId)).emit("notification:refresh");
+            }
           } catch (e) {
             console.error("createNotification(chat) error", e);
           }

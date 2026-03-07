@@ -1,5 +1,6 @@
 // client/src/pages/agency/AgencyChatPage.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import AgencyLayout from "../../components/agency/AgencyLayout";
 import AgencyChatSidebar from "../../components/agency/chat/AgencyChatSidebar";
 import AgencyChatWindow from "../../components/agency/chat/AgencyChatWindow";
@@ -15,7 +16,7 @@ import {
   deleteMessage,
   deleteConversationAsAgency,
 } from "../../api/chatApi";
-import { getSocket } from "../../socket";
+import { getAgencySocket } from "../../socket";
 
 const PAGE_LIMIT = 20;
 
@@ -39,6 +40,7 @@ function hasAnyMessagePreview(c) {
 
 export default function AgencyChatPage() {
   const { token } = useAgencyAuth();
+  const [searchParams] = useSearchParams();
 
   const [loadingConvos, setLoadingConvos] = useState(true);
   const [convos, setConvos] = useState([]);
@@ -59,6 +61,7 @@ export default function AgencyChatPage() {
 
   const socketRef = useRef(null);
   const activeConvoReqRef = useRef(0);
+  const autoOpenedRef = useRef("");
 
   const selectedIdRef = useRef(null);
   useEffect(() => {
@@ -118,6 +121,7 @@ export default function AgencyChatPage() {
     for (const c of empties) {
       const cid = getConvoId(c);
       if (!cid) continue;
+
       try {
         await deleteConversationAsAgency(token, cid, { onlyIfEmpty: true });
       } catch (e) {
@@ -130,6 +134,7 @@ export default function AgencyChatPage() {
 
   const loadConvos = async ({ silent = false } = {}) => {
     if (!token) return;
+
     try {
       if (!silent) setLoadingConvos(true);
 
@@ -222,7 +227,7 @@ export default function AgencyChatPage() {
   useEffect(() => {
     if (!token) return;
 
-    const s = getSocket(token);
+    const s = getAgencySocket(token);
     socketRef.current = s;
 
     const onChatMessage = ({ conversationId, message }) => {
@@ -233,6 +238,7 @@ export default function AgencyChatPage() {
       setConvos((prev) => {
         const next = [...(prev || [])];
         const idx = next.findIndex((x) => Number(getConvoId(x)) === Number(conversationId));
+
         if (idx >= 0) {
           found = true;
 
@@ -244,7 +250,6 @@ export default function AgencyChatPage() {
           };
 
           const isOpen = Number(selectedIdRef.current) === Number(conversationId);
-
           if (!isOpen && message?.sender_role !== "agency") {
             updated.unread_count = Number(updated.unread_count || 0) + 1;
           }
@@ -253,6 +258,7 @@ export default function AgencyChatPage() {
           const [item] = next.splice(idx, 1);
           next.unshift(item);
         }
+
         return next;
       });
 
@@ -347,6 +353,21 @@ export default function AgencyChatPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
+
+  useEffect(() => {
+    const paramId = Number(searchParams.get("conversationId") || 0);
+    if (!paramId || loadingConvos) return;
+
+    const key = String(paramId);
+    if (autoOpenedRef.current === key) return;
+
+    const target = (convos || []).find((c) => Number(getConvoId(c)) === Number(paramId));
+    if (!target) return;
+
+    autoOpenedRef.current = key;
+    handleSelect(target);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, convos, loadingConvos]);
 
   const selected = useMemo(() => {
     if (!selectedId) return null;
@@ -609,6 +630,7 @@ export default function AgencyChatPage() {
       const existing = (convos || []).find(
         (c) => Number(getTouristIdFromConvo(c)) === Number(touristId)
       );
+
       if (existing) {
         handleSelect(existing);
         return;

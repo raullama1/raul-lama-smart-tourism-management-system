@@ -248,7 +248,7 @@ export default function BookingsPage() {
 
     try {
       setBusyId(bookingId);
-      await payBooking(bookingId);
+      navigate(`/payment/${bookingId}`);
       handleRefresh();
     } catch (e) {
       console.error("Pay failed", e);
