@@ -10,12 +10,12 @@ export async function getAgencyDashboardController(req, res) {
       return res.status(401).json({ message: "Agency authentication required." });
     }
 
-    // Active Tours = distinct tours booked by this agency (works with current DB)
+    // Active tours should come from agency_tours and only count rows with listing_status = 'active'.
     const [[activeToursRow]] = await db.query(
-      `SELECT COUNT(DISTINCT tour_id) AS cnt
-       FROM bookings
+      `SELECT COUNT(*) AS cnt
+       FROM agency_tours
        WHERE agency_id = ?
-         AND booking_status <> 'Cancelled'`,
+         AND listing_status = 'active'`,
       [agencyId]
     );
 
@@ -69,7 +69,10 @@ export async function getAgencyDashboardController(req, res) {
       booking_status: r.booking_status,
       payment_status: r.payment_status,
       booking_date_label: r.booking_date
-        ? new Date(r.booking_date).toLocaleDateString("en-US", { day: "2-digit", month: "short" })
+        ? new Date(r.booking_date).toLocaleDateString("en-US", {
+            day: "2-digit",
+            month: "short",
+          })
         : "—",
       payment_label: r.payment_status === "Paid" ? "Paid (NPR)" : "Unpaid",
     }));
