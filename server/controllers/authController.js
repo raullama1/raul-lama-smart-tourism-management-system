@@ -27,20 +27,14 @@ const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 const JWT_EXPIRES_IN = "7d";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
-// 5 minutes expiry for reset link
 const RESET_PASSWORD_TOKEN_EXP_MINUTES = 5;
 
-// Helper to create JWT for normal auth
 function signToken(user) {
   return jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, {
     expiresIn: JWT_EXPIRES_IN,
   });
 }
 
-/**
- * Password validation that returns MULTIPLE errors
- * returns: [] if ok, otherwise ["...", "..."]
- */
 function validatePasswordStrength(password) {
   const errors = [];
 
@@ -63,9 +57,6 @@ function validatePasswordStrength(password) {
   return errors;
 }
 
-/* ------------------------------------------------------------------ */
-/* SIGNUP: send verification code                                     */
-/* ------------------------------------------------------------------ */
 export async function sendSignupVerificationCodeController(req, res) {
   try {
     const { email } = req.body || {};
@@ -76,15 +67,14 @@ export async function sendSignupVerificationCodeController(req, res) {
         .json({ message: "Email is required to send verification code." });
     }
 
-    // Block if email already used by agency
     const agencyExisting = await findAgencyByEmail(email);
     if (agencyExisting) {
       return res.status(400).json({
-        message: "This email is already registered as an agency. Please use a different email for user.",
+        message:
+          "This email is already registered as an agency. Please use a different email for user.",
       });
     }
 
-    // If user already exists, do not allow signup
     const existing = await findUserByEmail(email);
     if (existing) {
       return res
@@ -92,8 +82,8 @@ export async function sendSignupVerificationCodeController(req, res) {
         .json({ message: "An account with this email already exists." });
     }
 
-    const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
-    const expiresAt = new Date(Date.now() + 60 * 1000); // 60 seconds
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 60 * 1000);
 
     await createEmailVerification(email, code, expiresAt);
 
@@ -109,13 +99,12 @@ export async function sendSignupVerificationCodeController(req, res) {
     });
   } catch (err) {
     console.error("sendSignupVerificationCodeController error", err);
-    return res.status(500).json({ message: "Failed to send verification code." });
+    return res
+      .status(500)
+      .json({ message: "Failed to send verification code." });
   }
 }
 
-/* ------------------------------------------------------------------ */
-/* SIGNUP (with verification code)                                    */
-/* ------------------------------------------------------------------ */
 export async function signupController(req, res) {
   try {
     const { name, email, password, verificationCode } = req.body || {};
@@ -126,11 +115,11 @@ export async function signupController(req, res) {
       });
     }
 
-    // Block if email already used by agency
     const agencyExisting = await findAgencyByEmail(email);
     if (agencyExisting) {
       return res.status(400).json({
-        message: "This email is already registered as an agency. Please use a different email for user.",
+        message:
+          "This email is already registered as an agency. Please use a different email for user.",
       });
     }
 
@@ -149,7 +138,10 @@ export async function signupController(req, res) {
         .json({ message: "An account with this email already exists." });
     }
 
-    const verification = await findValidEmailVerification(email, verificationCode);
+    const verification = await findValidEmailVerification(
+      email,
+      verificationCode,
+    );
     if (!verification) {
       return res
         .status(400)
@@ -183,20 +175,25 @@ export async function signupController(req, res) {
   }
 }
 
-/* ------------------------------------------------------------------ */
-/* LOGIN                                                              */
-/* ------------------------------------------------------------------ */
 export async function loginController(req, res) {
   try {
     const { email, password } = req.body || {};
 
     if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required." });
+      return res
+        .status(400)
+        .json({ message: "Email and password are required." });
     }
 
     const user = await findUserByEmail(email);
     if (!user) {
       return res.status(400).json({ message: "Invalid email or password." });
+    }
+
+    if (user.role !== "tourist") {
+      return res.status(400).json({
+        message: "Invalid email or password.",
+      });
     }
 
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
@@ -220,9 +217,6 @@ export async function loginController(req, res) {
   }
 }
 
-/* ------------------------------------------------------------------ */
-/* FORGOT PASSWORD – send 5-minute, single-use link                   */
-/* ------------------------------------------------------------------ */
 export async function forgotPasswordController(req, res) {
   try {
     const { email } = req.body || {};
@@ -232,7 +226,7 @@ export async function forgotPasswordController(req, res) {
 
     const user = await findUserByEmail(email);
 
-    if (!user) {
+    if (!user || user.role !== "tourist") {
       return res.json({
         message:
           "If an account with that email exists, a reset link (valid for 5 minutes and single-use) has been sent.",
@@ -240,16 +234,19 @@ export async function forgotPasswordController(req, res) {
     }
 
     const plainToken = crypto.randomBytes(32).toString("hex");
-    const tokenHash = crypto.createHash("sha256").update(plainToken).digest("hex");
+    const tokenHash = crypto
+      .createHash("sha256")
+      .update(plainToken)
+      .digest("hex");
 
     const expiresAt = new Date(
-      Date.now() + RESET_PASSWORD_TOKEN_EXP_MINUTES * 60 * 1000
+      Date.now() + RESET_PASSWORD_TOKEN_EXP_MINUTES * 60 * 1000,
     );
 
     await db.query(
       `INSERT INTO password_reset_tokens (user_id, account_type, token_hash, expires_at)
        VALUES (?, 'user', ?, ?)`,
-      [user.id, tokenHash, expiresAt]
+      [user.id, tokenHash, expiresAt],
     );
 
     const resetLink = `${FRONTEND_URL}/reset-password?token=${plainToken}`;
@@ -270,9 +267,6 @@ export async function forgotPasswordController(req, res) {
   }
 }
 
-/* ------------------------------------------------------------------ */
-/* RESET PASSWORD – single-use, 5-minute link                         */
-/* ------------------------------------------------------------------ */
 export async function resetPasswordController(req, res) {
   try {
     const { token, password } = req.body || {};
@@ -299,14 +293,15 @@ export async function resetPasswordController(req, res) {
        WHERE token_hash = ?
          AND account_type = 'user'
        LIMIT 1`,
-      [tokenHash]
+      [tokenHash],
     );
 
     const record = rows[0];
 
     if (!record) {
       return res.status(400).json({
-        message: "This password reset link is invalid or has already been used.",
+        message:
+          "This password reset link is invalid or has already been used.",
       });
     }
 
@@ -319,7 +314,17 @@ export async function resetPasswordController(req, res) {
     const now = new Date();
     const expiresAt = new Date(record.expires_at);
     if (expiresAt < now) {
-      return res.status(400).json({ message: "This password reset link has expired." });
+      return res
+        .status(400)
+        .json({ message: "This password reset link has expired." });
+    }
+
+    const user = await findUserById(record.user_id);
+    if (!user || user.role !== "tourist") {
+      return res.status(400).json({
+        message:
+          "This password reset link is invalid or has already been used.",
+      });
     }
 
     const newHash = await bcrypt.hash(password, 10);
@@ -329,7 +334,7 @@ export async function resetPasswordController(req, res) {
       `UPDATE password_reset_tokens
        SET used_at = NOW()
        WHERE id = ?`,
-      [record.id]
+      [record.id],
     );
 
     return res.json({ message: "Password has been reset successfully." });
@@ -339,9 +344,6 @@ export async function resetPasswordController(req, res) {
   }
 }
 
-/* ------------------------------------------------------------------ */
-/* CHANGE PASSWORD (logged-in user)                                   */
-/* ------------------------------------------------------------------ */
 export async function changePasswordController(req, res) {
   try {
     const userId = req.user?.id;
@@ -349,6 +351,12 @@ export async function changePasswordController(req, res) {
 
     if (!userId) {
       return res.status(401).json({ message: "Authentication required." });
+    }
+
+    if (req.user?.role !== "tourist") {
+      return res.status(403).json({
+        message: "This account is not allowed to use tourist password change.",
+      });
     }
 
     if (!currentPassword || !newPassword) {
@@ -372,13 +380,15 @@ export async function changePasswordController(req, res) {
     }
 
     const user = await findUserById(userId);
-    if (!user) {
+    if (!user || user.role !== "tourist") {
       return res.status(404).json({ message: "User not found." });
     }
 
     const ok = await bcrypt.compare(currentPassword, user.password_hash);
     if (!ok) {
-      return res.status(400).json({ message: "Current password is incorrect." });
+      return res
+        .status(400)
+        .json({ message: "Current password is incorrect." });
     }
 
     const newHash = await bcrypt.hash(newPassword, 10);
@@ -391,12 +401,8 @@ export async function changePasswordController(req, res) {
   }
 }
 
-/* ------------------------------------------------------------------ */
-/* ME – return current user from token                                */
-/* ------------------------------------------------------------------ */
 export async function meController(req, res) {
   try {
-    // authRequired sets req.user = { id, role, iat, exp }
     const userId = req.user?.id;
     if (!userId) {
       return res.status(401).json({ message: "Authentication required." });
@@ -404,11 +410,11 @@ export async function meController(req, res) {
 
     const [rows] = await db.query(
       "SELECT id, name, email, role FROM users WHERE id = ? LIMIT 1",
-      [userId]
+      [userId],
     );
 
     const user = rows[0];
-    if (!user) {
+    if (!user || user.role !== "tourist") {
       return res.status(401).json({ message: "User not found." });
     }
 

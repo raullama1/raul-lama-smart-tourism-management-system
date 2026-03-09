@@ -15,12 +15,6 @@ export function AuthProvider({ children }) {
     loading: true,
   });
 
-  /*
-    On app start:
-    - load saved token/user from localStorage
-    - set token immediately (so protected API calls can work)
-    - then verify token by calling /auth/me
-  */
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -47,12 +41,24 @@ export function AuthProvider({ children }) {
       return;
     }
 
+    if (parsed?.user?.role && parsed.user.role !== "tourist") {
+      localStorage.removeItem("tn_auth");
+      setAuth({ user: null, token: null, loading: false });
+      return;
+    }
+
     setAuth({ user: parsed.user || null, token: parsed.token, loading: true });
 
     (async () => {
       try {
-        // Your authApi.js should attach token automatically (or read from localStorage).
-        const res = await meApi(); // expected: { user }
+        const res = await meApi();
+
+        if (!res?.user || res.user.role !== "tourist") {
+          localStorage.removeItem("tn_auth");
+          setAuth({ user: null, token: null, loading: false });
+          return;
+        }
+
         const next = { user: res.user, token: parsed.token, loading: false };
         setAuth(next);
 
@@ -68,6 +74,10 @@ export function AuthProvider({ children }) {
   }, []);
 
   const saveAuth = (data) => {
+    if (!data?.user || data.user.role !== "tourist") {
+      throw new Error("Only tourist accounts are allowed here.");
+    }
+
     const next = {
       user: data.user,
       token: data.token,
@@ -85,12 +95,12 @@ export function AuthProvider({ children }) {
   };
 
   const login = async (email, password) => {
-    const res = await loginApi(email, password); // expected: { token, user }
+    const res = await loginApi(email, password);
     saveAuth(res);
   };
 
   const signup = async (name, email, password, verificationCode) => {
-    const res = await signupApi(name, email, password, verificationCode); // expected: { token, user }
+    const res = await signupApi(name, email, password, verificationCode);
     saveAuth(res);
   };
 
@@ -107,7 +117,7 @@ export function AuthProvider({ children }) {
         user: auth.user,
         token: auth.token,
         loading: auth.loading,
-        isAuthenticated: !!auth.token,
+        isAuthenticated: !!auth.token && auth.user?.role === "tourist",
         login,
         signup,
         logout,
