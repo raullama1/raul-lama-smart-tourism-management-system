@@ -27,6 +27,7 @@ import TouristProfilePage from "../pages/tourist/TouristProfilePage";
 
 import { useAuth } from "../context/AuthContext";
 import { useAgencyAuth } from "../context/AgencyAuthContext";
+import { useAdminAuth } from "../context/AdminAuthContext";
 
 import AgencyLoginPage from "../pages/agency/AgencyLoginPage";
 import AgencyRegisterPage from "../pages/agency/AgencyRegisterPage";
@@ -45,6 +46,10 @@ import AgencyManageBlogsPage from "../pages/agency/AgencyManageBlogsPage";
 import AgencyReviewsPage from "../pages/agency/AgencyReviewsPage";
 import AgencyEarningsPage from "../pages/agency/AgencyEarningsPage";
 import AgencyProfilePage from "../pages/agency/AgencyProfilePage";
+
+import AdminLoginPage from "../pages/admin/AdminLoginPage";
+import AdminDashboardPage from "../pages/admin/AdminDashboardPage";
+import AdminForgotPasswordPage from "../pages/admin/AdminForgotPasswordPage";
 
 function PrivateRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -121,6 +126,56 @@ function AgencyIndexRedirect() {
     <Navigate to="/agency/dashboard" replace />
   ) : (
     <Navigate to="/agency/login" replace />
+  );
+}
+
+function AdminPrivateRoute({ children }) {
+  const { isAuthenticated, loading } = useAdminAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center text-gray-600">
+        Loading...
+      </div>
+    );
+  }
+
+  return isAuthenticated ? children : <Navigate to="/admin/login" replace />;
+}
+
+function AdminPublicRoute({ children }) {
+  const { isAuthenticated, loading } = useAdminAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center text-gray-600">
+        Loading...
+      </div>
+    );
+  }
+
+  return isAuthenticated ? (
+    <Navigate to="/admin/dashboard" replace />
+  ) : (
+    children
+  );
+}
+
+function AdminIndexRedirect() {
+  const { isAuthenticated, loading } = useAdminAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center text-gray-600">
+        Loading...
+      </div>
+    );
+  }
+
+  return isAuthenticated ? (
+    <Navigate to="/admin/dashboard" replace />
+  ) : (
+    <Navigate to="/admin/login" replace />
   );
 }
 
@@ -419,6 +474,35 @@ export default function AppRouter() {
             <AgencyPrivateRoute>
               <AgencyProfilePage />
             </AgencyPrivateRoute>
+          }
+        />
+
+        <Route path="/admin" element={<AdminIndexRedirect />} />
+
+        <Route
+          path="/admin/login"
+          element={
+            <AdminPublicRoute>
+              <AdminLoginPage />
+            </AdminPublicRoute>
+          }
+        />
+
+        <Route
+          path="/admin/forgot-password"
+          element={
+            <AdminPublicRoute>
+              <AdminForgotPasswordPage />
+            </AdminPublicRoute>
+          }
+        />
+
+        <Route
+          path="/admin/dashboard"
+          element={
+            <AdminPrivateRoute>
+              <AdminDashboardPage />
+            </AdminPrivateRoute>
           }
         />
 

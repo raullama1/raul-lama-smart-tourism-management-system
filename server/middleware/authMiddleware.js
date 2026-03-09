@@ -13,10 +13,7 @@ export function authMiddleware(req, res, next) {
 
   try {
     const payload = jwt.verify(token, JWT_SECRET);
-
-    // Payload should contain at least { id, role }
     req.user = payload;
-
     next();
   } catch (err) {
     console.error("authMiddleware error", err);
@@ -24,5 +21,20 @@ export function authMiddleware(req, res, next) {
   }
 }
 
-// Backwards compatible export
+export function requireRole(...roles) {
+  return function roleMiddleware(req, res, next) {
+    const role = req.user?.role;
+
+    if (!role || !roles.includes(role)) {
+      return res.status(403).json({ message: "Access denied." });
+    }
+
+    next();
+  };
+}
+
+export const requireTourist = requireRole("tourist");
+export const requireAgency = requireRole("agency");
+export const requireAdmin = requireRole("admin");
+
 export const authRequired = authMiddleware;

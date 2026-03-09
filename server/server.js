@@ -29,6 +29,7 @@ import agencyBlogsRoutes from "./routes/agencyBlogsRoutes.js";
 import agencyReviewsRoutes from "./routes/agencyReviewsRoutes.js";
 import agencyEarningsRoutes from "./routes/agencyEarningsRoutes.js";
 import agencyProfileRoutes from "./routes/agencyProfileRoutes.js";
+import adminAuthRoutes from "./routes/adminAuthRoutes.js";
 
 import { initChatSocket } from "./sockets/chatSocket.js";
 
@@ -106,6 +107,9 @@ app.use("/api/agency/earnings", agencyEarningsRoutes);
 
 // Agency Profile
 app.use("/api/agency/profile", agencyProfileRoutes);
+
+// Admin Auth
+app.use("/api/admin/auth", adminAuthRoutes);
 
 // Socket.IO
 const server = http.createServer(app);
