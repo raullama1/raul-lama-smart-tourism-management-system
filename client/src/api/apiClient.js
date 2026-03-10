@@ -28,6 +28,11 @@ function isAgencyEndpoint(url) {
   return false;
 }
 
+function isAdminEndpoint(url) {
+  const u = String(url || "");
+  return u.startsWith("/admin/");
+}
+
 apiClient.interceptors.request.use((config) => {
   if (typeof window === "undefined") return config;
 
@@ -35,15 +40,21 @@ apiClient.interceptors.request.use((config) => {
     config.headers = {};
   }
 
-  // Keep explicit Authorization header if caller already provided one.
   if (config.headers.Authorization) {
     return config;
   }
 
   const url = String(config?.url || "");
-  const token = isAgencyEndpoint(url)
-    ? readTokenFrom("tn_agency_auth")
-    : readTokenFrom("tn_auth");
+
+  let token = null;
+
+  if (isAgencyEndpoint(url)) {
+    token = readTokenFrom("tn_agency_auth");
+  } else if (isAdminEndpoint(url)) {
+    token = readTokenFrom("tn_admin_auth");
+  } else {
+    token = readTokenFrom("tn_auth");
+  }
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
