@@ -12,7 +12,6 @@ import {
   buildAvatarUrl,
 } from "../../api/profileApi";
 
-/* Simple toast (no library) */
 function Toast({ open, type = "success", message, onClose }) {
   const boxClass =
     type === "success"
@@ -46,7 +45,6 @@ function Toast({ open, type = "success", message, onClose }) {
   );
 }
 
-/* Confirm modal */
 function ConfirmModal({ open, title, message, onCancel, onConfirm }) {
   if (!open) return null;
 
@@ -89,11 +87,9 @@ export default function TouristProfilePage() {
   const [user, setUser] = useState(null);
 
   const [name, setName] = useState("");
-
   const [countryCode, setCountryCode] = useState("+977");
   const [phoneNumber, setPhoneNumber] = useState("");
 
-  // baseline values to detect changes
   const [initial, setInitial] = useState({
     name: "",
     phone: "",
@@ -108,26 +104,20 @@ export default function TouristProfilePage() {
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [changePwdOpen, setChangePwdOpen] = useState(false);
 
-  /* ---- Validation helpers ---- */
-
   const PHONE_MAX_DIGITS = 10;
 
-  // Keep only digits and cap to max length
   const sanitizePhoneDigits = (input) => {
     const digits = String(input || "").replace(/\D/g, "");
     return digits.slice(0, PHONE_MAX_DIGITS);
   };
 
-  // Soft "realistic name" validation (can't prove real, but avoids junk)
   const validateName = (raw) => {
     const v = String(raw || "").trim();
 
     if (!v) return { ok: false, message: "Name is required." };
-
     if (v.length < 4) return { ok: false, message: "Name is too short." };
     if (v.length > 40) return { ok: false, message: "Name is too long." };
 
-    // Allow letters + spaces + . ' -
     const allowed = /^[A-Za-z\s.'-]+$/;
     if (!allowed.test(v)) {
       return {
@@ -136,18 +126,15 @@ export default function TouristProfilePage() {
       };
     }
 
-    // Must have at least 2 letters total
     const lettersCount = (v.match(/[A-Za-z]/g) || []).length;
     if (lettersCount < 2) {
       return { ok: false, message: "Please enter a valid full name." };
     }
 
-    // Avoid junk like "aaaaaa" or "xxxxx"
     if (/(.)\1\1/.test(v.replace(/\s+/g, ""))) {
       return { ok: false, message: "Name looks invalid (too repetitive)." };
     }
 
-    // Avoid single-letter spaced patterns like "x x x"
     if (/^([A-Za-z]\s){2,}[A-Za-z]$/.test(v)) {
       return { ok: false, message: "Please enter your full name." };
     }
@@ -155,11 +142,10 @@ export default function TouristProfilePage() {
     return { ok: true, value: v };
   };
 
-  // Phone rule: if provided, must be exactly 10 digits
   const validatePhone = (digits) => {
     const d = sanitizePhoneDigits(digits);
 
-    if (!d) return { ok: true, value: "" }; // optional
+    if (!d) return { ok: true, value: "" };
     if (d.length !== PHONE_MAX_DIGITS) {
       return {
         ok: false,
@@ -167,7 +153,6 @@ export default function TouristProfilePage() {
       };
     }
 
-    // basic sanity: disallow all same digits like 0000000000
     if (/^(\d)\1+$/.test(d)) {
       return { ok: false, message: "Phone number looks invalid." };
     }
@@ -196,23 +181,8 @@ export default function TouristProfilePage() {
   const avatarUrl = useMemo(() => buildAvatarUrl(user?.profile_image), [user]);
 
   const splitPhone = (full) => {
-    const s = String(full || "").trim();
-    if (!s) return { code: "+977", num: "" };
-
-    const cleaned = s.replace(/\s+/g, "");
-    const m = cleaned.match(/^(\+\d{1,4})(\d+)$/);
-    if (m) return { code: m[1], num: sanitizePhoneDigits(m[2]) };
-
-    if (/^\d+$/.test(cleaned))
-      return { code: "+977", num: sanitizePhoneDigits(cleaned) };
-
-    return { code: "+977", num: sanitizePhoneDigits(cleaned) };
-  };
-
-  const normalizePhone = (code, num) => {
-    const n = sanitizePhoneDigits(num);
-    const c = String(code || "").trim();
-    return n ? `${c}${n}` : "";
+    const cleaned = sanitizePhoneDigits(full);
+    return { code: "+977", num: cleaned };
   };
 
   const load = async () => {
@@ -231,12 +201,9 @@ export default function TouristProfilePage() {
       setCountryCode(code);
       setPhoneNumber(num);
 
-      const nextPhone = normalizePhone(code, num);
-
-      // set baseline (so button is disabled until changes)
       setInitial({
         name: nextName,
-        phone: nextPhone,
+        phone: num,
       });
     } catch (e) {
       console.error("load profile", e);
@@ -248,7 +215,6 @@ export default function TouristProfilePage() {
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const onPickFile = async (file) => {
@@ -290,10 +256,9 @@ export default function TouristProfilePage() {
     }
   };
 
-  // detect changes
   const currentPhone = useMemo(
-    () => normalizePhone(countryCode, phoneNumber),
-    [countryCode, phoneNumber]
+    () => sanitizePhoneDigits(phoneNumber),
+    [phoneNumber]
   );
 
   const isDirty = useMemo(() => {
@@ -321,31 +286,25 @@ export default function TouristProfilePage() {
       return;
     }
 
-    const fullPhone = phoneCheck.value
-      ? normalizePhone(countryCode, phoneCheck.value)
-      : "";
-
     try {
       setSaving(true);
       const res = await updateMyProfile(token, {
         name: nameCheck.value,
-        phone: fullPhone,
+        phone: phoneCheck.value,
       });
 
       const u = res?.data?.user;
       setUser(u || null);
 
-      const { code, num } = splitPhone(u?.phone || fullPhone);
+      const { code, num } = splitPhone(u?.phone || phoneCheck.value);
       setCountryCode(code);
       setPhoneNumber(num);
 
       const syncedName = String(u?.name || nameCheck.value).trim();
-      const syncedPhone = normalizePhone(code, num);
 
-      // update baseline after successful save
       setInitial({
         name: syncedName,
-        phone: syncedPhone,
+        phone: num,
       });
 
       showToast("success", "Profile updated");

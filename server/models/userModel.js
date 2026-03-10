@@ -1,10 +1,9 @@
 // server/models/userModel.js
 import { db } from "../db.js";
 
-// Find user by email
 export async function findUserByEmail(email) {
   const [rows] = await db.query(
-    `SELECT id, name, email, password_hash, role
+    `SELECT id, name, email, password_hash, role, COALESCE(is_blocked, 0) AS is_blocked
      FROM users
      WHERE email = ?
      LIMIT 1`,
@@ -13,10 +12,9 @@ export async function findUserByEmail(email) {
   return rows[0] || null;
 }
 
-// Find user by id (for reset password)
 export async function findUserById(id) {
   const [rows] = await db.query(
-    `SELECT id, name, email, password_hash, role
+    `SELECT id, name, email, password_hash, role, COALESCE(is_blocked, 0) AS is_blocked
      FROM users
      WHERE id = ?
      LIMIT 1`,
@@ -25,7 +23,6 @@ export async function findUserById(id) {
   return rows[0] || null;
 }
 
-// Create new user
 export async function createUser({ name, email, passwordHash, role = "tourist" }) {
   const [result] = await db.query(
     `INSERT INTO users (name, email, password_hash, role)
@@ -38,10 +35,10 @@ export async function createUser({ name, email, passwordHash, role = "tourist" }
     name,
     email,
     role,
+    is_blocked: 0,
   };
 }
 
-// Update user password hash (for reset password)
 export async function updateUserPasswordHash(userId, passwordHash) {
   await db.query(
     `UPDATE users

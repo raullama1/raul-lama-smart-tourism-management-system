@@ -47,13 +47,23 @@ export function AuthProvider({ children }) {
       return;
     }
 
+    if (parsed?.user?.is_blocked) {
+      localStorage.removeItem("tn_auth");
+      setAuth({ user: null, token: null, loading: false });
+      return;
+    }
+
     setAuth({ user: parsed.user || null, token: parsed.token, loading: true });
 
     (async () => {
       try {
         const res = await meApi();
 
-        if (!res?.user || res.user.role !== "tourist") {
+        if (
+          !res?.user ||
+          res.user.role !== "tourist" ||
+          res.user.is_blocked
+        ) {
           localStorage.removeItem("tn_auth");
           setAuth({ user: null, token: null, loading: false });
           return;
@@ -74,8 +84,8 @@ export function AuthProvider({ children }) {
   }, []);
 
   const saveAuth = (data) => {
-    if (!data?.user || data.user.role !== "tourist") {
-      throw new Error("Only tourist accounts are allowed here.");
+    if (!data?.user || data.user.role !== "tourist" || data.user.is_blocked) {
+      throw new Error("Only active tourist accounts are allowed here.");
     }
 
     const next = {
@@ -117,7 +127,10 @@ export function AuthProvider({ children }) {
         user: auth.user,
         token: auth.token,
         loading: auth.loading,
-        isAuthenticated: !!auth.token && auth.user?.role === "tourist",
+        isAuthenticated:
+          !!auth.token &&
+          auth.user?.role === "tourist" &&
+          !auth.user?.is_blocked,
         login,
         signup,
         logout,

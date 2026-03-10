@@ -3,6 +3,12 @@ import fs from "fs";
 import path from "path";
 import { db } from "../db.js";
 
+function sanitizePhone(phone) {
+  return String(phone || "")
+    .replace(/\D/g, "")
+    .slice(0, 10);
+}
+
 async function getUserById(userId) {
   const [rows] = await db.query(
     `
@@ -16,7 +22,6 @@ async function getUserById(userId) {
   return rows[0] || null;
 }
 
-// GET /api/profile/me
 export async function getMyProfileController(req, res) {
   try {
     const userId = req.user?.id;
@@ -31,7 +36,6 @@ export async function getMyProfileController(req, res) {
   }
 }
 
-// PUT /api/profile/me
 export async function updateMyProfileController(req, res) {
   try {
     const userId = req.user?.id;
@@ -40,7 +44,10 @@ export async function updateMyProfileController(req, res) {
     const safeName = String(name || "").trim();
     if (!safeName) return res.status(400).json({ message: "Name is required." });
 
-    const safePhone = typeof phone === "undefined" ? null : String(phone || "").trim();
+    const safePhone =
+      typeof phone === "undefined" || phone === null || String(phone).trim() === ""
+        ? null
+        : sanitizePhone(phone);
 
     await db.query(
       `
@@ -59,7 +66,6 @@ export async function updateMyProfileController(req, res) {
   }
 }
 
-// POST /api/profile/me/avatar (form-data: avatar)
 export async function uploadProfileImageController(req, res) {
   try {
     const userId = req.user?.id;
@@ -105,7 +111,6 @@ export async function uploadProfileImageController(req, res) {
   }
 }
 
-// DELETE /api/profile/me/avatar
 export async function removeProfileImageController(req, res) {
   try {
     const userId = req.user?.id;

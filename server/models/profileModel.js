@@ -1,6 +1,12 @@
 // server/models/profileModel.js
 import { db } from "../db.js";
 
+function sanitizePhone(phone) {
+  return String(phone || "")
+    .replace(/\D/g, "")
+    .slice(0, 10);
+}
+
 export async function getMyProfile(userId) {
   const [rows] = await db.query(
     `
@@ -15,13 +21,18 @@ export async function getMyProfile(userId) {
 }
 
 export async function updateMyProfile(userId, { name, phone }) {
+  const safePhone =
+    typeof phone === "undefined" || phone === null || String(phone).trim() === ""
+      ? null
+      : sanitizePhone(phone);
+
   await db.query(
     `
     UPDATE users
     SET name = ?, phone = ?
     WHERE id = ?
     `,
-    [name, phone, userId]
+    [name, safePhone, userId]
   );
   return getMyProfile(userId);
 }

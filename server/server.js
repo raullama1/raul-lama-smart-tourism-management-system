@@ -31,6 +31,7 @@ import agencyEarningsRoutes from "./routes/agencyEarningsRoutes.js";
 import agencyProfileRoutes from "./routes/agencyProfileRoutes.js";
 import adminAuthRoutes from "./routes/adminAuthRoutes.js";
 import adminDashboardRoutes from "./routes/adminDashboardRoutes.js";
+import adminTouristsRoutes from "./routes/adminTouristsRoutes.js";
 
 import { initChatSocket } from "./sockets/chatSocket.js";
 
@@ -114,6 +115,9 @@ app.use("/api/admin/auth", adminAuthRoutes);
 
 // Admin Dashboard
 app.use("/api/admin/dashboard", adminDashboardRoutes);
+
+// Admin Tourists
+app.use("/api/admin/tourists", adminTouristsRoutes);
 
 // Socket.IO
 const server = http.createServer(app);

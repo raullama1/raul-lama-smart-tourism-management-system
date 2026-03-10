@@ -161,7 +161,13 @@ export async function signupController(req, res) {
 
     const token = signToken(user);
 
-    return res.status(201).json({ token, user });
+    return res.status(201).json({
+      token,
+      user: {
+        ...user,
+        is_blocked: false,
+      },
+    });
   } catch (err) {
     console.error("signupController error", err);
 
@@ -196,6 +202,12 @@ export async function loginController(req, res) {
       });
     }
 
+    if (Number(user.is_blocked || 0) === 1) {
+      return res.status(403).json({
+        message: "Your account has been blocked. Please contact support.",
+      });
+    }
+
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
     if (!passwordMatch) {
       return res.status(400).json({ message: "Invalid email or password." });
@@ -206,6 +218,7 @@ export async function loginController(req, res) {
       name: user.name,
       email: user.email,
       role: user.role,
+      is_blocked: Number(user.is_blocked || 0) === 1,
     };
 
     const token = signToken(safeUser);
@@ -226,7 +239,11 @@ export async function forgotPasswordController(req, res) {
 
     const user = await findUserByEmail(email);
 
-    if (!user || user.role !== "tourist") {
+    if (
+      !user ||
+      user.role !== "tourist" ||
+      Number(user.is_blocked || 0) === 1
+    ) {
       return res.json({
         message:
           "If an account with that email exists, a reset link (valid for 5 minutes and single-use) has been sent.",
@@ -320,7 +337,11 @@ export async function resetPasswordController(req, res) {
     }
 
     const user = await findUserById(record.user_id);
-    if (!user || user.role !== "tourist") {
+    if (
+      !user ||
+      user.role !== "tourist" ||
+      Number(user.is_blocked || 0) === 1
+    ) {
       return res.status(400).json({
         message:
           "This password reset link is invalid or has already been used.",
@@ -380,7 +401,11 @@ export async function changePasswordController(req, res) {
     }
 
     const user = await findUserById(userId);
-    if (!user || user.role !== "tourist") {
+    if (
+      !user ||
+      user.role !== "tourist" ||
+      Number(user.is_blocked || 0) === 1
+    ) {
       return res.status(404).json({ message: "User not found." });
     }
 
@@ -409,7 +434,7 @@ export async function meController(req, res) {
     }
 
     const [rows] = await db.query(
-      "SELECT id, name, email, role FROM users WHERE id = ? LIMIT 1",
+      "SELECT id, name, email, role, COALESCE(is_blocked, 0) AS is_blocked FROM users WHERE id = ? LIMIT 1",
       [userId],
     );
 
@@ -418,7 +443,18 @@ export async function meController(req, res) {
       return res.status(401).json({ message: "User not found." });
     }
 
-    return res.json({ user });
+    if (Number(user.is_blocked || 0) === 1) {
+      return res.status(403).json({
+        message: "Your account has been blocked. Please contact support.",
+      });
+    }
+
+    return res.json({
+      user: {
+        ...user,
+        is_blocked: Number(user.is_blocked || 0) === 1,
+      },
+    });
   } catch (err) {
     console.error("meController error", err);
     return res.status(500).json({ message: "Failed to load user." });
