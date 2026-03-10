@@ -99,6 +99,39 @@ export async function getAdminTouristByIdModel(userId) {
   const row = rows[0];
   if (!row) return null;
 
+  const [bookingRows] = await db.query(
+    `
+      SELECT
+        b.id,
+        b.ref_code,
+        b.booking_date,
+        b.booking_status,
+        b.total_price,
+        t.title AS tour_title
+      FROM bookings b
+      INNER JOIN tours t ON t.id = b.tour_id
+      WHERE b.user_id = ?
+      ORDER BY b.created_at DESC, b.id DESC
+    `,
+    [userId]
+  );
+
+  const [reviewRows] = await db.query(
+    `
+      SELECT
+        r.id,
+        r.rating,
+        r.comment,
+        r.created_at,
+        t.title AS tour_title
+      FROM reviews r
+      INNER JOIN tours t ON t.id = r.tour_id
+      WHERE r.user_id = ?
+      ORDER BY r.created_at DESC, r.id DESC
+    `,
+    [userId]
+  );
+
   return {
     ...row,
     is_blocked: Number(row.is_blocked) === 1,
@@ -106,6 +139,21 @@ export async function getAdminTouristByIdModel(userId) {
     total_bookings: Number(row.total_bookings || 0),
     total_reviews: Number(row.total_reviews || 0),
     total_wishlists: Number(row.total_wishlists || 0),
+    bookings: bookingRows.map((booking) => ({
+      id: booking.id,
+      reference: booking.ref_code ? `#${booking.ref_code}` : `#BK-${booking.id}`,
+      tour_title: booking.tour_title,
+      booking_date: formatDateOnly(booking.booking_date),
+      booking_status: booking.booking_status,
+      total_price: Number(booking.total_price || 0),
+    })),
+    reviews: reviewRows.map((review) => ({
+      id: review.id,
+      tour_title: review.tour_title,
+      rating: Number(review.rating || 0),
+      comment: review.comment || "",
+      created_at: formatDateOnly(review.created_at),
+    })),
   };
 }
 
@@ -119,6 +167,20 @@ export async function updateAdminTouristBlockedStatusModel(userId, isBlocked) {
       LIMIT 1
     `,
     [isBlocked ? 1 : 0, userId]
+  );
+
+  return result;
+}
+
+export async function deleteAdminTouristReviewModel(userId, reviewId) {
+  const [result] = await db.query(
+    `
+      DELETE FROM reviews
+      WHERE id = ?
+        AND user_id = ?
+      LIMIT 1
+    `,
+    [reviewId, userId]
   );
 
   return result;

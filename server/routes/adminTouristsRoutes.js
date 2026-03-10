@@ -1,6 +1,7 @@
 // server/routes/adminTouristsRoutes.js
 import express from "express";
 import {
+  deleteAdminTouristReviewController,
   getAdminTouristByIdController,
   getAdminTouristsController,
   updateAdminTouristStatusController,
@@ -16,6 +17,12 @@ router.patch(
   authRequired,
   requireAdmin,
   updateAdminTouristStatusController
+);
+router.delete(
+  "/:userId/reviews/:reviewId",
+  authRequired,
+  requireAdmin,
+  deleteAdminTouristReviewController
 );
 
 export default router;

@@ -51,6 +51,7 @@ import AdminLoginPage from "../pages/admin/AdminLoginPage";
 import AdminDashboardPage from "../pages/admin/AdminDashboardPage";
 import AdminForgotPasswordPage from "../pages/admin/AdminForgotPasswordPage";
 import AdminTouristsPage from "../pages/admin/AdminTouristsPage";
+import AdminTouristDetailsPage from "../pages/admin/AdminTouristDetailsPage";
 
 function PrivateRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -512,6 +513,15 @@ export default function AppRouter() {
           element={
             <AdminPrivateRoute>
               <AdminTouristsPage />
+            </AdminPrivateRoute>
+          }
+        />
+
+        <Route
+          path="/admin/tourists/:touristId"
+          element={
+            <AdminPrivateRoute>
+              <AdminTouristDetailsPage />
             </AdminPrivateRoute>
           }
         />

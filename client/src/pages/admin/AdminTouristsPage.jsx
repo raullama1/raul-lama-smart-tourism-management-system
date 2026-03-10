@@ -1,6 +1,7 @@
 // seerver/pages/admin/AdminTouristsPage.jsx
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FiRefreshCw, FiSearch, FiSliders, FiX } from "react-icons/fi";
+import { useNavigate } from "react-router-dom";
 import AdminSidebar from "../../components/admin/AdminSidebar";
 import {
   getAdminTourists,
@@ -39,52 +40,6 @@ function ModalShell({ title, onClose, children, maxWidth = "max-w-2xl" }) {
         <div className="px-6 py-5">{children}</div>
       </div>
     </div>
-  );
-}
-
-function TouristDetailModal({ tourist, onClose }) {
-  if (!tourist) return null;
-
-  const rows = [
-    { label: "Full Name", value: tourist.name || "-" },
-    { label: "Email", value: tourist.email || "-" },
-    { label: "Phone", value: tourist.phone || "-" },
-    { label: "Role", value: tourist.role || "-" },
-    { label: "Signup Date", value: tourist.created_at || "-" },
-    { label: "Status", value: tourist.is_blocked ? "Blocked" : "Active" },
-    { label: "Total Bookings", value: tourist.total_bookings ?? 0 },
-    { label: "Total Reviews", value: tourist.total_reviews ?? 0 },
-    { label: "Wishlist Items", value: tourist.total_wishlists ?? 0 },
-  ];
-
-  return (
-    <ModalShell title="Tourist Details" onClose={onClose} maxWidth="max-w-3xl">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {rows.map((row) => (
-          <div
-            key={row.label}
-            className="rounded-2xl border border-[#d7e3da] bg-[#f8fbf8] px-4 py-4"
-          >
-            <p className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[#73917f]">
-              {row.label}
-            </p>
-            <p className="mt-2 break-words text-[17px] font-semibold text-[#183128]">
-              {row.value}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-5 flex justify-end">
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-xl bg-[#06733f] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#056437]"
-        >
-          Close
-        </button>
-      </div>
-    </ModalShell>
   );
 }
 
@@ -141,6 +96,8 @@ function TouristStatusModal({ tourist, onClose, onConfirm, submitting }) {
 }
 
 export default function AdminTouristsPage() {
+  const navigate = useNavigate();
+
   const [tourists, setTourists] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -152,7 +109,6 @@ export default function AdminTouristsPage() {
     sort: "newest",
   });
 
-  const [selectedTourist, setSelectedTourist] = useState(null);
   const [statusTourist, setStatusTourist] = useState(null);
   const [statusSubmitting, setStatusSubmitting] = useState(false);
 
@@ -388,7 +344,7 @@ export default function AdminTouristsPage() {
 
                             <button
                               type="button"
-                              onClick={() => setSelectedTourist(tourist)}
+                              onClick={() => navigate(`/admin/tourists/${tourist.id}`)}
                               className="rounded-xl bg-[#06733f] px-4 py-2 text-[15px] font-semibold text-white hover:bg-[#056437]"
                             >
                               View in Detail
@@ -404,11 +360,6 @@ export default function AdminTouristsPage() {
           </div>
         </section>
       </div>
-
-      <TouristDetailModal
-        tourist={selectedTourist}
-        onClose={() => setSelectedTourist(null)}
-      />
 
       <TouristStatusModal
         tourist={statusTourist}

@@ -1,5 +1,6 @@
 // server/controllers/adminTouristsController.js
 import {
+  deleteAdminTouristReviewModel,
   getAdminTouristByIdModel,
   getAdminTouristsModel,
   updateAdminTouristBlockedStatusModel,
@@ -80,5 +81,33 @@ export async function updateAdminTouristStatusController(req, res) {
   } catch (err) {
     console.error("updateAdminTouristStatusController error", err);
     return res.status(500).json({ message: "Failed to update tourist status." });
+  }
+}
+
+export async function deleteAdminTouristReviewController(req, res) {
+  try {
+    if (!requireAdminAuth(req, res)) return;
+
+    const userId = Number(req.params?.userId);
+    const reviewId = Number(req.params?.reviewId);
+
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return res.status(400).json({ message: "Valid tourist id is required." });
+    }
+
+    if (!Number.isInteger(reviewId) || reviewId <= 0) {
+      return res.status(400).json({ message: "Valid review id is required." });
+    }
+
+    const result = await deleteAdminTouristReviewModel(userId, reviewId);
+
+    if (!result?.affectedRows) {
+      return res.status(404).json({ message: "Review not found." });
+    }
+
+    return res.json({ message: "Review deleted successfully." });
+  } catch (err) {
+    console.error("deleteAdminTouristReviewController error", err);
+    return res.status(500).json({ message: "Failed to delete review." });
   }
 }
