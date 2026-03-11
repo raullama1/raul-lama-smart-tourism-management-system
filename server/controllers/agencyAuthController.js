@@ -93,9 +93,6 @@ async function buildDuplicateErrors({ name, email, phone, pan_vat }) {
   return dup;
 }
 
-/* ------------------------------------------------------------------ */
-/* CHECK AVAILABILITY (NAME/EMAIL/PHONE/PAN-VAT)                       */
-/* ------------------------------------------------------------------ */
 export async function agencyCheckAvailabilityController(req, res) {
   try {
     const name = String(req.body?.name || "").trim();
@@ -117,9 +114,6 @@ export async function agencyCheckAvailabilityController(req, res) {
   }
 }
 
-/* ------------------------------------------------------------------ */
-/* SEND REGISTER VERIFICATION CODE                                    */
-/* ------------------------------------------------------------------ */
 export async function sendAgencyRegisterCodeController(req, res) {
   try {
     const email = normalizeEmail(req.body?.email);
@@ -130,7 +124,6 @@ export async function sendAgencyRegisterCodeController(req, res) {
         .json({ message: "Email is required to send verification code." });
     }
 
-    // Block if email already used by a normal user
     const userExisting = await findUserByEmail(email);
     if (userExisting) {
       return res.status(400).json({
@@ -168,9 +161,6 @@ export async function sendAgencyRegisterCodeController(req, res) {
   }
 }
 
-/* ------------------------------------------------------------------ */
-/* REGISTER AGENCY                                                    */
-/* ------------------------------------------------------------------ */
 export async function agencyRegisterController(req, res) {
   try {
     const name = String(req.body?.name || "").trim();
@@ -208,7 +198,6 @@ export async function agencyRegisterController(req, res) {
       return res.status(400).json({ message: "PAN/VAT must be exactly 9 digits." });
     }
 
-    // Block if email already used by a normal user
     const userExisting = await findUserByEmail(email);
     if (userExisting) {
       return res.status(400).json({
@@ -265,6 +254,7 @@ export async function agencyRegisterController(req, res) {
       address: agency.address,
       pan_vat: agency.pan_vat,
       role: "agency",
+      is_blocked: Number(agency.is_blocked || 0) === 1,
     };
 
     const token = signAgencyToken(safeAgency);
@@ -284,9 +274,6 @@ export async function agencyRegisterController(req, res) {
   }
 }
 
-/* ------------------------------------------------------------------ */
-/* LOGIN                                                              */
-/* ------------------------------------------------------------------ */
 export async function agencyLoginController(req, res) {
   try {
     const email = normalizeEmail(req.body?.email);
@@ -299,6 +286,12 @@ export async function agencyLoginController(req, res) {
     const agency = await findAgencyByEmail(email);
     if (!agency) {
       return res.status(400).json({ message: "Invalid email or password." });
+    }
+
+    if (Number(agency.is_blocked || 0) === 1) {
+      return res.status(403).json({
+        message: "Your account has been blocked. Please contact admin.",
+      });
     }
 
     if (!agency.password_hash) {
@@ -320,6 +313,7 @@ export async function agencyLoginController(req, res) {
       address: agency.address,
       pan_vat: agency.pan_vat,
       role: "agency",
+      is_blocked: Number(agency.is_blocked || 0) === 1,
     };
 
     const token = signAgencyToken(safeAgency);
@@ -331,9 +325,6 @@ export async function agencyLoginController(req, res) {
   }
 }
 
-/* ------------------------------------------------------------------ */
-/* ME                                                                 */
-/* ------------------------------------------------------------------ */
 export async function agencyMeController(req, res) {
   try {
     const agencyId = req.user?.id;
@@ -348,8 +339,18 @@ export async function agencyMeController(req, res) {
       return res.status(401).json({ message: "Agency not found." });
     }
 
+    if (Number(agency.is_blocked || 0) === 1) {
+      return res.status(403).json({
+        message: "Your account has been blocked. Please contact admin.",
+      });
+    }
+
     return res.json({
-      agency: { ...agency, role: "agency" },
+      agency: {
+        ...agency,
+        role: "agency",
+        is_blocked: Number(agency.is_blocked || 0) === 1,
+      },
     });
   } catch (err) {
     console.error("agencyMeController error", err);
@@ -357,9 +358,6 @@ export async function agencyMeController(req, res) {
   }
 }
 
-/* ------------------------------------------------------------------ */
-/* FORGOT PASSWORD                                                    */
-/* ------------------------------------------------------------------ */
 export async function agencyForgotPasswordController(req, res) {
   try {
     const email = normalizeEmail(req.body?.email);
@@ -370,8 +368,7 @@ export async function agencyForgotPasswordController(req, res) {
 
     const agency = await findAgencyByEmail(email);
 
-    // Do not reveal whether the email exists
-    if (!agency) {
+    if (!agency || Number(agency.is_blocked || 0) === 1) {
       return res.json({
         message:
           "If an account with that email exists, a reset link (valid for 5 minutes and one-time use) has been sent.",
@@ -406,9 +403,6 @@ export async function agencyForgotPasswordController(req, res) {
   }
 }
 
-/* ------------------------------------------------------------------ */
-/* RESET PASSWORD                                                     */
-/* ------------------------------------------------------------------ */
 export async function agencyResetPasswordController(req, res) {
   try {
     const token = String(req.body?.token || "").trim();
@@ -451,6 +445,13 @@ export async function agencyResetPasswordController(req, res) {
 
     if (new Date(record.expires_at) < new Date()) {
       return res.status(400).json({ message: "This password reset link has expired." });
+    }
+
+    const agency = await findAgencyById(record.agency_id);
+    if (!agency || Number(agency.is_blocked || 0) === 1) {
+      return res.status(400).json({
+        message: "This password reset link is invalid or has already been used.",
+      });
     }
 
     const passwordHash = await bcrypt.hash(password, 10);

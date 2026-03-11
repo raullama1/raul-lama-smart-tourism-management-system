@@ -32,6 +32,7 @@ import agencyProfileRoutes from "./routes/agencyProfileRoutes.js";
 import adminAuthRoutes from "./routes/adminAuthRoutes.js";
 import adminDashboardRoutes from "./routes/adminDashboardRoutes.js";
 import adminTouristsRoutes from "./routes/adminTouristsRoutes.js";
+import adminAgenciesRoutes from "./routes/adminAgenciesRoutes.js";
 
 import { initChatSocket } from "./sockets/chatSocket.js";
 
@@ -57,69 +58,40 @@ app.get("/", (req, res) => {
   res.json({ message: "Smart Tourism API running..." });
 });
 
-// Public
 app.use("/api/public/home", publicHomeRoutes);
 app.use("/api/public/tours", publicToursRoutes);
 app.use("/api/public/blogs", publicBlogsRoutes);
 
-// Tourist Auth
 app.use("/api/auth", authRoutes);
 
-// Tourist features
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/reviews", reviewRoutes);
 
-// Blogs
 app.use("/api/blogs", blogCommentsRoutes);
 
-// Chat REST
 app.use("/api/chat", chatRoutes);
 
-// Profile
 app.use("/api/profile", profileRoutes);
 
-// Notifications
 app.use("/api/notifications", notificationRoutes);
 
-// Agency Auth
 app.use("/api/agency/auth", agencyAuthRoutes);
-
-// Agency Support
 app.use("/api/agency/support", agencySupportRoutes);
-
-// Agency Dashboard
 app.use("/api/agency/dashboard", agencyDashboardRoutes);
-
-// Agency Tours
 app.use("/api/agency/tours", agencyToursRoutes);
-
-// Agency Bookings
 app.use("/api/agency/bookings", agencyBookingsRoutes);
-
-// Agency Blogs
 app.use("/api/agency/blogs", agencyBlogsRoutes);
-
-// Agency Reviews
 app.use("/api/agency/reviews", agencyReviewsRoutes);
-
-// Agency Earnings
 app.use("/api/agency/earnings", agencyEarningsRoutes);
-
-// Agency Profile
 app.use("/api/agency/profile", agencyProfileRoutes);
 
-// Admin Auth
 app.use("/api/admin/auth", adminAuthRoutes);
-
-// Admin Dashboard
 app.use("/api/admin/dashboard", adminDashboardRoutes);
-
-// Admin Tourists
 app.use("/api/admin/tourists", adminTouristsRoutes);
+app.use("/api/admin/agencies", adminAgenciesRoutes);
 
-// Socket.IO
 const server = http.createServer(app);
 
 const io = new SocketIOServer(server, {

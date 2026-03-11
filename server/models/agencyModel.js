@@ -3,7 +3,7 @@ import { db } from "../db.js";
 
 export async function findAgencyByEmail(email) {
   const [rows] = await db.query(
-    `SELECT id, name, email, phone, address, pan_vat, password_hash
+    `SELECT id, name, email, phone, address, pan_vat, password_hash, COALESCE(is_blocked, 0) AS is_blocked
      FROM agencies
      WHERE email = ?
      LIMIT 1`,
@@ -14,7 +14,7 @@ export async function findAgencyByEmail(email) {
 
 export async function findAgencyByPhone(phone) {
   const [rows] = await db.query(
-    `SELECT id, name, email, phone, address, pan_vat
+    `SELECT id, name, email, phone, address, pan_vat, COALESCE(is_blocked, 0) AS is_blocked
      FROM agencies
      WHERE phone = ?
      LIMIT 1`,
@@ -25,7 +25,7 @@ export async function findAgencyByPhone(phone) {
 
 export async function findAgencyByPanVat(panVat) {
   const [rows] = await db.query(
-    `SELECT id, name, email, phone, address, pan_vat
+    `SELECT id, name, email, phone, address, pan_vat, COALESCE(is_blocked, 0) AS is_blocked
      FROM agencies
      WHERE pan_vat = ?
      LIMIT 1`,
@@ -36,7 +36,7 @@ export async function findAgencyByPanVat(panVat) {
 
 export async function findAgencyByName(name) {
   const [rows] = await db.query(
-    `SELECT id, name, email, phone, address, pan_vat
+    `SELECT id, name, email, phone, address, pan_vat, COALESCE(is_blocked, 0) AS is_blocked
      FROM agencies
      WHERE name = ?
      LIMIT 1`,
@@ -47,7 +47,7 @@ export async function findAgencyByName(name) {
 
 export async function findAgencyById(id) {
   const [rows] = await db.query(
-    `SELECT id, name, email, phone, address, pan_vat
+    `SELECT id, name, email, phone, address, pan_vat, COALESCE(is_blocked, 0) AS is_blocked
      FROM agencies
      WHERE id = ?
      LIMIT 1`,
@@ -77,14 +77,10 @@ export async function createAgency({
     phone,
     address,
     pan_vat,
+    is_blocked: 0,
   };
 }
 
-/**
- * Checks uniqueness across BOTH:
- * - agencies table
- * - users table (for email, and optionally phone if your users table has phone)
- */
 export async function checkAgencyUniqueness({ name, email, phone, pan_vat }) {
   const taken = {
     name: false,
@@ -93,7 +89,6 @@ export async function checkAgencyUniqueness({ name, email, phone, pan_vat }) {
     pan_vat: false,
   };
 
-  // Email: agencies OR users
   if (email) {
     const [aRows] = await db.query(
       `SELECT id FROM agencies WHERE email = ? LIMIT 1`,
@@ -106,24 +101,14 @@ export async function checkAgencyUniqueness({ name, email, phone, pan_vat }) {
     taken.email = aRows.length > 0 || uRows.length > 0;
   }
 
-  // Phone: agencies only (safe default)
-  // If you ALSO want to block same phone used by a user, uncomment the users query below
   if (phone) {
     const [aRows] = await db.query(
       `SELECT id FROM agencies WHERE phone = ? LIMIT 1`,
       [phone]
     );
-
-    // Uncomment ONLY if your users table has a phone column
-    // const [uRows] = await db.query(
-    //   `SELECT id FROM users WHERE phone = ? LIMIT 1`,
-    //   [phone]
-    // );
-
-    taken.phone = aRows.length > 0; // || uRows.length > 0;
+    taken.phone = aRows.length > 0;
   }
 
-  // PAN/VAT: agencies only
   if (pan_vat) {
     const [rows] = await db.query(
       `SELECT id FROM agencies WHERE pan_vat = ? LIMIT 1`,
@@ -132,7 +117,6 @@ export async function checkAgencyUniqueness({ name, email, phone, pan_vat }) {
     taken.pan_vat = rows.length > 0;
   }
 
-  // Name: agencies only
   if (name) {
     const [rows] = await db.query(
       `SELECT id FROM agencies WHERE name = ? LIMIT 1`,

@@ -52,6 +52,8 @@ import AdminDashboardPage from "../pages/admin/AdminDashboardPage";
 import AdminForgotPasswordPage from "../pages/admin/AdminForgotPasswordPage";
 import AdminTouristsPage from "../pages/admin/AdminTouristsPage";
 import AdminTouristDetailsPage from "../pages/admin/AdminTouristDetailsPage";
+import AdminAgenciesPage from "../pages/admin/AdminAgenciesPage";
+import AdminAgencyDetailsPage from "../pages/admin/AdminAgencyDetailsPage";
 
 function PrivateRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -522,6 +524,24 @@ export default function AppRouter() {
           element={
             <AdminPrivateRoute>
               <AdminTouristDetailsPage />
+            </AdminPrivateRoute>
+          }
+        />
+
+        <Route
+          path="/admin/agencies"
+          element={
+            <AdminPrivateRoute>
+              <AdminAgenciesPage />
+            </AdminPrivateRoute>
+          }
+        />
+
+        <Route
+          path="/admin/agencies/:agencyId"
+          element={
+            <AdminPrivateRoute>
+              <AdminAgencyDetailsPage />
             </AdminPrivateRoute>
           }
         />

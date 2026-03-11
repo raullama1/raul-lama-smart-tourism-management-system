@@ -42,6 +42,18 @@ export function AgencyAuthProvider({ children }) {
       return;
     }
 
+    if (parsed?.agency?.role && parsed.agency.role !== "agency") {
+      localStorage.removeItem(STORAGE_KEY);
+      setAuth({ agency: null, token: null, loading: false });
+      return;
+    }
+
+    if (parsed?.agency?.is_blocked) {
+      localStorage.removeItem(STORAGE_KEY);
+      setAuth({ agency: null, token: null, loading: false });
+      return;
+    }
+
     setAuth({
       agency: parsed.agency || null,
       token: parsed.token,
@@ -50,7 +62,18 @@ export function AgencyAuthProvider({ children }) {
 
     (async () => {
       try {
-        const res = await meApi(); // { agency }
+        const res = await meApi();
+
+        if (
+          !res?.agency ||
+          res.agency.role !== "agency" ||
+          res.agency.is_blocked
+        ) {
+          localStorage.removeItem(STORAGE_KEY);
+          setAuth({ agency: null, token: null, loading: false });
+          return;
+        }
+
         const next = { agency: res.agency, token: parsed.token, loading: false };
         setAuth(next);
 
@@ -66,6 +89,10 @@ export function AgencyAuthProvider({ children }) {
   }, []);
 
   const saveAuth = (data) => {
+    if (!data?.agency || data.agency.role !== "agency" || data.agency.is_blocked) {
+      throw new Error("Only active agency accounts are allowed here.");
+    }
+
     const next = { agency: data.agency, token: data.token, loading: false };
     setAuth(next);
 
@@ -78,13 +105,12 @@ export function AgencyAuthProvider({ children }) {
   };
 
   const login = async (email, password) => {
-    const res = await loginApi(email, password); // { token, agency }
+    const res = await loginApi(email, password);
     saveAuth(res);
   };
 
-  // IMPORTANT: do NOT auto-login on register
   const register = async (payload) => {
-    const res = await registerApi(payload); // might return token; we ignore it here
+    const res = await registerApi(payload);
     return res;
   };
 
@@ -99,7 +125,10 @@ export function AgencyAuthProvider({ children }) {
         agency: auth.agency,
         token: auth.token,
         loading: auth.loading,
-        isAuthenticated: !!auth.token,
+        isAuthenticated:
+          !!auth.token &&
+          auth.agency?.role === "agency" &&
+          !auth.agency?.is_blocked,
         login,
         register,
         logout,
