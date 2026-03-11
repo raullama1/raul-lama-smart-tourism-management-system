@@ -1,24 +1,7 @@
 // server/models/tourModel.js
 import { db } from "../db.js";
 
-/**
- * Public/Tourist visibility rule:
- * - Tourist side should only see tours that have at least 1 ACTIVE agency listing.
- * - Paused/Draft/Completed listings stay in DB, visible only in agency pages.
- *
- * Implementation detail:
- * - Join `tours` with `agency_tours` and force `at.listing_status = 'active'`.
- * - Group by tour to avoid duplicates (many agencies can list the same tour).
- * - Use MIN(at.price) as the public "starting_price".
- *
- * Seasons support:
- * - Listings now store start_date/end_date in agency_tours.
- * - Old rows might still have only `available_dates` ("YYYY-MM-DD|YYYY-MM-DD").
- * - We return both, and for public side we compute display_start_date/end_date with fallback.
- */
-
 function sqlStartDateExpr() {
-  // Prefer real column; fallback to parsing available_dates
   return `
     COALESCE(
       at.start_date,
@@ -28,7 +11,6 @@ function sqlStartDateExpr() {
 }
 
 function sqlEndDateExpr() {
-  // Prefer real column; fallback to parsing available_dates
   return `
     COALESCE(
       at.end_date,
@@ -38,8 +20,8 @@ function sqlEndDateExpr() {
 }
 
 // --------------------------------------------------
-// Get Public Tours (search, filters, sorting, pagination)
-// ONLY tours that have ACTIVE agency listings
+// Get Public Tours
+// ONLY tours that have ACTIVE listings from UNBLOCKED agencies
 // --------------------------------------------------
 export async function getPublicTours(filters) {
   const {
@@ -57,6 +39,7 @@ export async function getPublicTours(filters) {
   const params = [];
 
   whereParts.push("at.listing_status = 'active'");
+  whereParts.push("a.is_blocked = 0");
 
   if (search) {
     whereParts.push("(t.title LIKE ? OR t.location LIKE ?)");
@@ -85,12 +68,14 @@ export async function getPublicTours(filters) {
 
   const whereClause = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
 
-  // Sorting on computed columns (starting_price / latest_created)
   let orderBy = "";
   if (sort === "price-asc") orderBy = "ORDER BY starting_price ASC";
   else if (sort === "price-desc") orderBy = "ORDER BY starting_price DESC";
-  else if (sort === "popular") orderBy = "ORDER BY t.popularity_score DESC, latest_created DESC";
-  else orderBy = "ORDER BY latest_created DESC";
+  else if (sort === "popular") {
+    orderBy = "ORDER BY t.popularity_score DESC, latest_created DESC";
+  } else {
+    orderBy = "ORDER BY latest_created DESC";
+  }
 
   const pageNum = Number(page) || 1;
   const limitNum = Number(limit) || 6;
@@ -111,9 +96,17 @@ export async function getPublicTours(filters) {
         MAX(COALESCE(t.created_at, t.id)) AS latest_created
       FROM tours t
       INNER JOIN agency_tours at ON at.tour_id = t.id
+      INNER JOIN agencies a ON a.id = at.agency_id
       ${whereClause}
       GROUP BY
-        t.id, t.title, t.long_description, t.location, t.latitude, t.longitude, t.type, t.image_url
+        t.id,
+        t.title,
+        t.long_description,
+        t.location,
+        t.latitude,
+        t.longitude,
+        t.type,
+        t.image_url
       ${orderBy}
       LIMIT ? OFFSET ?
     `,
@@ -125,6 +118,7 @@ export async function getPublicTours(filters) {
       SELECT COUNT(DISTINCT t.id) AS total
       FROM tours t
       INNER JOIN agency_tours at ON at.tour_id = t.id
+      INNER JOIN agencies a ON a.id = at.agency_id
       ${whereClause}
     `,
     params
@@ -143,7 +137,7 @@ export async function getPublicTours(filters) {
 
 // --------------------------------------------------
 // Get Popular Tours (Home Page)
-// ONLY tours that have ACTIVE agency listings
+// ONLY tours that have ACTIVE listings from UNBLOCKED agencies
 // --------------------------------------------------
 export async function getPopularTours(limit = 6) {
   const [rows] = await db.query(
@@ -160,9 +154,18 @@ export async function getPopularTours(limit = 6) {
         t.image_url
       FROM tours t
       INNER JOIN agency_tours at ON at.tour_id = t.id
+      INNER JOIN agencies a ON a.id = at.agency_id
       WHERE at.listing_status = 'active'
+        AND a.is_blocked = 0
       GROUP BY
-        t.id, t.title, t.long_description, t.location, t.latitude, t.longitude, t.type, t.image_url
+        t.id,
+        t.title,
+        t.long_description,
+        t.location,
+        t.latitude,
+        t.longitude,
+        t.type,
+        t.image_url
       ORDER BY t.popularity_score DESC, COALESCE(t.created_at, t.id) DESC
       LIMIT ?
     `,
@@ -175,9 +178,8 @@ export async function getPopularTours(limit = 6) {
 // --------------------------------------------------
 // Get Single Tour + Agencies (Details Page)
 // Public side:
-// - Tour must have at least 1 ACTIVE agency listing, otherwise 404
-// - Agencies list must show only ACTIVE listings
-// - Return start/end dates (with fallback) for seasons
+// - Tour must have at least 1 ACTIVE listing from an UNBLOCKED agency
+// - Agencies list must show only ACTIVE listings from UNBLOCKED agencies
 // --------------------------------------------------
 export async function getPublicTourDetails(tourId) {
   const [tourRows] = await db.query(
@@ -197,8 +199,10 @@ export async function getPublicTourDetails(tourId) {
         AND EXISTS (
           SELECT 1
           FROM agency_tours at
+          INNER JOIN agencies a ON a.id = at.agency_id
           WHERE at.tour_id = t.id
             AND at.listing_status = 'active'
+            AND a.is_blocked = 0
         )
       LIMIT 1
     `,
@@ -224,6 +228,7 @@ export async function getPublicTourDetails(tourId) {
       INNER JOIN agencies a ON a.id = at.agency_id
       WHERE at.tour_id = ?
         AND at.listing_status = 'active'
+        AND a.is_blocked = 0
       ORDER BY at.price ASC
     `,
     [tourId]
