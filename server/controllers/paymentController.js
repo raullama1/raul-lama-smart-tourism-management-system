@@ -41,6 +41,14 @@ function emitNotification(io, role, userId, notification) {
   io.to(`acct:${role}:${Number(userId)}`).emit("notification:refresh");
 }
 
+function pickFirstNonEmpty(...values) {
+  for (const value of values) {
+    const v = String(value || "").trim();
+    if (v) return v;
+  }
+  return null;
+}
+
 async function verifyEsewaStatus({ product_code, total_amount, transaction_uuid }) {
   const statusUrl =
     process.env.ESEWA_STATUS_URL ||
@@ -54,9 +62,16 @@ async function verifyEsewaStatus({ product_code, total_amount, transaction_uuid 
     });
 
     const st = normalizeStatus(r?.data?.status);
-    return { ok: st === "COMPLETE" || st === "COMPLETED", raw: r?.data };
+    return {
+      ok: st === "COMPLETE" || st === "COMPLETED",
+      raw: r?.data || null,
+    };
   } catch (e) {
-    return { ok: false, raw: null, error: e?.message || "verify_failed" };
+    return {
+      ok: false,
+      raw: null,
+      error: e?.message || "verify_failed",
+    };
   }
 }
 
@@ -74,8 +89,13 @@ export async function initiateEsewaPayment(req, res) {
       return res.status(404).json({ message: "Booking not found." });
     }
 
-    if (booking.booking_status !== "Approved" || booking.payment_status !== "Unpaid") {
-      return res.status(400).json({ message: "Payment not allowed for this booking." });
+    if (
+      booking.booking_status !== "Approved" ||
+      booking.payment_status !== "Unpaid"
+    ) {
+      return res
+        .status(400)
+        .json({ message: "Payment not allowed for this booking." });
     }
 
     const productCode = process.env.ESEWA_PRODUCT_CODE || "EPAYTEST";
@@ -109,7 +129,12 @@ export async function initiateEsewaPayment(req, res) {
     const toSign = buildSignedString(payload, payload.signed_field_names);
     payload.signature = hmacBase64(secretKey, toSign);
 
-    return res.json({ data: { esewaUrl: formUrl, formData: payload } });
+    return res.json({
+      data: {
+        esewaUrl: formUrl,
+        formData: payload,
+      },
+    });
   } catch (err) {
     console.error("initiateEsewaPayment error:", err);
     return res.status(500).json({ message: "Failed to initiate eSewa payment." });
@@ -118,11 +143,11 @@ export async function initiateEsewaPayment(req, res) {
 
 export async function esewaSuccess(req, res) {
   try {
+    const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
     const dataB64 = req.query.data;
+
     if (!dataB64) {
-      return res.redirect(
-        `${process.env.CLIENT_URL}/payment/failure/0?reason=missing_data`
-      );
+      return res.redirect(`${clientUrl}/payment/failure/0?reason=missing_data`);
     }
 
     const decoded = Buffer.from(String(dataB64), "base64").toString("utf8");
@@ -135,15 +160,13 @@ export async function esewaSuccess(req, res) {
 
     if (expectedSig !== body.signature) {
       return res.redirect(
-        `${process.env.CLIENT_URL}/payment/failure/0?reason=signature_mismatch`
+        `${clientUrl}/payment/failure/0?reason=signature_mismatch`
       );
     }
 
     const bookingId = extractBookingIdFromTxn(body.transaction_uuid);
     if (!bookingId) {
-      return res.redirect(
-        `${process.env.CLIENT_URL}/payment/failure/0?reason=bad_txn_uuid`
-      );
+      return res.redirect(`${clientUrl}/payment/failure/0?reason=bad_txn_uuid`);
     }
 
     let statusOk =
@@ -162,22 +185,27 @@ export async function esewaSuccess(req, res) {
 
     if (!statusOk) {
       return res.redirect(
-        `${process.env.CLIENT_URL}/payment/failure/${bookingId}?reason=not_complete`
+        `${clientUrl}/payment/failure/${bookingId}?reason=not_complete`
       );
     }
 
-    const esewaRefId =
-      body.ref_id ||
-      verify?.raw?.ref_id ||
-      body.transaction_uuid ||
-      null;
+    const esewaTransactionCode = pickFirstNonEmpty(
+      body.transaction_code,
+      verify?.raw?.transaction_code
+    );
 
-    const esewaTransactionCode =
-      body.transaction_code ||
-      verify?.raw?.transaction_code ||
-      verify?.raw?.transaction_uuid ||
-      body.transaction_uuid ||
-      null;
+    const esewaRefId = pickFirstNonEmpty(
+      body.ref_id,
+      verify?.raw?.ref_id
+    );
+
+    if (!esewaTransactionCode || !esewaRefId) {
+      console.warn("eSewa payment completed but some IDs were missing.", {
+        bookingId,
+        callbackBody: body,
+        verifyRaw: verify?.raw || null,
+      });
+    }
 
     await markBookingPaid(bookingId, {
       esewaRefId,
@@ -221,20 +249,21 @@ export async function esewaSuccess(req, res) {
       emitNotification(io, "agency", info.agency_id, agencyNotification);
     }
 
-    return res.redirect(`${process.env.CLIENT_URL}/payment/success/${bookingId}`);
+    return res.redirect(`${clientUrl}/payment/success/${bookingId}`);
   } catch (err) {
     console.error("esewaSuccess error:", err);
-    return res.redirect(
-      `${process.env.CLIENT_URL}/payment/failure/0?reason=server_error`
-    );
+    const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+    return res.redirect(`${clientUrl}/payment/failure/0?reason=server_error`);
   }
 }
 
 export async function esewaFailure(req, res) {
   try {
+    const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
     const dataB64 = req.query.data;
+
     if (!dataB64) {
-      return res.redirect(`${process.env.CLIENT_URL}/payment/failure/0?reason=cancelled`);
+      return res.redirect(`${clientUrl}/payment/failure/0?reason=cancelled`);
     }
 
     const decoded = Buffer.from(String(dataB64), "base64").toString("utf8");
@@ -242,9 +271,10 @@ export async function esewaFailure(req, res) {
 
     const bookingId = extractBookingIdFromTxn(body.transaction_uuid) || 0;
     return res.redirect(
-      `${process.env.CLIENT_URL}/payment/failure/${bookingId}?reason=cancelled`
+      `${clientUrl}/payment/failure/${bookingId}?reason=cancelled`
     );
   } catch {
-    return res.redirect(`${process.env.CLIENT_URL}/payment/failure/0?reason=cancelled`);
+    const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
+    return res.redirect(`${clientUrl}/payment/failure/0?reason=cancelled`);
   }
 }

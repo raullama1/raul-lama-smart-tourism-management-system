@@ -189,14 +189,21 @@ export default function AdminPaymentDetailsPage() {
       doc.setFillColor(6, 115, 63);
       doc.rect(0, 0, pageWidth, 32, "F");
 
-      doc.setTextColor(255, 255, 255);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(20);
-      doc.text("Tourism Nepal", 14, 14);
+// Centered header title
+doc.setTextColor(255, 255, 255);
+doc.setFont("helvetica", "bold");
+doc.setFontSize(20);
 
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      doc.text("Payment Receipt", 14, 22);
+// Calculate center of header
+const headerHeight = 32;
+const centerX = pageWidth / 2;
+const centerY = headerHeight / 2;
+
+// Draw centered text
+doc.text("Tourism Nepal", centerX, centerY, {
+  align: "center",
+  baseline: "middle",
+});
 
       doc.setTextColor(30, 41, 59);
       doc.setFont("helvetica", "bold");
