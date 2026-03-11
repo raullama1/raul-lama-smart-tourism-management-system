@@ -471,9 +471,6 @@ export default function AdminReviewsPage() {
                               <td className="px-5 py-4">
                                 <div className="flex flex-col gap-1">
                                   <RatingStars value={r.rating} />
-                                  <span className="text-xs font-semibold text-slate-500">
-                                    {r.rating}/5
-                                  </span>
                                 </div>
                               </td>
 
