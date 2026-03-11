@@ -56,6 +56,7 @@ import AdminAgenciesPage from "../pages/admin/AdminAgenciesPage";
 import AdminAgencyDetailsPage from "../pages/admin/AdminAgencyDetailsPage";
 import AdminPaymentsPage from "../pages/admin/AdminPaymentsPage";
 import AdminPaymentDetailsPage from "../pages/admin/AdminPaymentDetailsPage";
+import AdminReviewsPage from "../pages/admin/AdminReviewsPage";
 
 function PrivateRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -562,6 +563,15 @@ export default function AppRouter() {
           element={
             <AdminPrivateRoute>
               <AdminPaymentDetailsPage />
+            </AdminPrivateRoute>
+          }
+        />
+
+        <Route
+          path="/admin/reviews"
+          element={
+            <AdminPrivateRoute>
+              <AdminReviewsPage />
             </AdminPrivateRoute>
           }
         />
