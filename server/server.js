@@ -20,6 +20,8 @@ import chatRoutes from "./routes/chatRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
 
+import { initChatSocket } from "./sockets/chatSocket.js";
+
 import agencyAuthRoutes from "./routes/agencyAuthRoutes.js";
 import agencySupportRoutes from "./routes/agencySupportRoutes.js";
 import agencyDashboardRoutes from "./routes/agencyDashboardRoutes.js";
@@ -35,8 +37,7 @@ import adminTouristsRoutes from "./routes/adminTouristsRoutes.js";
 import adminAgenciesRoutes from "./routes/adminAgenciesRoutes.js";
 import adminPaymentsRoutes from "./routes/adminPaymentsRoutes.js";
 import adminReviewsRoutes from "./routes/adminReviewsRoutes.js";
-
-import { initChatSocket } from "./sockets/chatSocket.js";
+import adminReportsRoutes from "./routes/adminReportsRoutes.js";
 
 dotenv.config();
 
@@ -95,6 +96,7 @@ app.use("/api/admin/tourists", adminTouristsRoutes);
 app.use("/api/admin/agencies", adminAgenciesRoutes);
 app.use("/api/admin/payments", adminPaymentsRoutes);
 app.use("/api/admin/reviews", adminReviewsRoutes);
+app.use("/api/admin/reports", adminReportsRoutes);
 
 const server = http.createServer(app);
 
