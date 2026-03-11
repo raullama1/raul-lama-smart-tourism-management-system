@@ -21,18 +21,23 @@ export async function getBookingForPayment(userId, bookingId) {
   return rows[0] || null;
 }
 
-export async function markBookingPaid(bookingId) {
+export async function markBookingPaid(
+  bookingId,
+  { esewaRefId = null, esewaTransactionCode = null } = {}
+) {
   const [res] = await db.query(
     `
     UPDATE bookings
     SET payment_status = 'Paid',
         booking_status = 'Confirmed',
-        payment_method = 'esewa',
-        paid_at = NOW()
+        payment_method = 'eSewa',
+        paid_at = NOW(),
+        esewa_ref_id = ?,
+        esewa_transaction_code = ?
     WHERE id = ?
       AND payment_status = 'Unpaid'
     `,
-    [Number(bookingId)]
+    [esewaRefId, esewaTransactionCode, Number(bookingId)]
   );
 
   return res.affectedRows > 0;

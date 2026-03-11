@@ -18,7 +18,7 @@ function makeRangeLabel(start, end) {
   const a = safeYMD(start);
   const b = safeYMD(end);
   if (!a || !b) return "";
-  return `${a} → ${b}`;
+  return `From ${a} until ${b}`;
 }
 
 export async function getUserBookings(userId, filters = {}) {

@@ -43,7 +43,8 @@ function emitNotification(io, role, userId, notification) {
 
 async function verifyEsewaStatus({ product_code, total_amount, transaction_uuid }) {
   const statusUrl =
-    process.env.ESEWA_STATUS_URL || "https://rc.esewa.com.np/api/epay/transaction/status/";
+    process.env.ESEWA_STATUS_URL ||
+    "https://rc.esewa.com.np/api/epay/transaction/status/";
 
   try {
     const url = statusUrl.endsWith("/") ? statusUrl : `${statusUrl}/`;
@@ -64,10 +65,14 @@ export async function initiateEsewaPayment(req, res) {
     const userId = req.user.id;
     const { bookingId } = req.body;
 
-    if (!bookingId) return res.status(400).json({ message: "bookingId is required." });
+    if (!bookingId) {
+      return res.status(400).json({ message: "bookingId is required." });
+    }
 
     const booking = await getBookingForPayment(userId, bookingId);
-    if (!booking) return res.status(404).json({ message: "Booking not found." });
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found." });
+    }
 
     if (booking.booking_status !== "Approved" || booking.payment_status !== "Unpaid") {
       return res.status(400).json({ message: "Payment not allowed for this booking." });
@@ -75,7 +80,9 @@ export async function initiateEsewaPayment(req, res) {
 
     const productCode = process.env.ESEWA_PRODUCT_CODE || "EPAYTEST";
     const secretKey = process.env.ESEWA_SECRET_KEY || "";
-    const formUrl = process.env.ESEWA_FORM_URL || "https://rc-epay.esewa.com.np/api/epay/main/v2/form";
+    const formUrl =
+      process.env.ESEWA_FORM_URL ||
+      "https://rc-epay.esewa.com.np/api/epay/main/v2/form";
 
     const total = Number(booking.total_price || 0);
     if (!total || total < 1) {
@@ -113,7 +120,9 @@ export async function esewaSuccess(req, res) {
   try {
     const dataB64 = req.query.data;
     if (!dataB64) {
-      return res.redirect(`${process.env.CLIENT_URL}/payment/failure/0?reason=missing_data`);
+      return res.redirect(
+        `${process.env.CLIENT_URL}/payment/failure/0?reason=missing_data`
+      );
     }
 
     const decoded = Buffer.from(String(dataB64), "base64").toString("utf8");
@@ -125,16 +134,21 @@ export async function esewaSuccess(req, res) {
     const expectedSig = hmacBase64(secretKey, signedStr);
 
     if (expectedSig !== body.signature) {
-      return res.redirect(`${process.env.CLIENT_URL}/payment/failure/0?reason=signature_mismatch`);
+      return res.redirect(
+        `${process.env.CLIENT_URL}/payment/failure/0?reason=signature_mismatch`
+      );
     }
 
     const bookingId = extractBookingIdFromTxn(body.transaction_uuid);
     if (!bookingId) {
-      return res.redirect(`${process.env.CLIENT_URL}/payment/failure/0?reason=bad_txn_uuid`);
+      return res.redirect(
+        `${process.env.CLIENT_URL}/payment/failure/0?reason=bad_txn_uuid`
+      );
     }
 
     let statusOk =
-      normalizeStatus(body.status) === "COMPLETE" || normalizeStatus(body.status) === "COMPLETED";
+      normalizeStatus(body.status) === "COMPLETE" ||
+      normalizeStatus(body.status) === "COMPLETED";
 
     const verify = await verifyEsewaStatus({
       product_code: body.product_code,
@@ -142,13 +156,33 @@ export async function esewaSuccess(req, res) {
       transaction_uuid: body.transaction_uuid,
     });
 
-    if (verify.ok) statusOk = true;
-
-    if (!statusOk) {
-      return res.redirect(`${process.env.CLIENT_URL}/payment/failure/${bookingId}?reason=not_complete`);
+    if (verify.ok) {
+      statusOk = true;
     }
 
-    await markBookingPaid(bookingId);
+    if (!statusOk) {
+      return res.redirect(
+        `${process.env.CLIENT_URL}/payment/failure/${bookingId}?reason=not_complete`
+      );
+    }
+
+    const esewaRefId =
+      body.ref_id ||
+      verify?.raw?.ref_id ||
+      body.transaction_uuid ||
+      null;
+
+    const esewaTransactionCode =
+      body.transaction_code ||
+      verify?.raw?.transaction_code ||
+      verify?.raw?.transaction_uuid ||
+      body.transaction_uuid ||
+      null;
+
+    await markBookingPaid(bookingId, {
+      esewaRefId,
+      esewaTransactionCode,
+    });
 
     const info = await getBookingNotificationInfo(bookingId);
     if (info) {
@@ -190,7 +224,9 @@ export async function esewaSuccess(req, res) {
     return res.redirect(`${process.env.CLIENT_URL}/payment/success/${bookingId}`);
   } catch (err) {
     console.error("esewaSuccess error:", err);
-    return res.redirect(`${process.env.CLIENT_URL}/payment/failure/0?reason=server_error`);
+    return res.redirect(
+      `${process.env.CLIENT_URL}/payment/failure/0?reason=server_error`
+    );
   }
 }
 
@@ -205,7 +241,9 @@ export async function esewaFailure(req, res) {
     const body = JSON.parse(decoded);
 
     const bookingId = extractBookingIdFromTxn(body.transaction_uuid) || 0;
-    return res.redirect(`${process.env.CLIENT_URL}/payment/failure/${bookingId}?reason=cancelled`);
+    return res.redirect(
+      `${process.env.CLIENT_URL}/payment/failure/${bookingId}?reason=cancelled`
+    );
   } catch {
     return res.redirect(`${process.env.CLIENT_URL}/payment/failure/0?reason=cancelled`);
   }
