@@ -15,6 +15,18 @@ function emitNotification(io, role, userId, notification) {
   io.to(`acct:${role}:${Number(userId)}`).emit("notification:refresh");
 }
 
+function normalizeTravelersInput(value) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+
+  if (!/^\d+$/.test(raw)) return null;
+
+  const n = Number.parseInt(raw, 10);
+  if (Number.isNaN(n) || n < 1 || n > 99) return null;
+
+  return n;
+}
+
 export async function listMyBookings(req, res) {
   try {
     const userId = req.user.id;
@@ -127,8 +139,8 @@ export async function createBooking(req, res) {
       return res.status(400).json({ message: "selectedDateLabel is required." });
     }
 
-    const trav = Number(travelers || 1);
-    if (Number.isNaN(trav) || trav < 1 || trav > 99) {
+    const trav = normalizeTravelersInput(travelers);
+    if (!trav) {
       return res.status(400).json({ message: "travelers must be between 1 and 99." });
     }
 

@@ -68,6 +68,23 @@ function makeRangeLabel(start, end) {
   return `${a} → ${b}`;
 }
 
+function normalizeTravelerInput(value) {
+  const digits = String(value || "").replace(/[^\d]/g, "").slice(0, 2);
+  if (!digits) return "";
+  const n = Number.parseInt(digits, 10);
+  if (Number.isNaN(n)) return "";
+  if (n > 99) return "99";
+  return String(n);
+}
+
+function getTravelerNumber(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  const n = Number.parseInt(raw, 10);
+  if (Number.isNaN(n) || n < 1 || n > 99) return null;
+  return n;
+}
+
 export default function ConfirmBookingPage() {
   const navigate = useNavigate();
   const [sp] = useSearchParams();
@@ -125,10 +142,14 @@ export default function ConfirmBookingPage() {
 
   const unitPrice = useMemo(() => Number(preview?.price || 0), [preview]);
 
+  const travelerCount = useMemo(() => {
+    const n = getTravelerNumber(travelers);
+    return n ?? 0;
+  }, [travelers]);
+
   const totalPrice = useMemo(() => {
-    const n = Number(String(travelers || "1").trim());
-    return unitPrice * (Number.isNaN(n) ? 1 : n);
-  }, [unitPrice, travelers]);
+    return unitPrice * travelerCount;
+  }, [unitPrice, travelerCount]);
 
   const unitPriceText = useMemo(
     () => `NPR ${unitPrice.toLocaleString("en-NP")}`,
@@ -151,8 +172,7 @@ export default function ConfirmBookingPage() {
     if (!selectedDateLabel && availableDates.length > 0) {
       setSelectedDateLabel(availableDates[0]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preview, dateFromUrl, availableDates.length]);
+  }, [preview, dateFromUrl, availableDates, selectedDateLabel]);
 
   useEffect(() => {
     const load = async () => {
@@ -193,7 +213,6 @@ export default function ConfirmBookingPage() {
       window.clearTimeout(redirectTimerRef.current);
       window.clearTimeout(toastTimerRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, agencyTourId]);
 
   const handleConfirm = async () => {
@@ -202,8 +221,8 @@ export default function ConfirmBookingPage() {
       return;
     }
 
-    const n = Number(String(travelers || "1").trim());
-    if (!n || Number.isNaN(n) || n < 1 || n > 99) {
+    const n = getTravelerNumber(travelers);
+    if (!n) {
       showToast("error", "Travelers must be between 1 and 99.");
       return;
     }
@@ -227,7 +246,7 @@ export default function ConfirmBookingPage() {
           saved?.travelers ?? "-"
         }`,
         "/bookings",
-        1200
+        800
       );
     } catch (e) {
       console.error("Confirm booking failed", e);
@@ -312,11 +331,14 @@ export default function ConfirmBookingPage() {
                   Number of travelers
                 </label>
                 <input
-                  type="number"
-                  min={1}
-                  max={99}
+                  type="text"
+                  inputMode="numeric"
                   value={travelers}
-                  onChange={(e) => setTravelers(e.target.value)}
+                  onChange={(e) => setTravelers(normalizeTravelerInput(e.target.value))}
+                  onBlur={() => {
+                    if (!travelers) setTravelers("1");
+                  }}
+                  placeholder="Enter travelers"
                   className="mt-2 w-full border border-gray-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-emerald-200"
                 />
                 <div className="text-xs text-gray-500 mt-2">
@@ -349,7 +371,8 @@ export default function ConfirmBookingPage() {
                     loading ||
                     !preview ||
                     !selectedDateLabel ||
-                    availableDates.length === 0
+                    availableDates.length === 0 ||
+                    !travelerCount
                   }
                   onClick={handleConfirm}
                   className={`inline-flex items-center gap-2 px-6 py-3 rounded-xl text-white font-semibold ${
@@ -357,7 +380,8 @@ export default function ConfirmBookingPage() {
                     loading ||
                     !preview ||
                     !selectedDateLabel ||
-                    availableDates.length === 0
+                    availableDates.length === 0 ||
+                    !travelerCount
                       ? "bg-emerald-300 cursor-not-allowed"
                       : "bg-emerald-700 hover:bg-emerald-800"
                   }`}

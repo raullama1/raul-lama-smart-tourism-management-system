@@ -14,11 +14,65 @@ function parsePipeRange(raw) {
   return { start: safeYMD(a), end: safeYMD(b) };
 }
 
+function parseArrowRange(raw) {
+  const s = String(raw || "").trim();
+  if (!s || !s.includes("→")) return { start: "", end: "" };
+  const [a, b] = s.split("→");
+  return { start: safeYMD(a), end: safeYMD(b) };
+}
+
+function parseLegacyTextRange(raw) {
+  const s = String(raw || "").trim();
+  const match = s.match(
+    /^From\s+(\d{4}-\d{2}-\d{2})\s+until\s+(\d{4}-\d{2}-\d{2})$/i
+  );
+
+  if (!match) return { start: "", end: "" };
+
+  return {
+    start: safeYMD(match[1]),
+    end: safeYMD(match[2]),
+  };
+}
+
 function makeRangeLabel(start, end) {
   const a = safeYMD(start);
   const b = safeYMD(end);
   if (!a || !b) return "";
-  return `From ${a} until ${b}`;
+  return `${a} → ${b}`;
+}
+
+function normalizeSelectedDateLabel(raw) {
+  const value = String(raw || "").trim();
+  if (!value) return "";
+
+  const arrow = parseArrowRange(value);
+  if (arrow.start && arrow.end) {
+    return makeRangeLabel(arrow.start, arrow.end);
+  }
+
+  const legacy = parseLegacyTextRange(value);
+  if (legacy.start && legacy.end) {
+    return makeRangeLabel(legacy.start, legacy.end);
+  }
+
+  const pipe = parsePipeRange(value);
+  if (pipe.start && pipe.end) {
+    return makeRangeLabel(pipe.start, pipe.end);
+  }
+
+  return value;
+}
+
+function normalizeTravelers(value) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+  if (!/^\d+$/.test(raw)) return null;
+
+  const n = Number.parseInt(raw, 10);
+  if (Number.isNaN(n) || n < 1 || n > 99) return null;
+
+  return n;
 }
 
 export async function getUserBookings(userId, filters = {}) {
@@ -199,12 +253,18 @@ export async function insertBooking({
   const expectedLabel = makeRangeLabel(preview.start_date, preview.end_date);
   if (!expectedLabel) return null;
 
-  if (String(selectedDateLabel || "").trim() !== expectedLabel) {
+  const normalizedSelectedDateLabel = normalizeSelectedDateLabel(selectedDateLabel);
+  if (normalizedSelectedDateLabel !== expectedLabel) {
+    return null;
+  }
+
+  const savedTravelers = normalizeTravelers(travelers);
+  if (!savedTravelers) {
     return null;
   }
 
   const bookingRef = makeBookingRef(preview.tour_title);
-  const totalPrice = Number(preview.price) * Number(travelers);
+  const totalPrice = Number(preview.price) * savedTravelers;
 
   const [res] = await db.query(
     `
@@ -232,7 +292,7 @@ export async function insertBooking({
       Number(preview.tour_id),
       Number(preview.agency_tour_id),
       bookingRef,
-      Number(travelers),
+      savedTravelers,
       notes ?? null,
       expectedLabel,
       totalPrice,
@@ -242,7 +302,7 @@ export async function insertBooking({
   return {
     id: res.insertId,
     ref_code: bookingRef,
-    travelers: Number(travelers),
+    travelers: savedTravelers,
     selected_date_label: expectedLabel,
     booking_status: "Pending",
     payment_status: "Unpaid",
