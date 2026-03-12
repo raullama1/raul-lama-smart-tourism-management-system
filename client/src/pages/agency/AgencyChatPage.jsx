@@ -16,6 +16,7 @@ import {
   markRead,
   deleteMessage,
   deleteConversationAsAgency,
+  fetchChatTourists,
 } from "../../api/chatApi";
 import { getAgencySocket } from "../../socket";
 
@@ -63,7 +64,8 @@ function AgencyChatPageContent({ openNotifications }) {
 
   const socketRef = useRef(null);
   const activeConvoReqRef = useRef(0);
-  const autoOpenedRef = useRef("");
+  const autoOpenedConversationRef = useRef("");
+  const autoOpenedTouristRef = useRef("");
 
   const selectedIdRef = useRef(null);
   useEffect(() => {
@@ -74,6 +76,16 @@ function AgencyChatPageContent({ openNotifications }) {
   useEffect(() => {
     paginationRef.current = pagination;
   }, [pagination]);
+
+  const convosRef = useRef(convos);
+  useEffect(() => {
+    convosRef.current = convos;
+  }, [convos]);
+
+  const tokenRef = useRef(token);
+  useEffect(() => {
+    tokenRef.current = token;
+  }, [token]);
 
   const messageCacheRef = useRef(new Map());
   const pendingEmptyConvosRef = useRef(new Set());
@@ -356,26 +368,6 @@ function AgencyChatPageContent({ openNotifications }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  useEffect(() => {
-    const paramId = Number(searchParams.get("conversationId") || 0);
-    if (!paramId || loadingConvos) return;
-
-    const key = String(paramId);
-    if (autoOpenedRef.current === key) return;
-
-    const target = (convos || []).find((c) => Number(getConvoId(c)) === Number(paramId));
-    if (!target) return;
-
-    autoOpenedRef.current = key;
-    handleSelect(target);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, convos, loadingConvos]);
-
-  const selected = useMemo(() => {
-    if (!selectedId) return null;
-    return (convos || []).find((c) => Number(getConvoId(c)) === Number(selectedId));
-  }, [convos, selectedId]);
-
   const deleteEmptyIfPending = async (conversationId) => {
     if (!token || !conversationId) return;
 
@@ -397,7 +389,9 @@ function AgencyChatPageContent({ openNotifications }) {
     const prevId = selectedIdRef.current;
 
     if (prevId && pendingEmptyConvosRef.current.has(Number(prevId))) {
-      const prevItem = (convos || []).find((x) => Number(getConvoId(x)) === Number(prevId));
+      const prevItem = (convosRef.current || []).find(
+        (x) => Number(getConvoId(x)) === Number(prevId)
+      );
       if (prevItem && !hasAnyMessagePreview(prevItem)) {
         setConvos((prev) => (prev || []).filter((x) => Number(getConvoId(x)) !== Number(prevId)));
         deleteEmptyIfPending(prevId);
@@ -429,6 +423,104 @@ function AgencyChatPageContent({ openNotifications }) {
 
     loadMessagesPage(nextId, 1, { silent: !!cached });
   };
+
+  const handleOpenTouristConversation = async (touristId) => {
+    const touristIdNum = Number(touristId);
+    if (!tokenRef.current || !touristIdNum) return;
+
+    const existing = (convosRef.current || []).find(
+      (c) => Number(getTouristIdFromConvo(c)) === touristIdNum
+    );
+
+    if (existing) {
+      handleSelect(existing);
+      return;
+    }
+
+    try {
+      const touristListRes = await fetchChatTourists(tokenRef.current, { search: "" });
+      const tourist =
+        (touristListRes?.data || []).find((t) => Number(t?.id) === touristIdNum) || null;
+
+      const res = await startConversationAsAgency(tokenRef.current, touristIdNum);
+
+      const convoId =
+        Number(res?.conversation?.id) ||
+        Number(res?.conversation_id) ||
+        Number(res?.conversationId) ||
+        Number(res?.id);
+
+      if (!convoId) return;
+
+      pendingEmptyConvosRef.current.add(Number(convoId));
+
+      const newConvo = {
+        conversation_id: convoId,
+        tourist_id: touristIdNum,
+        tourist_name: String(tourist?.name || "Tourist"),
+        tourist_email: String(tourist?.email || ""),
+        tourist_phone: String(tourist?.phone || ""),
+        tourist_profile_image: String(tourist?.profile_image || ""),
+        last_message: "",
+        last_message_at: "",
+        last_message_sender_role: "",
+        unread_count: 0,
+      };
+
+      setConvos((prev) => {
+        const alreadyExists = (prev || []).some(
+          (c) => Number(getConvoId(c)) === Number(convoId)
+        );
+        if (alreadyExists) return prev;
+        return [newConvo, ...(prev || [])];
+      });
+
+      setSelectedId(convoId);
+      setMessages([]);
+      setTypingText("");
+      setPagination({ page: 1, limit: PAGE_LIMIT, hasMore: false });
+
+      if (socketRef.current?.connected) {
+        socketRef.current.emit("chat:join", { conversationId: convoId });
+      }
+
+      loadMessagesPage(convoId, 1, { silent: false });
+    } catch (e) {
+      console.error("handleOpenTouristConversation error", e);
+    }
+  };
+
+  useEffect(() => {
+    const paramId = Number(searchParams.get("conversationId") || 0);
+    if (!paramId || loadingConvos) return;
+
+    const key = String(paramId);
+    if (autoOpenedConversationRef.current === key) return;
+
+    const target = (convos || []).find((c) => Number(getConvoId(c)) === Number(paramId));
+    if (!target) return;
+
+    autoOpenedConversationRef.current = key;
+    handleSelect(target);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, convos, loadingConvos]);
+
+  useEffect(() => {
+    const touristId = Number(searchParams.get("touristId") || 0);
+    if (!touristId || loadingConvos || !token) return;
+
+    const key = String(touristId);
+    if (autoOpenedTouristRef.current === key) return;
+
+    autoOpenedTouristRef.current = key;
+    handleOpenTouristConversation(touristId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, convos, loadingConvos, token]);
+
+  const selected = useMemo(() => {
+    if (!selectedId) return null;
+    return (convos || []).find((c) => Number(getConvoId(c)) === Number(selectedId));
+  }, [convos, selectedId]);
 
   const handleSend = async (text) => {
     if (!selectedId || !token) return;
