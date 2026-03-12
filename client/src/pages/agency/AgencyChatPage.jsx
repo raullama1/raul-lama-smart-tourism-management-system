@@ -1,7 +1,8 @@
 // client/src/pages/agency/AgencyChatPage.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { FiBell } from "react-icons/fi";
+import { FiBell, FiMessageSquare, FiZap } from "react-icons/fi";
+import { motion } from "framer-motion";
 import AgencyLayout from "../../components/agency/AgencyLayout";
 import AgencyChatSidebar from "../../components/agency/chat/AgencyChatSidebar";
 import AgencyChatWindow from "../../components/agency/chat/AgencyChatWindow";
@@ -68,27 +69,30 @@ function AgencyChatPageContent({ openNotifications }) {
   const autoOpenedTouristRef = useRef("");
 
   const selectedIdRef = useRef(null);
+  const paginationRef = useRef(pagination);
+  const convosRef = useRef(convos);
+  const tokenRef = useRef(token);
+
+  const messageCacheRef = useRef(new Map());
+  const pendingEmptyConvosRef = useRef(new Set());
+
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+
   useEffect(() => {
     selectedIdRef.current = selectedId ? Number(selectedId) : null;
   }, [selectedId]);
 
-  const paginationRef = useRef(pagination);
   useEffect(() => {
     paginationRef.current = pagination;
   }, [pagination]);
 
-  const convosRef = useRef(convos);
   useEffect(() => {
     convosRef.current = convos;
   }, [convos]);
 
-  const tokenRef = useRef(token);
   useEffect(() => {
     tokenRef.current = token;
   }, [token]);
-
-  const messageCacheRef = useRef(new Map());
-  const pendingEmptyConvosRef = useRef(new Set());
 
   const writeCache = (conversationId, nextMessages, nextPagination) => {
     if (!conversationId) return;
@@ -167,7 +171,6 @@ function AgencyChatPageContent({ openNotifications }) {
 
   useEffect(() => {
     loadConvos({ silent: false });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const markConversationRead = async (conversationId) => {
@@ -360,12 +363,9 @@ function AgencyChatPageContent({ openNotifications }) {
         s.off("chat:stopTyping", onStopTyping);
         s.off("chat:read", onRead);
         s.off("chat:deleted", onDeleted);
-      } catch {
-        // ignore
-      }
+      } catch {}
       socketRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const deleteEmptyIfPending = async (conversationId) => {
@@ -502,7 +502,6 @@ function AgencyChatPageContent({ openNotifications }) {
 
     autoOpenedConversationRef.current = key;
     handleSelect(target);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, convos, loadingConvos]);
 
   useEffect(() => {
@@ -514,7 +513,6 @@ function AgencyChatPageContent({ openNotifications }) {
 
     autoOpenedTouristRef.current = key;
     handleOpenTouristConversation(touristId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, convos, loadingConvos, token]);
 
   const selected = useMemo(() => {
@@ -787,63 +785,132 @@ function AgencyChatPageContent({ openNotifications }) {
   const handleOpenNotifications = async () => {
     try {
       await refresh?.();
-    } catch {
-      // ignore
-    }
+    } catch {}
 
     openNotifications?.();
   };
 
+  const handleMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width;
+    const py = (e.clientY - rect.top) / rect.height;
+    setTilt({
+      x: (px - 0.5) * 10,
+      y: (py - 0.5) * -10,
+    });
+  };
+
+  const handleMouseLeave = () => {
+    setTilt({ x: 0, y: 0 });
+  };
+
   return (
     <>
-      <div className="bg-white rounded-2xl border border-emerald-100 shadow-sm p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="text-lg font-extrabold text-gray-900">Chat</div>
+      <div className="relative min-h-[calc(100vh-140px)] overflow-hidden rounded-[32px] border border-white/60 bg-gradient-to-br from-emerald-50 via-white to-teal-100/70 p-3 sm:p-4 lg:p-5 shadow-[0_20px_80px_rgba(16,185,129,0.10)]">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -left-16 top-10 h-40 w-40 rounded-full bg-emerald-300/20 blur-3xl" />
+          <div className="absolute right-0 top-0 h-56 w-56 rounded-full bg-cyan-300/20 blur-3xl" />
+          <div className="absolute bottom-0 left-1/3 h-44 w-44 rounded-full bg-teal-300/20 blur-3xl" />
+        </div>
+
+        <motion.div
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+          animate={{ rotateX: tilt.y, rotateY: tilt.x }}
+          transition={{ type: "spring", stiffness: 120, damping: 14, mass: 0.7 }}
+          style={{ transformStyle: "preserve-3d" }}
+          className="relative rounded-[28px] border border-white/70 bg-white/75 backdrop-blur-2xl shadow-[0_18px_60px_rgba(15,23,42,0.08)]"
+        >
+          <div className="relative overflow-hidden rounded-[28px]">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.10),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(45,212,191,0.10),transparent_30%)]" />
+
+            <div className="relative border-b border-emerald-100/80 px-4 py-4 sm:px-6 sm:py-5 lg:px-7">
+              <div className="flex items-center justify-between gap-4">
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4 }}
+                  className="flex items-center gap-3"
+                >
+                  <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/20">
+                    <FiMessageSquare className="text-[22px]" />
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h1 className="text-xl font-black tracking-tight text-slate-900 sm:text-2xl">
+                      Chat
+                    </h1>
+                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-700">
+                      <FiZap className="text-[12px]" />
+                      Live
+                    </span>
+                  </div>
+                </motion.div>
+
+                <motion.button
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.45, delay: 0.05 }}
+                  type="button"
+                  onClick={handleOpenNotifications}
+                  className="relative grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-emerald-100 bg-white/90 text-emerald-900 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:bg-emerald-50"
+                  title="Notifications"
+                  aria-label="Notifications"
+                >
+                  <FiBell className="text-[18px]" />
+                  {Number(unreadCount || 0) > 0 && (
+                    <span className="absolute -right-1.5 -top-1.5 min-w-[22px] rounded-full bg-red-500 px-1.5 py-0.5 text-center text-[10px] font-black text-white shadow-lg shadow-red-500/20">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
+                </motion.button>
+              </div>
+            </div>
+
+            <div className="relative p-3 sm:p-4 lg:p-5">
+              <motion.div
+                initial={{ opacity: 0, y: 18 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.45, delay: 0.12 }}
+                className="grid min-h-[68vh] grid-cols-1 gap-4 xl:grid-cols-[360px_minmax(0,1fr)]"
+              >
+                <div className="rounded-[24px] border border-white/70 bg-white/80 p-2 shadow-[0_10px_35px_rgba(15,23,42,0.06)] backdrop-blur-xl">
+                  <AgencyChatSidebar
+                    search={search}
+                    onSearch={setSearch}
+                    conversations={filteredConvos}
+                    selectedId={selectedId}
+                    onSelect={handleSelect}
+                    onStartNew={() => setShowNewChat(true)}
+                  />
+                </div>
+
+                <div className="rounded-[24px] border border-white/70 bg-white/85 p-2 shadow-[0_10px_35px_rgba(15,23,42,0.06)] backdrop-blur-xl">
+                  <AgencyChatWindow
+                    selected={selected}
+                    messages={messages}
+                    loading={msgLoading}
+                    hasMore={!!pagination?.hasMore}
+                    onLoadMore={loadOlder}
+                    onSend={handleSend}
+                    typingText={typingText}
+                    onTyping={handleTyping}
+                    onStopTyping={handleStopTyping}
+                    onDeleteMessage={handleDeleteMessage}
+                    onDeleteConversation={handleDeleteConversation}
+                  />
+                </div>
+              </motion.div>
+
+              {loadingConvos && (
+                <div className="mt-4 flex items-center gap-2 rounded-2xl border border-emerald-100 bg-white/80 px-4 py-3 text-sm font-medium text-slate-500 shadow-sm">
+                  <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-500" />
+                  Loading chats...
+                </div>
+              )}
+            </div>
           </div>
-
-          <button
-            type="button"
-            onClick={handleOpenNotifications}
-            className="h-10 w-10 rounded-2xl border border-emerald-100 bg-white grid place-items-center text-emerald-900 hover:bg-emerald-50 relative"
-            title="Notifications"
-            aria-label="Notifications"
-          >
-            <FiBell />
-            {Number(unreadCount || 0) > 0 && (
-              <span className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 rounded-full bg-red-600 text-white text-[11px] font-black grid place-items-center">
-                {unreadCount > 99 ? "99+" : unreadCount}
-              </span>
-            )}
-          </button>
-        </div>
-
-        <div className="mt-5 flex flex-col md:flex-row gap-4">
-          <AgencyChatSidebar
-            search={search}
-            onSearch={setSearch}
-            conversations={filteredConvos}
-            selectedId={selectedId}
-            onSelect={handleSelect}
-            onStartNew={() => setShowNewChat(true)}
-          />
-
-          <AgencyChatWindow
-            selected={selected}
-            messages={messages}
-            loading={msgLoading}
-            hasMore={!!pagination?.hasMore}
-            onLoadMore={loadOlder}
-            onSend={handleSend}
-            typingText={typingText}
-            onTyping={handleTyping}
-            onStopTyping={handleStopTyping}
-            onDeleteMessage={handleDeleteMessage}
-            onDeleteConversation={handleDeleteConversation}
-          />
-        </div>
-
-        {loadingConvos && <div className="mt-3 text-xs text-gray-500">Loading chats...</div>}
+        </motion.div>
       </div>
 
       <NewAgencyChatModal

@@ -282,15 +282,11 @@ export default function AdminDashboardPage() {
               <div className="max-w-2xl">
                 <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[12px] font-semibold uppercase tracking-[0.18em] text-white/80 backdrop-blur">
                   <span className="h-2 w-2 rounded-full bg-emerald-300 animate-pulse" />
-                  Overview
+                  Tourism Nepal
                 </div>
                 <h1 className="mt-4 text-[28px] font-bold leading-tight sm:text-[36px]">
                   Admin Dashboard
                 </h1>
-                <p className="mt-2 max-w-xl text-sm leading-6 text-white/75 sm:text-[15px]">
-                  Monitor platform growth, booking performance, payments, and recent
-                  system activity in one clean view.
-                </p>
               </div>
 
               <button

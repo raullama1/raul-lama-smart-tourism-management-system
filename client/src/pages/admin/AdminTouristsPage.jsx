@@ -387,14 +387,11 @@ export default function AdminTouristsPage() {
               <div className="relative flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                 <div>
                   <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">
-                    Admin Panel
+                    Tourism Nepal
                   </div>
                   <h1 className="mt-4 text-3xl font-black tracking-tight text-slate-900 md:text-4xl">
                     Manage Tourists
                   </h1>
-                  <p className="mt-2 max-w-2xl text-sm font-medium text-slate-500 md:text-base">
-                    View tourist accounts, filter records, and manage access with a cleaner admin workflow.
-                  </p>
                 </div>
 
                 <motion.button

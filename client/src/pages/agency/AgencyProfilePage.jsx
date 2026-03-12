@@ -1,5 +1,7 @@
 // client/src/pages/agency/AgencyProfilePage.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import Tilt from "react-parallax-tilt";
 import { FiBell, FiKey, FiSave } from "react-icons/fi";
 import AgencySidebar from "../../components/agency/AgencySidebar";
 import AgencyNotificationsDrawer from "../../components/agency/AgencyNotificationsDrawer";
@@ -17,65 +19,88 @@ import {
 function Toast({ open, type = "success", message, onClose }) {
   const boxClass =
     type === "success"
-      ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-      : "border-red-200 bg-red-50 text-red-900";
+      ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-950"
+      : "border-rose-400/30 bg-rose-500/10 text-rose-950";
 
   return (
-    <div className="fixed top-5 right-5 z-[220] pointer-events-none">
-      <div
-        className={[
-          "pointer-events-auto relative w-[320px] rounded-2xl border px-4 py-3 shadow-lg",
-          "transition-all duration-300 ease-out",
-          open ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2",
-          boxClass,
-        ].join(" ")}
-        role="status"
-        aria-live="polite"
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-lg text-gray-700/70 hover:bg-black/5 hover:text-gray-900"
-          aria-label="Close notification"
-        >
-          ✕
-        </button>
-
-        <div className="pr-8 text-sm font-semibold">{message}</div>
-      </div>
+    <div className="pointer-events-none fixed right-4 top-4 z-[220] sm:right-6 sm:top-6">
+      <AnimatePresence>
+        {open ? (
+          <motion.div
+            initial={{ opacity: 0, y: -12, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.98 }}
+            transition={{ duration: 0.24, ease: "easeOut" }}
+            className={[
+              "pointer-events-auto relative w-[calc(100vw-2rem)] max-w-[360px] overflow-hidden rounded-2xl border px-4 py-3 shadow-[0_20px_60px_rgba(0,0,0,0.18)] ring-1 ring-white/40 backdrop-blur-xl",
+              boxClass,
+            ].join(" ")}
+            role="status"
+            aria-live="polite"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-white/25 to-white/5" />
+            <button
+              type="button"
+              onClick={onClose}
+              className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-xl text-slate-700/80 transition hover:bg-black/5 hover:text-slate-950"
+              aria-label="Close notification"
+            >
+              ✕
+            </button>
+            <div className="relative pr-8 text-sm font-semibold">{message}</div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }
 
 function ConfirmModal({ open, title, message, onCancel, onConfirm }) {
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-[210] flex items-center justify-center px-4">
-      <div className="absolute inset-0 bg-black/45" onClick={onCancel} />
-      <div className="relative w-full max-w-sm rounded-2xl border border-gray-100 bg-white p-5 shadow-2xl">
-        <div className="text-base font-semibold text-gray-900">{title}</div>
-        <div className="mt-1 text-sm text-gray-600">{message}</div>
-
-        <div className="mt-4 flex justify-end gap-2">
-          <button
-            type="button"
+    <AnimatePresence>
+      {open ? (
+        <div className="fixed inset-0 z-[210] flex items-center justify-center px-4 py-6">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm"
             onClick={onCancel}
-            className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          />
+          <motion.div
+            initial={{ opacity: 0, y: 16, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.98 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-white/25 bg-white/95 p-6 shadow-[0_25px_80px_rgba(0,0,0,0.28)] backdrop-blur-2xl"
           >
-            Cancel
-          </button>
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.14),transparent_42%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.12),transparent_38%)]" />
+            <div className="relative">
+              <div className="text-lg font-bold text-slate-900">{title}</div>
+              <div className="mt-2 text-sm leading-6 text-slate-600">{message}</div>
 
-          <button
-            type="button"
-            onClick={onConfirm}
-            className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
-          >
-            Remove
-          </button>
+              <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={onConfirm}
+                  className="rounded-2xl bg-gradient-to-r from-rose-600 to-red-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-red-500/20 transition hover:scale-[1.01] hover:shadow-red-500/30"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          </motion.div>
         </div>
-      </div>
-    </div>
+      ) : null}
+    </AnimatePresence>
   );
 }
 
@@ -94,8 +119,6 @@ function ChangeAgencyPasswordModal({ open, onClose, token, onSuccess, onError })
     }
   }, [open]);
 
-  if (!open) return null;
-
   const validate = () => {
     if (!currentPassword.trim()) return "Current password is required.";
     if (!newPassword.trim()) return "New password is required.";
@@ -103,17 +126,15 @@ function ChangeAgencyPasswordModal({ open, onClose, token, onSuccess, onError })
     if (!/[A-Z]/.test(newPassword)) return "New password must include an uppercase letter.";
     if (!/[a-z]/.test(newPassword)) return "New password must include a lowercase letter.";
     if (!/[0-9]/.test(newPassword)) return "New password must include a number.";
-    if (!/[^A-Za-z0-9]/.test(newPassword)) {
-      return "New password must include a special character.";
-    }
+    if (!/[^A-Za-z0-9]/.test(newPassword)) return "New password must include a special character.";
     if (newPassword !== confirmPassword) return "Passwords do not match.";
-    if (currentPassword === newPassword) {
-      return "New password must be different from current password.";
-    }
+    if (currentPassword === newPassword) return "New password must be different from current password.";
     return "";
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e) => {
+    e?.preventDefault?.();
+
     const message = validate();
     if (message) {
       onError(message);
@@ -122,12 +143,10 @@ function ChangeAgencyPasswordModal({ open, onClose, token, onSuccess, onError })
 
     try {
       setSaving(true);
-
       await changeAgencyPassword(token, {
         currentPassword,
         newPassword,
       });
-
       onSuccess("Password updated");
       onClose();
     } catch (err) {
@@ -138,75 +157,119 @@ function ChangeAgencyPasswordModal({ open, onClose, token, onSuccess, onError })
   };
 
   return (
-    <div className="fixed inset-0 z-[230] flex items-center justify-center px-4">
-      <div className="absolute inset-0 bg-black/45" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-2xl border border-gray-100 bg-white p-5 shadow-2xl">
-        <div className="text-lg font-semibold text-gray-900">Change Password</div>
-        <div className="mt-1 text-sm text-gray-500">
-          Update your agency account password.
-        </div>
-
-        <div className="mt-4 space-y-3">
-          <div>
-            <div className="text-sm font-semibold text-emerald-900/70">
-              Current Password
-            </div>
-            <input
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              placeholder="Enter current password"
-            />
-          </div>
-
-          <div>
-            <div className="text-sm font-semibold text-emerald-900/70">
-              New Password
-            </div>
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              placeholder="Enter new password"
-            />
-          </div>
-
-          <div>
-            <div className="text-sm font-semibold text-emerald-900/70">
-              Confirm New Password
-            </div>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              placeholder="Confirm new password"
-            />
-          </div>
-        </div>
-
-        <div className="mt-5 flex justify-end gap-2">
-          <button
-            type="button"
+    <AnimatePresence>
+      {open ? (
+        <div className="fixed inset-0 z-[230] flex items-center justify-center px-4 py-6">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-slate-950/65 backdrop-blur-sm"
             onClick={onClose}
-            className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          />
+          <motion.div
+            initial={{ opacity: 0, y: 18, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 12, scale: 0.98 }}
+            transition={{ duration: 0.24, ease: "easeOut" }}
+            className="relative w-full max-w-lg overflow-hidden rounded-[30px] border border-white/25 bg-white/95 p-6 shadow-[0_30px_90px_rgba(0,0,0,0.32)] backdrop-blur-2xl sm:p-7"
           >
-            Cancel
-          </button>
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.16),transparent_38%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.14),transparent_32%)]" />
+            <div className="relative">
+              <div className="text-xl font-bold tracking-tight text-slate-900">
+                Change Password
+              </div>
+              <div className="mt-1 text-sm text-slate-500">
+                Update your agency account password securely.
+              </div>
 
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={saving}
-            className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-60"
-          >
-            {saving ? "Updating..." : "Update Password"}
-          </button>
+              <form onSubmit={handleSubmit} autoComplete="off" className="mt-6 space-y-4">
+                <input
+                  type="text"
+                  name="fake_username"
+                  autoComplete="username"
+                  className="hidden"
+                  tabIndex={-1}
+                />
+                <input
+                  type="password"
+                  name="fake_password"
+                  autoComplete="new-password"
+                  className="hidden"
+                  tabIndex={-1}
+                />
+
+                <div>
+                  <div className="text-sm font-semibold text-slate-700">
+                    Current Password
+                  </div>
+                  <input
+                    type="password"
+                    name="agency_current_password_secure"
+                    autoComplete="new-password"
+                    data-lpignore="true"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    className="mt-2 w-full rounded-2xl border border-white/60 bg-white/80 px-4 py-3.5 text-sm text-slate-900 shadow-sm outline-none ring-0 transition placeholder:text-slate-400 focus:border-emerald-400 focus:bg-white focus:shadow-[0_0_0_4px_rgba(16,185,129,0.12)]"
+                    placeholder="Enter current password"
+                  />
+                </div>
+
+                <div>
+                  <div className="text-sm font-semibold text-slate-700">
+                    New Password
+                  </div>
+                  <input
+                    type="password"
+                    name="agency_new_password_secure"
+                    autoComplete="new-password"
+                    data-lpignore="true"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="mt-2 w-full rounded-2xl border border-white/60 bg-white/80 px-4 py-3.5 text-sm text-slate-900 shadow-sm outline-none ring-0 transition placeholder:text-slate-400 focus:border-emerald-400 focus:bg-white focus:shadow-[0_0_0_4px_rgba(16,185,129,0.12)]"
+                    placeholder="Enter new password"
+                  />
+                </div>
+
+                <div>
+                  <div className="text-sm font-semibold text-slate-700">
+                    Confirm New Password
+                  </div>
+                  <input
+                    type="password"
+                    name="agency_confirm_password_secure"
+                    autoComplete="new-password"
+                    data-lpignore="true"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="mt-2 w-full rounded-2xl border border-white/60 bg-white/80 px-4 py-3.5 text-sm text-slate-900 shadow-sm outline-none ring-0 transition placeholder:text-slate-400 focus:border-emerald-400 focus:bg-white focus:shadow-[0_0_0_4px_rgba(16,185,129,0.12)]"
+                    placeholder="Confirm new password"
+                  />
+                </div>
+
+                <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="rounded-2xl bg-gradient-to-r from-emerald-600 via-emerald-600 to-teal-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/20 transition hover:scale-[1.01] hover:shadow-emerald-500/30 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {saving ? "Updating..." : "Update Password"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </motion.div>
         </div>
-      </div>
-    </div>
+      ) : null}
+    </AnimatePresence>
   );
 }
 
@@ -228,12 +291,8 @@ function validatePhone(phoneDigits) {
   const value = sanitizePhoneDigits(phoneDigits);
 
   if (!value) return { ok: false, message: "Contact number is required." };
-  if (value.length !== 10) {
-    return { ok: false, message: "Contact number must be 10 digits." };
-  }
-  if (/^(\d)\1+$/.test(value)) {
-    return { ok: false, message: "Contact number looks invalid." };
-  }
+  if (value.length !== 10) return { ok: false, message: "Contact number must be 10 digits." };
+  if (/^(\d)\1+$/.test(value)) return { ok: false, message: "Contact number looks invalid." };
 
   return { ok: true, value };
 }
@@ -264,13 +323,10 @@ export default function AgencyProfilePage() {
   const fileRef = useRef(null);
 
   const [drawerOpen, setDrawerOpen] = useState(false);
-
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [imgLoading, setImgLoading] = useState(false);
-
   const [agency, setAgency] = useState(null);
-
   const [name, setName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [address, setAddress] = useState("");
@@ -310,7 +366,6 @@ export default function AgencyProfilePage() {
 
     try {
       setLoading(true);
-
       const res = await fetchAgencyProfile(token);
       const nextAgency = res?.agency || null;
 
@@ -343,9 +398,7 @@ export default function AgencyProfilePage() {
 
     try {
       await refresh?.();
-    } catch {
-      // ignore
-    }
+    } catch {}
   };
 
   const onPickFile = async (file) => {
@@ -353,10 +406,8 @@ export default function AgencyProfilePage() {
 
     try {
       setImgLoading(true);
-
       const res = await uploadAgencyAvatar(token, file);
       const nextAgency = res?.agency || null;
-
       setAgency(nextAgency);
       showToast("success", "Profile photo updated");
     } catch (err) {
@@ -373,10 +424,8 @@ export default function AgencyProfilePage() {
 
     try {
       setImgLoading(true);
-
       const res = await removeAgencyAvatar(token);
       const nextAgency = res?.agency || null;
-
       setAgency(nextAgency);
       showToast("success", "Profile photo removed");
     } catch (err) {
@@ -450,206 +499,381 @@ export default function AgencyProfilePage() {
     }
   };
 
+  const initials = (agency?.name || "A").trim().charAt(0).toUpperCase();
+
   return (
     <>
-      <div className="h-screen overflow-hidden bg-[#dfe9e2]">
+      <div className="h-screen overflow-hidden bg-[linear-gradient(135deg,#e8f6ee_0%,#edf5ff_42%,#f5f8fb_100%)] text-slate-900">
         <div className="flex h-full">
           <div className="h-full shrink-0">
             <AgencySidebar />
           </div>
 
-          <main className="flex-1 overflow-y-auto p-6 md:p-8">
-            <div className="mx-auto max-w-7xl rounded-3xl border border-emerald-100 bg-white shadow-sm">
-              <div className="flex items-start justify-between border-b border-emerald-100 px-6 py-5">
-                <div>
-                  <h1 className="text-3xl font-extrabold text-slate-800">
-                    Agency Profile
-                  </h1>
-                </div>
+          <main className="relative flex-1 overflow-y-auto">
+            <div className="pointer-events-none absolute inset-0 overflow-hidden">
+              <motion.div
+                animate={{ x: [0, 20, 0], y: [0, 24, 0] }}
+                transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute left-[-6rem] top-[-6rem] h-60 w-60 rounded-full bg-emerald-300/25 blur-3xl"
+              />
+              <motion.div
+                animate={{ x: [0, -18, 0], y: [0, 18, 0] }}
+                transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute right-[-7rem] top-20 h-72 w-72 rounded-full bg-sky-300/20 blur-3xl"
+              />
+              <motion.div
+                animate={{ x: [0, 16, 0], y: [0, -18, 0] }}
+                transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute bottom-[-6rem] left-1/3 h-72 w-72 rounded-full bg-teal-200/25 blur-3xl"
+              />
+            </div>
 
-                <button
-                  type="button"
-                  onClick={handleOpenNotifications}
-                  className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-100 bg-white text-slate-700 transition hover:bg-emerald-50"
-                  aria-label="Notifications"
-                  title="Notifications"
+            <motion.div
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, ease: "easeOut" }}
+              className="relative mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8"
+            >
+              <div className="overflow-hidden rounded-[32px] border border-white/50 bg-white/65 shadow-[0_20px_70px_rgba(16,24,40,0.08)] backdrop-blur-2xl">
+                <motion.div
+                  initial={{ opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05, duration: 0.35 }}
+                  className="relative border-b border-white/60 px-5 py-5 sm:px-7 sm:py-6 lg:px-8"
                 >
-                  <FiBell size={18} />
-                  {Number(unreadCount || 0) > 0 && (
-                    <span className="absolute -right-1 -top-1 grid h-6 min-w-[24px] place-items-center rounded-full bg-red-500 px-1 text-xs font-bold text-white">
-                      {unreadCount > 99 ? "99+" : unreadCount}
-                    </span>
-                  )}
-                </button>
-              </div>
-
-              <div className="px-6 py-6">
-                <div className="rounded-2xl border border-emerald-100 bg-white p-4 md:p-5">
-                  <div className="flex flex-col gap-4 md:flex-row md:items-start">
-                    <div className="h-20 w-20 overflow-hidden rounded-2xl border border-gray-100 bg-emerald-100">
-                      {avatarUrl ? (
-                        <img
-                          src={avatarUrl}
-                          alt="Agency profile"
-                          className="h-full w-full object-cover"
-                          onError={(e) => {
-                            e.currentTarget.style.display = "none";
-                          }}
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-2xl font-bold text-emerald-900">
-                          {(agency?.name || "A")[0]?.toUpperCase()}
-                        </div>
-                      )}
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.14),transparent_38%),radial-gradient(circle_at_top_right,rgba(59,130,246,0.1),transparent_35%)]" />
+                  <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="space-y-2">
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.96 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.1, duration: 0.25 }}
+                        className="inline-flex w-fit items-center rounded-full border border-emerald-200/60 bg-emerald-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700"
+                      >
+                        Tourism Nepal
+                      </motion.div>
+                      <div>
+                        <h1 className="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl xl:text-4xl">
+                          Agency Profile
+                        </h1>
+                      </div>
                     </div>
 
-                    <div>
-                      <div className="text-sm font-semibold text-gray-900">
-                        Profile photo
-                      </div>
+                    <div className="flex items-center gap-3 self-start lg:self-center">
+                      <motion.button
+                        whileHover={{ y: -3, scale: 1.03 }}
+                        whileTap={{ scale: 0.97 }}
+                        type="button"
+                        onClick={handleOpenNotifications}
+                        className="group relative inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/60 bg-white/85 text-slate-700 shadow-sm transition duration-200 hover:bg-white hover:shadow-lg"
+                        aria-label="Notifications"
+                        title="Notifications"
+                      >
+                        <FiBell size={18} className="transition group-hover:scale-110" />
+                        {Number(unreadCount || 0) > 0 && (
+                          <motion.span
+                            initial={{ scale: 0.85, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            className="absolute -right-1 -top-1 grid h-6 min-w-[24px] place-items-center rounded-full bg-gradient-to-r from-rose-500 to-red-500 px-1 text-[11px] font-bold text-white shadow-lg shadow-red-500/25"
+                          >
+                            {unreadCount > 99 ? "99+" : unreadCount}
+                          </motion.span>
+                        )}
+                      </motion.button>
+                    </div>
+                  </div>
+                </motion.div>
 
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        <input
-                          ref={fileRef}
-                          type="file"
-                          accept="image/png,image/jpeg,image/jpg,image/webp"
-                          className="hidden"
-                          onChange={(e) => onPickFile(e.target.files?.[0])}
-                        />
+                <div className="relative px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+                  <div className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+                    <motion.section
+                      initial={{ opacity: 0, x: -18 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.12, duration: 0.35 }}
+                      className="relative overflow-hidden rounded-[30px] border border-white/60 bg-white/75 p-5 shadow-[0_12px_40px_rgba(15,23,42,0.06)] backdrop-blur-xl sm:p-6"
+                    >
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.12),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.09),transparent_30%)]" />
+                      <div className="relative">
+                        <div className="flex flex-col items-center text-center">
+                          <Tilt
+                            tiltEnable
+                            tiltMaxAngleX={10}
+                            tiltMaxAngleY={10}
+                            perspective={1800}
+                            transitionSpeed={1500}
+                            scale={1.02}
+                            glareEnable
+                            glareMaxOpacity={0.08}
+                            glareColor="#ffffff"
+                            glarePosition="all"
+                            className="rounded-[34px]"
+                          >
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.92 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ delay: 0.18, duration: 0.3 }}
+                              className="relative"
+                            >
+                              <div className="absolute inset-[-10px] rounded-[34px] bg-gradient-to-br from-emerald-400/30 via-teal-300/20 to-sky-300/20 blur-xl" />
+                              <div className="relative h-28 w-28 overflow-hidden rounded-[28px] border border-white/70 bg-gradient-to-br from-emerald-100 to-teal-50 shadow-[0_15px_40px_rgba(16,185,129,0.18)] sm:h-32 sm:w-32">
+                                {avatarUrl ? (
+                                  <img
+                                    src={avatarUrl}
+                                    alt="Agency profile"
+                                    className="h-full w-full object-cover"
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = "none";
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="flex h-full w-full items-center justify-center text-3xl font-black text-emerald-900 sm:text-4xl">
+                                    {initials}
+                                  </div>
+                                )}
+                              </div>
+                            </motion.div>
+                          </Tilt>
 
-                        <button
-                          type="button"
-                          disabled={imgLoading}
-                          onClick={() => fileRef.current?.click()}
-                          className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-60"
-                        >
-                          {avatarUrl ? "Change photo" : "Upload photo"}
-                        </button>
+                          <div className="mt-5">
+                            <h2 className="text-xl font-bold tracking-tight text-slate-900">
+                              {agency?.name || "Agency"}
+                            </h2>
+                            <p className="mt-1 break-all text-sm text-slate-500">
+                              {agency?.email || "agency@email.com"}
+                            </p>
+                          </div>
 
-                        {avatarUrl ? (
-                          <button
+                          <motion.div
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.22, duration: 0.25 }}
+                            className="mt-4 inline-flex items-center rounded-full border border-emerald-200/60 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700"
+                          >
+                            Keep your profile polished and trusted
+                          </motion.div>
+                        </div>
+
+                        <div className="mt-6 space-y-3">
+                          <input
+                            ref={fileRef}
+                            type="file"
+                            accept="image/png,image/jpeg,image/jpg,image/webp"
+                            className="hidden"
+                            onChange={(e) => onPickFile(e.target.files?.[0])}
+                          />
+
+                          <motion.button
+                            whileHover={{ y: -2, scale: 1.01 }}
+                            whileTap={{ scale: 0.985 }}
                             type="button"
                             disabled={imgLoading}
-                            onClick={() => setConfirmRemove(true)}
-                            className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
+                            onClick={() => fileRef.current?.click()}
+                            className="w-full rounded-2xl bg-gradient-to-r from-slate-900 to-slate-700 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-900/15 transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            Remove
-                          </button>
-                        ) : null}
-                      </div>
+                            {imgLoading ? "Processing..." : avatarUrl ? "Change Photo" : "Upload Photo"}
+                          </motion.button>
 
-                      <div className="mt-2 text-xs text-gray-500">
-                        PNG/JPG/WEBP • max 2MB
-                      </div>
-                    </div>
-                  </div>
+                          {avatarUrl ? (
+                            <motion.button
+                              whileHover={{ y: -2, scale: 1.01 }}
+                              whileTap={{ scale: 0.985 }}
+                              type="button"
+                              disabled={imgLoading}
+                              onClick={() => setConfirmRemove(true)}
+                              className="w-full rounded-2xl border border-rose-200 bg-rose-50/80 px-4 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              Remove Photo
+                            </motion.button>
+                          ) : null}
 
-                  <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div>
-                      <div className="text-sm font-semibold text-emerald-900/70">
-                        Agency Name
-                      </div>
-                      <input
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        disabled={loading}
-                        className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        placeholder="Agency name"
-                        maxLength={150}
-                      />
-                    </div>
+                          <div className="rounded-2xl border border-slate-200/80 bg-white/70 px-4 py-3 text-center text-xs font-medium text-slate-500">
+                            PNG / JPG / WEBP • max 2MB
+                          </div>
+                        </div>
 
-                    <div>
-                      <div className="text-sm font-semibold text-emerald-900/70">
-                        Email
+                        <div className="mt-6 grid grid-cols-2 gap-3">
+                          <motion.div
+                            whileHover={{ y: -3 }}
+                            className="rounded-2xl border border-white/70 bg-white/70 px-4 py-4 text-left shadow-sm"
+                          >
+                            <div className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">
+                              Status
+                            </div>
+                            <div className="mt-2 text-sm font-bold text-slate-900">
+                              Active account
+                            </div>
+                          </motion.div>
+                          <motion.div
+                            whileHover={{ y: -3 }}
+                            className="rounded-2xl border border-white/70 bg-white/70 px-4 py-4 text-left shadow-sm"
+                          >
+                            <div className="text-xs font-semibold uppercase tracking-[0.15em] text-slate-400">
+                              Security
+                            </div>
+                            <div className="mt-2 text-sm font-bold text-slate-900">
+                              Protected
+                            </div>
+                          </motion.div>
+                        </div>
                       </div>
-                      <input
-                        value={agency?.email || ""}
-                        readOnly
-                        className="mt-2 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700"
-                        placeholder="Email"
-                      />
-                    </div>
+                    </motion.section>
 
-                    <div>
-                      <div className="text-sm font-semibold text-emerald-900/70">
-                        Contact Number
-                      </div>
-                      <input
-                        value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(sanitizePhoneDigits(e.target.value))}
-                        disabled={loading}
-                        className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        placeholder="10 digit contact number"
-                        maxLength={10}
-                        inputMode="numeric"
-                      />
-                    </div>
-
-                    <div>
-                      <div className="text-sm font-semibold text-emerald-900/70">
-                        Address
-                      </div>
-                      <input
-                        value={address}
-                        onChange={(e) => setAddress(e.target.value)}
-                        disabled={loading}
-                        className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        placeholder="Agency address"
-                        maxLength={255}
-                      />
-                    </div>
-
-                    <div>
-                      <div className="text-sm font-semibold text-emerald-900/70">
-                        PAN/VAT Number (Nepal)
-                      </div>
-                      <input
-                        value={panVat}
-                        onChange={(e) => setPanVat(e.target.value)}
-                        disabled={loading}
-                        className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        placeholder="PAN/VAT number"
-                        maxLength={50}
-                      />
-                    </div>
-
-                    <div>
-                      <div className="text-sm font-semibold text-emerald-900/70">
-                        Password
-                      </div>
-                      <input
-                        value="••••••••"
-                        readOnly
-                        className="mt-2 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700"
-                        placeholder="Password"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="mt-8 flex flex-wrap justify-end gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setChangePwdOpen(true)}
-                      className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-900 hover:bg-gray-50"
+                    <motion.section
+                      initial={{ opacity: 0, x: 18 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.16, duration: 0.35 }}
+                      className="relative overflow-hidden rounded-[30px] border border-white/60 bg-white/75 p-5 shadow-[0_12px_40px_rgba(15,23,42,0.06)] backdrop-blur-xl sm:p-6 lg:p-7"
                     >
-                      <FiKey size={16} />
-                      Change Password
-                    </button>
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.08),transparent_30%),radial-gradient(circle_at_bottom_left,rgba(59,130,246,0.08),transparent_28%)]" />
+                      <div className="relative">
+                        <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                          <div>
+                            <h3 className="text-xl font-bold tracking-tight text-slate-900">
+                              Profile Information
+                            </h3>
+                            <p className="mt-1 text-sm text-slate-500">
+                              Update your business details and keep everything accurate.
+                            </p>
+                          </div>
 
-                    <button
-                      type="button"
-                      onClick={onSave}
-                      disabled={saving || loading || !isDirty}
-                      className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      <FiSave size={16} />
-                      {saving ? "Updating..." : "Update Profile"}
-                    </button>
+                          <AnimatePresence mode="wait">
+                            {isDirty ? (
+                              <motion.div
+                                key="dirty"
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -8 }}
+                                className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700"
+                              >
+                                Unsaved changes
+                              </motion.div>
+                            ) : (
+                              <motion.div
+                                key="saved"
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -8 }}
+                                className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700"
+                              >
+                                Everything saved
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }}>
+                            <div className="text-sm font-semibold text-slate-700">
+                              Agency Name
+                            </div>
+                            <input
+                              value={name}
+                              onChange={(e) => setName(e.target.value)}
+                              disabled={loading}
+                              className="mt-2 w-full rounded-2xl border border-white/70 bg-white/80 px-4 py-3.5 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:bg-white focus:shadow-[0_0_0_4px_rgba(16,185,129,0.12)]"
+                              placeholder="Agency name"
+                              maxLength={150}
+                            />
+                          </motion.div>
+
+                          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.24 }}>
+                            <div className="text-sm font-semibold text-slate-700">
+                              Email
+                            </div>
+                            <input
+                              value={agency?.email || ""}
+                              readOnly
+                              className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3.5 text-sm text-slate-600 shadow-sm"
+                              placeholder="Email"
+                            />
+                          </motion.div>
+
+                          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.26 }}>
+                            <div className="text-sm font-semibold text-slate-700">
+                              Contact Number
+                            </div>
+                            <input
+                              value={phoneNumber}
+                              onChange={(e) => setPhoneNumber(sanitizePhoneDigits(e.target.value))}
+                              disabled={loading}
+                              className="mt-2 w-full rounded-2xl border border-white/70 bg-white/80 px-4 py-3.5 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:bg-white focus:shadow-[0_0_0_4px_rgba(16,185,129,0.12)]"
+                              placeholder="10 digit contact number"
+                              maxLength={10}
+                              inputMode="numeric"
+                            />
+                          </motion.div>
+
+                          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.28 }}>
+                            <div className="text-sm font-semibold text-slate-700">
+                              Address
+                            </div>
+                            <input
+                              value={address}
+                              onChange={(e) => setAddress(e.target.value)}
+                              disabled={loading}
+                              className="mt-2 w-full rounded-2xl border border-white/70 bg-white/80 px-4 py-3.5 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:bg-white focus:shadow-[0_0_0_4px_rgba(16,185,129,0.12)]"
+                              placeholder="Agency address"
+                              maxLength={255}
+                            />
+                          </motion.div>
+
+                          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                            <div className="text-sm font-semibold text-slate-700">
+                              PAN / VAT Number
+                            </div>
+                            <input
+                              value={panVat}
+                              onChange={(e) => setPanVat(e.target.value)}
+                              disabled={loading}
+                              className="mt-2 w-full rounded-2xl border border-white/70 bg-white/80 px-4 py-3.5 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-400 focus:bg-white focus:shadow-[0_0_0_4px_rgba(16,185,129,0.12)]"
+                              placeholder="PAN/VAT number"
+                              maxLength={50}
+                            />
+                          </motion.div>
+
+                          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}>
+                            <div className="text-sm font-semibold text-slate-700">
+                              Password
+                            </div>
+                            <input
+                              value="••••••••"
+                              readOnly
+                              className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3.5 text-sm text-slate-600 shadow-sm"
+                              placeholder="Password"
+                            />
+                          </motion.div>
+                        </div>
+
+                        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-end">
+                          <motion.button
+                            whileHover={{ y: -2, scale: 1.01 }}
+                            whileTap={{ scale: 0.985 }}
+                            type="button"
+                            onClick={() => setChangePwdOpen(true)}
+                            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white/90 px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-300 hover:bg-white hover:shadow-md"
+                          >
+                            <FiKey size={16} />
+                            Change Password
+                          </motion.button>
+
+                          <motion.button
+                            whileHover={saving || loading || !isDirty ? {} : { y: -2, scale: 1.01 }}
+                            whileTap={saving || loading || !isDirty ? {} : { scale: 0.985 }}
+                            type="button"
+                            onClick={onSave}
+                            disabled={saving || loading || !isDirty}
+                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 via-emerald-600 to-teal-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-500/20 transition hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            <FiSave size={16} />
+                            {saving ? "Updating..." : "Update Profile"}
+                          </motion.button>
+                        </div>
+                      </div>
+                    </motion.section>
                   </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </main>
         </div>
       </div>

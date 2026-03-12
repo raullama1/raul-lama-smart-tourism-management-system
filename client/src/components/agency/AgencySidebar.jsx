@@ -1,6 +1,6 @@
 // client/src/components/agency/AgencySidebar.jsx
-import { useEffect, useMemo, useState } from "react";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
 import {
   FiGrid,
   FiMap,
@@ -18,24 +18,25 @@ import {
   FiPlus,
   FiCheckSquare,
 } from "react-icons/fi";
-import { motion, AnimatePresence } from "framer-motion";
 import { useAgencyAuth } from "../../context/AgencyAuthContext";
+
+const SIDEBAR_SCROLL_KEY = "agency_sidebar_scroll_top";
+const TOUR_OPEN_KEY = "agency_sidebar_tour_open";
+const BLOG_OPEN_KEY = "agency_sidebar_blog_open";
 
 function SidebarItem({ to, icon: Icon, label, end = false }) {
   return (
     <NavLink to={to} end={end}>
       {({ isActive }) => (
-        <motion.div
-          whileHover={{ x: 4 }}
-          whileTap={{ scale: 0.985 }}
-          className={`group relative mb-2 flex items-center gap-3 overflow-hidden rounded-2xl border px-4 py-3.5 text-sm font-semibold transition-all duration-300 ${
+        <div
+          className={`group relative mb-2 flex items-center gap-3 overflow-hidden rounded-2xl border px-4 py-3.5 text-sm font-semibold transition-colors duration-200 ${
             isActive
               ? "border-white/18 bg-white text-emerald-950 shadow-[0_10px_24px_rgba(255,255,255,0.12)]"
               : "border-transparent text-emerald-50/90 hover:border-white/8 hover:bg-white/10"
           }`}
         >
           <div
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border transition-all duration-300 ${
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border transition-colors duration-200 ${
               isActive
                 ? "border-emerald-100 bg-emerald-50 text-emerald-700"
                 : "border-white/10 bg-white/8 text-emerald-50 group-hover:bg-white/12"
@@ -49,7 +50,7 @@ function SidebarItem({ to, icon: Icon, label, end = false }) {
           {isActive ? (
             <div className="absolute right-3 h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_18px_rgba(16,185,129,0.7)]" />
           ) : null}
-        </motion.div>
+        </div>
       )}
     </NavLink>
   );
@@ -59,10 +60,8 @@ function SidebarSubItem({ to, label, icon: Icon }) {
   return (
     <NavLink to={to}>
       {({ isActive }) => (
-        <motion.div
-          whileHover={{ x: 4 }}
-          whileTap={{ scale: 0.985 }}
-          className={`group mb-1.5 flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-all duration-300 ${
+        <div
+          className={`group mb-1.5 flex items-center gap-2.5 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-colors duration-200 ${
             isActive
               ? "border-white/12 bg-white/14 text-white shadow-[0_8px_18px_rgba(255,255,255,0.06)]"
               : "border-transparent text-emerald-50/75 hover:border-white/8 hover:bg-white/8 hover:text-emerald-50"
@@ -70,7 +69,7 @@ function SidebarSubItem({ to, label, icon: Icon }) {
         >
           {Icon ? (
             <span
-              className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all duration-300 ${
+              className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors duration-200 ${
                 isActive ? "bg-white/16" : "bg-white/6 group-hover:bg-white/10"
               }`}
             >
@@ -78,7 +77,7 @@ function SidebarSubItem({ to, label, icon: Icon }) {
             </span>
           ) : null}
           <span className="truncate">{label}</span>
-        </motion.div>
+        </div>
       )}
     </NavLink>
   );
@@ -87,12 +86,10 @@ function SidebarSubItem({ to, label, icon: Icon }) {
 function SidebarSection({ icon: Icon, label, open, onToggle, children }) {
   return (
     <div className="mb-2 space-y-2">
-      <motion.button
-        whileHover={{ x: 2 }}
-        whileTap={{ scale: 0.985 }}
+      <button
         type="button"
         onClick={onToggle}
-        className={`group flex w-full items-center justify-between rounded-2xl border px-4 py-3.5 text-sm font-semibold transition-all duration-300 ${
+        className={`group flex w-full items-center justify-between rounded-2xl border px-4 py-3.5 text-sm font-semibold transition-colors duration-200 ${
           open
             ? "border-white/10 bg-white/10 text-white"
             : "border-transparent text-emerald-50/90 hover:border-white/8 hover:bg-white/8"
@@ -100,7 +97,7 @@ function SidebarSection({ icon: Icon, label, open, onToggle, children }) {
       >
         <span className="flex min-w-0 items-center gap-3">
           <span
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border transition-all duration-300 ${
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border transition-colors duration-200 ${
               open
                 ? "border-white/15 bg-white/14 text-white"
                 : "border-white/10 bg-white/8 text-emerald-50"
@@ -111,30 +108,22 @@ function SidebarSection({ icon: Icon, label, open, onToggle, children }) {
           <span className="truncate">{label}</span>
         </span>
 
-        <motion.span
-          animate={{ rotate: open ? 180 : 0 }}
-          transition={{ duration: 0.22 }}
-          className="ml-3 shrink-0 text-emerald-100/80"
+        <span
+          className={`ml-3 shrink-0 text-emerald-100/80 transition-transform duration-200 ${
+            open ? "rotate-180" : "rotate-0"
+          }`}
         >
           <FiChevronDown size={18} />
-        </motion.span>
-      </motion.button>
+        </span>
+      </button>
 
-      <AnimatePresence initial={false}>
-        {open ? (
-          <motion.div
-            initial={{ opacity: 0, height: 0, y: -6 }}
-            animate={{ opacity: 1, height: "auto", y: 0 }}
-            exit={{ opacity: 0, height: 0, y: -6 }}
-            transition={{ duration: 0.22, ease: "easeOut" }}
-            className="overflow-hidden"
-          >
-            <div className="ml-5 mt-1 border-l border-white/10 pl-4">
-              <div className="space-y-0.5">{children}</div>
-            </div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      {open ? (
+        <div className="overflow-hidden">
+          <div className="ml-5 mt-1 border-l border-white/10 pl-4">
+            <div className="space-y-0.5">{children}</div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -142,33 +131,53 @@ function SidebarSection({ icon: Icon, label, open, onToggle, children }) {
 export default function AgencySidebar() {
   const { isAuthenticated, logout } = useAgencyAuth();
   const navigate = useNavigate();
-  const location = useLocation();
+  const scrollRef = useRef(null);
 
-  const inTour = useMemo(
-    () => location.pathname.startsWith("/agency/tours"),
-    [location.pathname]
-  );
+  const [tourOpen, setTourOpen] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return sessionStorage.getItem(TOUR_OPEN_KEY) === "true";
+  });
 
-  const inBlog = useMemo(
-    () => location.pathname.startsWith("/agency/blogs"),
-    [location.pathname]
-  );
-
-  const [tourOpen, setTourOpen] = useState(false);
-  const [blogOpen, setBlogOpen] = useState(false);
+  const [blogOpen, setBlogOpen] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return sessionStorage.getItem(BLOG_OPEN_KEY) === "true";
+  });
 
   useEffect(() => {
     if (!isAuthenticated) {
       setTourOpen(false);
       setBlogOpen(false);
-      return;
+      sessionStorage.removeItem(TOUR_OPEN_KEY);
+      sessionStorage.removeItem(BLOG_OPEN_KEY);
     }
+  }, [isAuthenticated]);
 
-    if (inTour) setTourOpen(true);
-    if (inBlog) setBlogOpen(true);
-  }, [isAuthenticated, inTour, inBlog]);
+  useEffect(() => {
+    sessionStorage.setItem(TOUR_OPEN_KEY, String(tourOpen));
+  }, [tourOpen]);
+
+  useEffect(() => {
+    sessionStorage.setItem(BLOG_OPEN_KEY, String(blogOpen));
+  }, [blogOpen]);
+
+  useEffect(() => {
+    const node = scrollRef.current;
+    if (!node) return;
+
+    const savedScrollTop = sessionStorage.getItem(SIDEBAR_SCROLL_KEY);
+    if (savedScrollTop !== null) {
+      node.scrollTop = Number(savedScrollTop) || 0;
+    }
+  }, []);
+
+  const handleSidebarScroll = (event) => {
+    sessionStorage.setItem(SIDEBAR_SCROLL_KEY, String(event.currentTarget.scrollTop));
+  };
 
   const handleLogout = () => {
+    sessionStorage.removeItem(SIDEBAR_SCROLL_KEY);
+    sessionStorage.removeItem(TOUR_OPEN_KEY);
+    sessionStorage.removeItem(BLOG_OPEN_KEY);
     logout();
     navigate("/agency/login");
   };
@@ -183,12 +192,7 @@ export default function AgencySidebar() {
 
       <div className="relative flex h-full flex-col">
         <div className="px-5 pb-4 pt-5">
-          <motion.div
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.32 }}
-            className="rounded-[28px] border border-white/10 bg-white/8 p-4 shadow-[0_20px_45px_rgba(0,0,0,0.22)] backdrop-blur-xl"
-          >
+          <div className="rounded-[28px] border border-white/10 bg-white/8 p-4 shadow-[0_20px_45px_rgba(0,0,0,0.22)] backdrop-blur-xl">
             <div className="flex items-center gap-3">
               <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl border border-white/15 bg-white/10 shadow-inner">
                 <div className="absolute inset-0 rounded-2xl bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.25),transparent_55%)]" />
@@ -199,31 +203,24 @@ export default function AgencySidebar() {
                 <p className="truncate text-lg font-black tracking-tight text-white">
                   Agency Portal
                 </p>
-                <p className="mt-1 text-xs font-medium text-emerald-100/70">
-                  Manage tours, blogs & bookings
-                </p>
               </div>
             </div>
-          </motion.div>
+          </div>
         </div>
 
-        <div className="relative flex-1 overflow-y-auto px-5 pb-5">
+        <div
+          ref={scrollRef}
+          onScroll={handleSidebarScroll}
+          className="relative flex-1 overflow-y-auto px-5 pb-4"
+        >
           {!isAuthenticated ? (
-            <motion.nav
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.34, delay: 0.04 }}
-            >
+            <nav>
               <SidebarItem to="/agency/login" icon={FiLogIn} label="Login" />
               <SidebarItem to="/agency/register" icon={FiUserPlus} label="Register" />
               <SidebarItem to="/agency/help" icon={FiHelpCircle} label="Help" />
-            </motion.nav>
+            </nav>
           ) : (
-            <motion.nav
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.34, delay: 0.04 }}
-            >
+            <nav>
               <SidebarItem
                 to="/agency/dashboard"
                 icon={FiGrid}
@@ -291,31 +288,18 @@ export default function AgencySidebar() {
               />
               <SidebarItem to="/agency/profile" icon={FiUser} label="Profile" />
 
-              <motion.button
-                whileHover={{ x: 4 }}
-                whileTap={{ scale: 0.985 }}
+              <button
                 type="button"
                 onClick={handleLogout}
-                className="group mt-2 flex w-full items-center gap-3 rounded-2xl border border-transparent px-4 py-3.5 text-sm font-semibold text-emerald-50/90 transition-all duration-300 hover:border-red-400/10 hover:bg-red-500/12 hover:text-white"
+                className="group relative mb-2 flex w-full items-center gap-3 overflow-hidden rounded-2xl border border-transparent px-4 py-3.5 text-sm font-semibold text-emerald-50/90 transition-colors duration-200 hover:border-red-400/20 hover:bg-red-500/12 hover:text-white"
               >
-                <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/8 transition-all duration-300 group-hover:border-red-400/20 group-hover:bg-red-500/18">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/8 text-emerald-50 transition-colors duration-200 group-hover:border-red-400/20 group-hover:bg-red-500/18 group-hover:text-white">
                   <FiLogOut size={18} />
                 </span>
-                <span>Logout</span>
-              </motion.button>
-            </motion.nav>
+                <span className="truncate">Logout</span>
+              </button>
+            </nav>
           )}
-        </div>
-
-        <div className="relative border-t border-white/10 px-5 py-4">
-          <div className="rounded-2xl border border-white/8 bg-white/6 px-4 py-3 backdrop-blur-xl">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-100/55">
-              Tourism Nepal
-            </p>
-            <p className="mt-1 text-xs text-emerald-100/75">
-              Manage your agency with a cleaner workspace
-            </p>
-          </div>
         </div>
       </div>
     </aside>

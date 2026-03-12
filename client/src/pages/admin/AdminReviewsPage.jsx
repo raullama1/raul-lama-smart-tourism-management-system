@@ -312,14 +312,11 @@ export default function AdminReviewsPage() {
               <div className="relative flex flex-col gap-4">
                 <div>
                   <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">
-                    Admin Panel
+                    Tourism Nepal
                   </div>
                   <h1 className="mt-4 text-3xl font-black tracking-tight text-slate-900 md:text-4xl">
                     Reviews
                   </h1>
-                  <p className="mt-2 max-w-2xl text-sm font-medium text-slate-500 md:text-base">
-                    Monitor tourist feedback across all tours with a cleaner and more structured review dashboard.
-                  </p>
                 </div>
               </div>
 

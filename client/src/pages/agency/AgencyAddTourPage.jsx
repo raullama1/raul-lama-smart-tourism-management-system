@@ -624,7 +624,7 @@ function AgencyAddTourPageContent({ openNotifications }) {
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="min-w-0">
                 <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-700">
-                  Agency Panel
+                  Tourism Nepal
                 </div>
                 <h1 className="mt-3 text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
                   Add New Tour

@@ -1,4 +1,6 @@
 // client/src/components/admin/AdminSidebar.jsx
+import { useEffect, useRef } from "react";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
   FiBarChart2,
   FiCreditCard,
@@ -8,9 +10,9 @@ import {
   FiStar,
   FiUsers,
 } from "react-icons/fi";
-import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
 import { useAdminAuth } from "../../context/AdminAuthContext";
+
+const SIDEBAR_SCROLL_KEY = "admin_sidebar_scroll_top";
 
 const menuItems = [
   { key: "dashboard", label: "Dashboard", icon: FiGrid, path: "/admin/dashboard" },
@@ -21,11 +23,45 @@ const menuItems = [
   { key: "reports", label: "Reports", icon: FiBarChart2, path: "/admin/reports" },
 ];
 
-export default function AdminSidebar({ active = "dashboard" }) {
+export default function AdminSidebar() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { logout } = useAdminAuth();
+  const scrollRef = useRef(null);
+
+  useEffect(() => {
+    const node = scrollRef.current;
+    if (!node) return;
+
+    const savedScrollTop = sessionStorage.getItem(SIDEBAR_SCROLL_KEY);
+    if (savedScrollTop !== null) {
+      node.scrollTop = Number(savedScrollTop) || 0;
+    }
+  }, []);
+
+  useEffect(() => {
+    const node = scrollRef.current;
+    if (!node) return;
+
+    const restoreScroll = () => {
+      const savedScrollTop = sessionStorage.getItem(SIDEBAR_SCROLL_KEY);
+      if (savedScrollTop !== null) {
+        node.scrollTop = Number(savedScrollTop) || 0;
+      }
+    };
+
+    restoreScroll();
+
+    const frame = window.requestAnimationFrame(restoreScroll);
+    return () => window.cancelAnimationFrame(frame);
+  }, [location.pathname]);
+
+  const handleSidebarScroll = (event) => {
+    sessionStorage.setItem(SIDEBAR_SCROLL_KEY, String(event.currentTarget.scrollTop));
+  };
 
   const handleLogout = () => {
+    sessionStorage.removeItem(SIDEBAR_SCROLL_KEY);
     logout();
     navigate("/admin/login", { replace: true });
   };
@@ -40,12 +76,7 @@ export default function AdminSidebar({ active = "dashboard" }) {
 
       <div className="relative flex h-full flex-col">
         <div className="border-b border-white/10 px-4 pb-4 pt-5 sm:px-5 sm:pb-5 sm:pt-6">
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="flex items-center gap-3"
-          >
+          <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.14)] backdrop-blur-xl">
               <FiMap size={22} />
             </div>
@@ -58,67 +89,62 @@ export default function AdminSidebar({ active = "dashboard" }) {
                 Admin Portal
               </h2>
             </div>
-          </motion.div>
+          </div>
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col px-3 py-4 sm:px-4 sm:py-5">
-          <nav className="flex-1 overflow-x-auto overflow-y-hidden lg:overflow-y-auto lg:overflow-x-hidden">
-            <div className="flex gap-3 pb-2 lg:block lg:space-y-2.5 lg:pb-0">
-              {menuItems.map((item, index) => {
+          <nav
+            ref={scrollRef}
+            onScroll={handleSidebarScroll}
+            className="flex-1 overflow-x-auto overflow-y-hidden lg:overflow-y-auto lg:overflow-x-hidden"
+          >
+            <div className="flex gap-3 pb-2 lg:flex-col lg:gap-4 lg:pb-0">
+              {menuItems.map((item) => {
                 const Icon = item.icon;
-                const isActive = item.key === active;
 
                 return (
-                  <motion.button
-                    key={item.key}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.24, delay: index * 0.04 }}
-                    whileHover={{ y: -2 }}
-                    whileTap={{ scale: 0.985 }}
-                    type="button"
-                    onClick={() => navigate(item.path)}
-                    className={`group relative flex min-w-[155px] items-center gap-3 rounded-2xl border px-3.5 py-3 text-left text-[14px] font-semibold transition sm:min-w-[170px] lg:min-w-0 lg:w-full lg:px-4 ${
-                      isActive
-                        ? "border-white/20 bg-white text-[#0a3526] shadow-[0_10px_24px_rgba(255,255,255,0.12)]"
-                        : "border-transparent bg-white/[0.04] text-white/85 hover:border-white/10 hover:bg-white/[0.08] hover:text-white"
-                    }`}
-                  >
-                    <span
-                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition ${
-                        isActive
-                          ? "bg-[#0a3526]/10 text-[#0a3526]"
-                          : "bg-white/5 text-white/85 group-hover:bg-white/10 group-hover:text-white"
-                      }`}
-                    >
-                      <Icon size={18} />
-                    </span>
+                  <NavLink key={item.key} to={item.path} className="block shrink-0 lg:w-full">
+                    {({ isActive }) => (
+                      <div
+                        className={`group relative flex min-h-[72px] min-w-[155px] items-center gap-3 rounded-[26px] border px-4 py-3 text-left text-[14px] font-semibold transition-colors duration-200 sm:min-w-[170px] lg:min-w-0 lg:w-full ${
+                          isActive
+                            ? "border-white/20 bg-white text-[#0a3526] shadow-[0_10px_24px_rgba(255,255,255,0.12)]"
+                            : "border-white/5 bg-white/[0.04] text-white/85 hover:border-white/10 hover:bg-white/[0.08] hover:text-white"
+                        }`}
+                      >
+                        <span
+                          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] transition-colors duration-200 ${
+                            isActive
+                              ? "bg-[#0a3526]/10 text-[#0a3526]"
+                              : "bg-white/5 text-white/85 group-hover:bg-white/10 group-hover:text-white"
+                          }`}
+                        >
+                          <Icon size={20} />
+                        </span>
 
-                    <span className="truncate">{item.label}</span>
+                        <span className="truncate text-[15px] font-semibold">{item.label}</span>
 
-                    {isActive ? (
-                      <span className="absolute right-3 hidden h-2.5 w-2.5 rounded-full bg-emerald-500 lg:block" />
-                    ) : null}
-                  </motion.button>
+                        {isActive ? (
+                          <span className="absolute right-4 hidden h-2.5 w-2.5 rounded-full bg-emerald-500 lg:block" />
+                        ) : null}
+                      </div>
+                    )}
+                  </NavLink>
                 );
               })}
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="group relative flex min-h-[72px] min-w-[155px] shrink-0 items-center gap-3 rounded-[26px] border border-white/5 bg-white/[0.04] px-4 py-3 text-left text-[14px] font-semibold text-white/85 transition-colors duration-200 hover:border-red-300/20 hover:bg-red-500/10 hover:text-white sm:min-w-[170px] lg:min-w-0 lg:w-full"
+              >
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] bg-white/5 text-white/85 transition-colors duration-200 group-hover:bg-red-500/15 group-hover:text-white">
+                  <FiLogOut size={20} />
+                </span>
+                <span className="truncate text-[15px] font-semibold">Logout</span>
+              </button>
             </div>
           </nav>
-
-          <div className="mt-5 border-t border-white/10 pt-4">
-            <motion.button
-              whileHover={{ y: -2 }}
-              whileTap={{ scale: 0.985 }}
-              type="button"
-              onClick={handleLogout}
-              className="group flex w-full items-center gap-3 rounded-2xl border border-transparent bg-white/[0.04] px-4 py-3 text-left text-[14px] font-semibold text-white/85 transition hover:border-white/10 hover:bg-white/[0.08] hover:text-white"
-            >
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-white/85 transition group-hover:bg-white/10 group-hover:text-white">
-                <FiLogOut size={18} />
-              </span>
-              <span>Logout</span>
-            </motion.button>
-          </div>
         </div>
       </div>
     </aside>
