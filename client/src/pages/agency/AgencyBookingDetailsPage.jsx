@@ -6,7 +6,13 @@ import {
   FiCheckCircle,
   FiMessageSquare,
   FiXCircle,
+  FiMapPin,
+  FiUsers,
+  FiCalendar,
+  FiCreditCard,
+  FiClock,
 } from "react-icons/fi";
+import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useParams } from "react-router-dom";
 import AgencyLayout from "../../components/agency/AgencyLayout";
 import { useAgencyNotifications } from "../../context/AgencyNotificationContext";
@@ -27,12 +33,12 @@ function Toast({ open, type = "success", message, onClose }) {
       : "border-red-200 bg-red-50 text-red-900";
 
   return (
-    <div className="fixed top-5 right-5 z-[400] pointer-events-none">
+    <div className="pointer-events-none fixed right-5 top-5 z-[400]">
       <div
         className={[
-          "pointer-events-auto w-[340px] rounded-2xl border px-4 py-3 shadow-lg",
+          "pointer-events-auto relative w-[340px] rounded-[22px] border px-4 py-3 shadow-[0_18px_40px_rgba(15,23,42,0.12)] backdrop-blur-xl",
           "transition-all duration-300 ease-out",
-          open ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2",
+          open ? "translate-y-0 opacity-100" : "-translate-y-2 opacity-0",
           boxClass,
         ].join(" ")}
         role="status"
@@ -41,7 +47,7 @@ function Toast({ open, type = "success", message, onClose }) {
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-2 right-2 inline-flex h-7 w-7 items-center justify-center rounded-lg text-gray-700/70 hover:text-gray-900 hover:bg-black/5"
+          className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-lg text-gray-700/70 transition hover:bg-black/5 hover:text-gray-900"
           aria-label="Close"
         >
           ✕
@@ -82,17 +88,17 @@ function uiStatus(bookingStatus) {
 function StatusChip({ label, tone = "gray" }) {
   const styles =
     tone === "green"
-      ? "bg-emerald-700 text-white"
+      ? "border-emerald-200 bg-emerald-600 text-white"
       : tone === "orange"
-        ? "bg-amber-500 text-white"
-        : tone === "gray"
-          ? "bg-gray-100 text-gray-900"
-          : "bg-white text-gray-900 border border-gray-200";
+        ? "border-amber-200 bg-amber-500 text-white"
+        : tone === "red"
+          ? "border-red-200 bg-red-500 text-white"
+          : "border-slate-200 bg-white text-slate-700";
 
   return (
     <span
       className={[
-        "inline-flex items-center rounded-xl px-3 py-1.5 text-xs font-black",
+        "inline-flex items-center rounded-full border px-3.5 py-1.5 text-xs font-black shadow-sm",
         styles,
       ].join(" ")}
     >
@@ -102,19 +108,61 @@ function StatusChip({ label, tone = "gray" }) {
 }
 
 function Step({ label, active = false, done = false }) {
-  const base =
-    "flex-1 rounded-xl border px-3 py-3 text-sm font-black inline-flex items-center justify-center gap-2";
   const cls = done
-    ? "bg-emerald-800 border-emerald-800 text-white"
+    ? "border-emerald-700 bg-emerald-700 text-white shadow-lg shadow-emerald-700/20"
     : active
-      ? "bg-amber-100 border-amber-200 text-amber-900"
-      : "bg-white border-emerald-100 text-emerald-900/70";
+      ? "border-amber-200 bg-amber-50 text-amber-900"
+      : "border-emerald-100 bg-white text-emerald-950/70";
 
   return (
-    <div className={[base, cls].join(" ")}>
+    <motion.div
+      whileHover={{ y: -3 }}
+      className={[
+        "flex min-h-[68px] flex-1 items-center justify-center gap-2 rounded-2xl border px-3 py-3 text-sm font-black",
+        cls,
+      ].join(" ")}
+    >
       {done ? <FiCheckCircle /> : null}
-      {label}
+      <span>{label}</span>
+    </motion.div>
+  );
+}
+
+function InfoRow({ icon, label, value, valueClassName = "" }) {
+  return (
+    <div className="flex items-start justify-between gap-4 rounded-2xl border border-emerald-100/80 bg-white/70 px-4 py-3">
+      <div className="flex items-center gap-2 text-emerald-950/70">
+        <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+          {icon}
+        </span>
+        <span className="text-sm font-bold">{label}</span>
+      </div>
+      <div
+        className={`text-right text-sm font-extrabold text-slate-900 ${valueClassName}`}
+      >
+        {value}
+      </div>
     </div>
+  );
+}
+
+function SectionCard({ title, subtitle, children, className = "" }) {
+  return (
+    <motion.div
+      whileHover={{ y: -3 }}
+      transition={{ duration: 0.2 }}
+      className={`overflow-hidden rounded-[28px] border border-white/70 bg-white/85 p-5 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur-xl md:p-6 ${className}`}
+    >
+      <div>
+        <h3 className="text-base font-black tracking-tight text-slate-900 md:text-lg">
+          {title}
+        </h3>
+        {subtitle ? (
+          <p className="mt-1 text-sm font-medium text-slate-500">{subtitle}</p>
+        ) : null}
+      </div>
+      <div className="mt-5">{children}</div>
+    </motion.div>
   );
 }
 
@@ -159,7 +207,6 @@ function AgencyBookingDetailsPageContent({ openNotifications }) {
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookingId]);
 
   const derived = useMemo(() => {
@@ -194,7 +241,9 @@ function AgencyBookingDetailsPageContent({ openNotifications }) {
           ? "orange"
           : bookingStatus === "approved"
             ? "green"
-            : "gray";
+            : bookingStatus === "cancelled"
+              ? "red"
+              : "gray";
 
     const steps = {
       requested: bookingStatus !== "cancelled",
@@ -257,36 +306,42 @@ function AgencyBookingDetailsPageContent({ openNotifications }) {
   const handleOpenNotifications = async () => {
     try {
       await refresh?.();
-    } catch {
-      // ignore
-    }
-
+    } catch {}
     openNotifications?.();
   };
 
   return (
     <>
-      <div className="bg-white rounded-2xl border border-emerald-100 shadow-sm p-6">
-        <div className="flex items-start justify-between gap-3">
+      <motion.div
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+        className="relative overflow-hidden rounded-[32px] border border-white/60 bg-white/70 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)] backdrop-blur-xl md:p-6"
+      >
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.10),transparent_26%),radial-gradient(circle_at_left,rgba(59,130,246,0.08),transparent_24%)]" />
+
+        <div className="relative flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div>
-            <div className="text-lg font-extrabold text-gray-900">
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">
+              Agency Panel
+            </div>
+            <h1 className="mt-4 text-3xl font-black tracking-tight text-slate-900 md:text-4xl">
               Booking Details
-            </div>
-            <div className="text-xs text-gray-500 mt-1">
-              Review booking information and take action.
-            </div>
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm font-medium text-slate-500 md:text-base">
+              Review tourist booking information, payment state, schedule, and manage next actions.
+            </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
               onClick={handleOpenNotifications}
-              className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-100 bg-white text-slate-700 transition hover:bg-emerald-50"
+              className="relative inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-100 bg-white text-slate-700 shadow-sm transition hover:bg-emerald-50"
               aria-label="Notifications"
               title="Notifications"
             >
               <FiBell size={18} />
-
               {Number(unreadCount || 0) > 0 && (
                 <span className="absolute -right-1 -top-1 grid min-h-[22px] min-w-[22px] place-items-center rounded-full bg-red-500 px-1 text-[11px] font-bold text-white">
                   {unreadCount > 99 ? "99+" : unreadCount}
@@ -297,7 +352,7 @@ function AgencyBookingDetailsPageContent({ openNotifications }) {
             <button
               type="button"
               onClick={() => navigate("/agency/bookings")}
-              className="h-10 rounded-2xl border border-emerald-100 bg-white px-4 text-sm font-black text-emerald-900 hover:bg-emerald-50 inline-flex items-center gap-2"
+              className="inline-flex h-11 items-center gap-2 rounded-2xl border border-emerald-100 bg-white px-4 text-sm font-black text-emerald-900 shadow-sm transition hover:bg-emerald-50"
             >
               <FiArrowLeft />
               Back to Bookings
@@ -306,269 +361,282 @@ function AgencyBookingDetailsPageContent({ openNotifications }) {
         </div>
 
         {loading ? (
-          <div className="mt-6 text-sm text-gray-600">Loading...</div>
+          <div className="relative mt-6 overflow-hidden rounded-[28px] border border-white/70 bg-white/80 px-6 py-14 text-center shadow-sm">
+            <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-600" />
+            <p className="text-sm font-semibold text-slate-500">Loading booking details...</p>
+          </div>
         ) : err ? (
-          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
+          <div className="relative mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
             {err}
           </div>
         ) : !row ? (
-          <div className="mt-6 text-sm text-gray-600">Booking not found.</div>
+          <div className="relative mt-6 rounded-[28px] border border-white/70 bg-white/80 px-6 py-14 text-center shadow-sm">
+            <p className="text-sm font-semibold text-slate-500">Booking not found.</p>
+          </div>
         ) : (
           <>
-            <div className="mt-6 rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4">
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 rounded-xl overflow-hidden border border-emerald-100 bg-white">
-                    <img
-                      src={derived.img}
-                      alt={row.tour_title || "Tour"}
-                      className="h-full w-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.src = FALLBACK_TOUR_IMG;
-                      }}
-                    />
-                  </div>
-
-                  <div className="min-w-0">
-                    <div className="text-sm font-extrabold text-gray-900 line-clamp-1">
-                      {row.tour_title || "—"}
-                    </div>
-                    <div className="mt-0.5 text-xs text-gray-600">
-                      Ref: {row.ref_code || "—"} • Created{" "}
-                      {fmtYMDLong(row.created_at)}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <StatusChip
-                    label={`Payment: ${derived.paymentLabel}`}
-                    tone={derived.paymentTone}
+            <div className="relative mt-6 overflow-hidden rounded-[30px] border border-white/70 bg-white/85 shadow-[0_18px_50px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+              <div className="grid grid-cols-1 xl:grid-cols-[1.15fr_0.85fr]">
+                <div className="relative min-h-[280px] overflow-hidden">
+                  <img
+                    src={derived.img}
+                    alt={row.tour_title || "Tour"}
+                    className="h-full w-full object-cover transition duration-700 hover:scale-105"
+                    onError={(e) => {
+                      e.currentTarget.src = FALLBACK_TOUR_IMG;
+                    }}
                   />
-                  <StatusChip
-                    label={`Status: ${derived.statusLabel}`}
-                    tone={derived.topStatusTone}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-5 rounded-2xl border border-emerald-100 bg-white p-5">
-              <div className="text-sm font-extrabold text-gray-900">
-                Booking Overview
-              </div>
-
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="text-emerald-900/70 font-bold">
-                      Tour Name
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-900/20 to-transparent" />
+                  <div className="absolute bottom-0 left-0 right-0 p-5 md:p-6">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StatusChip
+                        label={`Payment: ${derived.paymentLabel}`}
+                        tone={derived.paymentTone}
+                      />
+                      <StatusChip
+                        label={`Status: ${derived.statusLabel}`}
+                        tone={derived.topStatusTone}
+                      />
                     </div>
-                    <div className="text-gray-900 font-extrabold text-right">
+
+                    <h2 className="mt-4 max-w-3xl text-2xl font-black tracking-tight text-white md:text-3xl">
                       {row.tour_title || "—"}
-                    </div>
-                  </div>
-
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="text-emerald-900/70 font-bold">
-                      Tourist Information
-                    </div>
-                    <div className="text-gray-900 font-extrabold text-right">
-                      {row.tourist_name || "—"} • {row.tourist_email || "—"}
-                    </div>
-                  </div>
-
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="text-emerald-900/70 font-bold">
-                      Booking Date
-                    </div>
-                    <div className="text-gray-900 font-extrabold text-right">
-                      {fmtYMDLong(row.booking_date)}
-                    </div>
+                    </h2>
+                    <p className="mt-2 text-sm font-semibold text-white/85">
+                      Ref: {row.ref_code || "—"} • Created {fmtYMDLong(row.created_at)}
+                    </p>
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="text-emerald-900/70 font-bold">
-                      Travelers Count
-                    </div>
-                    <div className="text-gray-900 font-extrabold text-right">
-                      {Number(row.travelers || 1)}{" "}
-                      {Number(row.travelers || 1) === 1
-                        ? "Traveler"
-                        : "Travelers"}
-                    </div>
-                  </div>
-
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="text-emerald-900/70 font-bold">
-                      Current Booking Status
-                    </div>
-                    <div className="text-gray-900 font-extrabold text-right">
-                      {derived.statusLabel}
-                    </div>
-                  </div>
-
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="text-emerald-900/70 font-bold">
-                      Payment Status
-                    </div>
-                    <div className="text-gray-900 font-extrabold text-right">
-                      {derived.paymentLabel}
-                      {Number(row.total_price || 0) > 0 ? (
-                        <span className="text-gray-500 font-bold">
-                          {" "}
-                          • Amount: NPR{" "}
-                          {Number(row.total_price || 0).toLocaleString("en-NP")}
+                <div className="flex flex-col justify-between gap-5 p-5 md:p-6">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-1">
+                    <div className="rounded-[24px] border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-4 shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-emerald-700 shadow-sm">
+                          <FiUsers size={20} />
                         </span>
-                      ) : null}
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-[0.14em] text-emerald-900/60">
+                            Tourist
+                          </p>
+                          <p className="mt-1 text-sm font-extrabold text-slate-900">
+                            {row.tourist_name || "—"}
+                          </p>
+                          <p className="mt-1 text-xs font-semibold text-slate-500">
+                            {row.tourist_email || "—"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-[24px] border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-4 shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-emerald-700 shadow-sm">
+                          <FiCreditCard size={20} />
+                        </span>
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-[0.14em] text-emerald-900/60">
+                            Total Amount
+                          </p>
+                          <p className="mt-1 text-sm font-extrabold text-slate-900">
+                            NPR {Number(row.total_price || 0).toLocaleString("en-NP")}
+                          </p>
+                          <p className="mt-1 text-xs font-semibold text-slate-500">
+                            {Number(row.travelers || 1)}{" "}
+                            {Number(row.travelers || 1) === 1 ? "Traveler" : "Travelers"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-[24px] border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-4 shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-emerald-700 shadow-sm">
+                          <FiCalendar size={20} />
+                        </span>
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-[0.14em] text-emerald-900/60">
+                            Schedule
+                          </p>
+                          <p className="mt-1 text-sm font-extrabold text-slate-900">
+                            {derived.schedule}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-[24px] border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-4 shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-emerald-700 shadow-sm">
+                          <FiClock size={20} />
+                        </span>
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-[0.14em] text-emerald-900/60">
+                            Booking Date
+                          </p>
+                          <p className="mt-1 text-sm font-extrabold text-slate-900">
+                            {fmtYMDLong(row.booking_date)}
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            </div>
 
-            <div className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="rounded-2xl border border-emerald-100 bg-white p-5">
-                <div className="text-sm font-extrabold text-gray-900">
-                  Agency Price & Schedule
-                </div>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                    <button
+                      type="button"
+                      onClick={onApprove}
+                      disabled={!derived.canApprove || busy}
+                      className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-white px-5 text-sm font-black text-emerald-900 shadow-sm transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <FiCheckCircle />
+                      Approve Booking
+                    </button>
 
-                <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/30 p-4">
-                  <div className="text-xs font-black text-emerald-900/70">
-                    Agency Price (per person)
-                  </div>
-                  <div className="mt-2 text-sm font-extrabold text-gray-900">
-                    NPR{" "}
-                    {Number(row.agency_price_per_person || 0).toLocaleString(
-                      "en-NP"
-                    )}
-                  </div>
+                    <button
+                      type="button"
+                      onClick={onReject}
+                      disabled={!derived.canReject || busy}
+                      className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-red-600 px-5 text-sm font-black text-white shadow-lg transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <FiXCircle />
+                      Reject Booking
+                    </button>
 
-                  <div className="mt-3 text-xs font-black text-emerald-900/70">
-                    Total ({Number(row.travelers || 1)}{" "}
-                    {Number(row.travelers || 1) === 1
-                      ? "traveler"
-                      : "travelers"}
-                    )
-                  </div>
-                  <div className="mt-2 text-sm font-extrabold text-gray-900">
-                    NPR {Number(row.total_price || 0).toLocaleString("en-NP")}
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-emerald-100 bg-white p-5">
-                <div className="text-sm font-extrabold text-gray-900">
-                  Schedule
-                </div>
-
-                <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/30 p-4">
-                  <div className="text-sm font-extrabold text-gray-900">
-                    {derived.schedule}
-                  </div>
-
-                  <div className="mt-3 text-xs font-black text-emerald-900/70">
-                    Itinerary Highlights
-                  </div>
-                  <div className="mt-2 text-sm font-semibold text-gray-900 line-clamp-3">
-                    {row.tour_description
-                      ? String(row.tour_description).trim()
-                      : "—"}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const touristId = Number(row?.tourist_id);
+                        if (!touristId) {
+                          showToast("error", "Tourist id not found for this booking.");
+                          return;
+                        }
+                        navigate(`/agency/chat?touristId=${touristId}`);
+                      }}
+                      className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-emerald-800 px-5 text-sm font-black text-white shadow-lg transition hover:bg-emerald-900"
+                    >
+                      <FiMessageSquare />
+                      Chat with Tourist
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="mt-6 rounded-2xl border border-emerald-100 bg-white p-5">
-              <div className="text-sm font-extrabold text-gray-900 mb-4">
-                Progress
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-                <Step label="Requested" done={derived.steps.requested} />
-                <Step
-                  label="Approved"
-                  active={derived.bookingStatus === "approved"}
-                  done={derived.steps.approved}
-                />
-                <Step
-                  label="Paid"
-                  active={String(row?.payment_status || "").toLowerCase() === "paid"}
-                  done={derived.steps.payment}
-                />
-                <Step
-                  label="In Progress"
-                  active={derived.bookingStatus === "confirmed"}
-                  done={derived.steps.inProgress}
-                />
-                <Step
-                  label="Completed"
-                  active={derived.bookingStatus === "completed"}
-                  done={derived.steps.completed}
-                />
-              </div>
-
-              {derived.steps.cancelled ? (
-                <div className="mt-4">
-                  <StatusChip label="This booking is Cancelled" tone="gray" />
+            <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+              <SectionCard
+                title="Booking Overview"
+                subtitle="Main booking information and current states."
+              >
+                <div className="grid grid-cols-1 gap-3">
+                  <InfoRow
+                    icon={<FiMapPin size={18} />}
+                    label="Tour Name"
+                    value={row.tour_title || "—"}
+                  />
+                  <InfoRow
+                    icon={<FiUsers size={18} />}
+                    label="Tourist Information"
+                    value={`${row.tourist_name || "—"} • ${row.tourist_email || "—"}`}
+                    valueClassName="max-w-[65%] break-words"
+                  />
+                  <InfoRow
+                    icon={<FiCalendar size={18} />}
+                    label="Booking Date"
+                    value={fmtYMDLong(row.booking_date)}
+                  />
+                  <InfoRow
+                    icon={<FiUsers size={18} />}
+                    label="Travelers Count"
+                    value={`${Number(row.travelers || 1)} ${
+                      Number(row.travelers || 1) === 1 ? "Traveler" : "Travelers"
+                    }`}
+                  />
+                  <InfoRow
+                    icon={<FiCheckCircle size={18} />}
+                    label="Current Booking Status"
+                    value={derived.statusLabel}
+                  />
+                  <InfoRow
+                    icon={<FiCreditCard size={18} />}
+                    label="Payment Status"
+                    value={`${derived.paymentLabel}${
+                      Number(row.total_price || 0) > 0
+                        ? ` • Amount: NPR ${Number(row.total_price || 0).toLocaleString("en-NP")}`
+                        : ""
+                    }`}
+                    valueClassName="max-w-[65%] break-words"
+                  />
                 </div>
-              ) : null}
-            </div>
+              </SectionCard>
 
-            <div className="mt-6 flex justify-end">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-                <button
-                  type="button"
-                  onClick={onApprove}
-                  disabled={!derived.canApprove || busy}
-                  className="h-11 rounded-2xl border border-emerald-100 bg-white px-5 text-sm font-black text-emerald-900 hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
-                >
-                  <FiCheckCircle />
-                  Approve Booking
-                </button>
+              <SectionCard
+                title="Agency Price & Schedule"
+                subtitle="Price breakdown and selected tour dates."
+              >
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="rounded-[24px] border border-emerald-100 bg-gradient-to-br from-emerald-50/80 to-white p-4">
+                    <p className="text-xs font-black uppercase tracking-[0.14em] text-emerald-900/60">
+                      Agency Price (per person)
+                    </p>
+                    <p className="mt-2 text-lg font-black text-slate-900">
+                      NPR{" "}
+                      {Number(row.agency_price_per_person || 0).toLocaleString("en-NP")}
+                    </p>
+                  </div>
 
-                <button
-                  type="button"
-                  onClick={onReject}
-                  disabled={!derived.canReject || busy}
-                  className="h-11 rounded-2xl bg-red-600 px-5 text-sm font-black text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
-                >
-                  <FiXCircle />
-                  Reject Booking
-                </button>
+                  <div className="rounded-[24px] border border-emerald-100 bg-gradient-to-br from-emerald-50/80 to-white p-4">
+                    <p className="text-xs font-black uppercase tracking-[0.14em] text-emerald-900/60">
+                      Total ({Number(row.travelers || 1)}{" "}
+                      {Number(row.travelers || 1) === 1 ? "traveler" : "travelers"})
+                    </p>
+                    <p className="mt-2 text-lg font-black text-slate-900">
+                      NPR {Number(row.total_price || 0).toLocaleString("en-NP")}
+                    </p>
+                  </div>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    const touristId = Number(row?.tourist_id);
-                    if (!touristId) {
-                      showToast(
-                        "error",
-                        "Tourist id not found for this booking."
-                      );
-                      return;
-                    }
-                    navigate(`/agency/chat?touristId=${touristId}`);
-                  }}
-                  className="h-11 rounded-2xl bg-emerald-800 px-5 text-sm font-black text-white hover:bg-emerald-900 inline-flex items-center justify-center gap-2"
-                >
-                  <FiMessageSquare />
-                  Chat with Tourist
-                </button>
-              </div>
+                  <div className="rounded-[24px] border border-emerald-100 bg-gradient-to-br from-emerald-50/80 to-white p-4">
+                    <p className="text-xs font-black uppercase tracking-[0.14em] text-emerald-900/60">
+                      Schedule
+                    </p>
+                    <p className="mt-2 text-sm font-extrabold text-slate-900">
+                      {derived.schedule}
+                    </p>
+                  </div>
+
+                  <div className="rounded-[24px] border border-emerald-100 bg-gradient-to-br from-emerald-50/80 to-white p-4">
+                    <p className="text-xs font-black uppercase tracking-[0.14em] text-emerald-900/60">
+                      Itinerary Highlights
+                    </p>
+                    <p className="mt-2 text-sm font-semibold leading-7 text-slate-700">
+                      {row.tour_description
+                        ? String(row.tour_description).trim()
+                        : "—"}
+                    </p>
+                  </div>
+                </div>
+              </SectionCard>
             </div>
           </>
         )}
-      </div>
+      </motion.div>
 
-      <Toast
-        open={toast.open}
-        type={toast.type}
-        message={toast.message}
-        onClose={() => setToast((p) => ({ ...p, open: false }))}
-      />
+      <AnimatePresence>
+        {toast.open ? (
+          <motion.div
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+          >
+            <Toast
+              open={toast.open}
+              type={toast.type}
+              message={toast.message}
+              onClose={() => setToast((p) => ({ ...p, open: false }))}
+            />
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </>
   );
 }
