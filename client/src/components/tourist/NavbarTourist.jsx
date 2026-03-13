@@ -107,7 +107,7 @@ export default function NavbarTourist() {
   useEffect(() => {
     const lenis = window.__lenis;
 
-    if (menuOpen) {
+    if (menuOpen || drawerOpen) {
       document.body.style.overflow = "hidden";
       lenis?.stop?.();
     } else {
@@ -128,7 +128,7 @@ export default function NavbarTourist() {
       lenis?.start?.();
       window.removeEventListener("resize", onResize);
     };
-  }, [menuOpen]);
+  }, [menuOpen, drawerOpen]);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -166,7 +166,9 @@ export default function NavbarTourist() {
     }
   };
 
-  const closeDrawer = () => setDrawerOpen(false);
+  const closeDrawer = () => {
+    setDrawerOpen(false);
+  };
 
   return (
     <>

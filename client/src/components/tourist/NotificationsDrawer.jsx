@@ -46,7 +46,7 @@ export default function NotificationsDrawer({ open, onClose }) {
     if (!open) return;
 
     const onKeyDown = (e) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") onClose?.();
     };
 
     document.addEventListener("keydown", onKeyDown);
@@ -67,7 +67,7 @@ export default function NotificationsDrawer({ open, onClose }) {
       }
     } catch {}
 
-    onClose();
+    onClose?.();
 
     if (notification.action_path) {
       navigate(notification.action_path);
@@ -100,13 +100,15 @@ export default function NotificationsDrawer({ open, onClose }) {
           />
 
           <motion.aside
+            data-lenis-prevent
             initial={{ x: "100%", opacity: 0.7 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: "100%", opacity: 0.8 }}
             transition={{ duration: 0.28, ease: "easeOut" }}
-            className="absolute right-0 top-0 flex h-full w-full max-w-[460px] flex-col overflow-hidden border-l border-white/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(244,251,247,0.98)_100%)] shadow-[0_20px_80px_rgba(15,23,42,0.28)] backdrop-blur-2xl"
+            onClick={(e) => e.stopPropagation()}
+            className="absolute right-0 top-0 flex h-screen w-full max-w-[460px] flex-col overflow-hidden border-l border-white/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.96)_0%,rgba(244,251,247,0.98)_100%)] shadow-[0_20px_80px_rgba(15,23,42,0.28)] backdrop-blur-2xl"
           >
-            <div className="relative overflow-hidden border-b border-emerald-100/80 bg-white/80 px-4 py-4 sm:px-5">
+            <div className="relative shrink-0 overflow-hidden border-b border-emerald-100/80 bg-white/80 px-4 py-4 sm:px-5">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.14),transparent_36%),radial-gradient(circle_at_left,rgba(59,130,246,0.08),transparent_24%)]" />
 
               <div className="relative flex items-start justify-between gap-3">
@@ -148,7 +150,10 @@ export default function NotificationsDrawer({ open, onClose }) {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-5">
+            <div
+              data-lenis-prevent
+              className="flex-1 overflow-y-auto px-4 py-4 sm:px-5"
+            >
               {loading ? (
                 <div className="flex h-full min-h-[240px] items-center justify-center">
                   <div className="rounded-[28px] border border-slate-200 bg-white/80 px-8 py-10 text-center shadow-sm">
@@ -173,7 +178,7 @@ export default function NotificationsDrawer({ open, onClose }) {
                   </div>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-3 pb-6">
                   {list.map((n, index) => {
                     const isRead = !!n.read_at || Number(n.is_read || 0) === 1;
 

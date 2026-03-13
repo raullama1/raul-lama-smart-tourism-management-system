@@ -33,6 +33,9 @@ export default function App() {
       smoothTouch: false,
       wheelMultiplier: 0.9,
       touchMultiplier: 1.1,
+      prevent: (node) => {
+        return !!node?.closest?.("[data-lenis-prevent]");
+      },
     });
 
     let frameId;
