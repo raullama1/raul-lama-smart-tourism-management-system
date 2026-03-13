@@ -246,7 +246,7 @@ export async function forgotPasswordController(req, res) {
     ) {
       return res.json({
         message:
-          "If an account with that email exists, a reset link (valid for 5 minutes and single-use) has been sent.",
+          "Password reset link sent successfully. It is valid for 5 minutes. Please check your inbox.",
       });
     }
 

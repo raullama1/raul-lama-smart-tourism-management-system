@@ -1,79 +1,133 @@
 // client/src/components/public/BlogSidebarFilters.jsx
+import {
+  FiClock,
+  FiCalendar,
+  FiAward,
+  FiRotateCcw,
+  FiSearch,
+} from "react-icons/fi";
+
+const BLOG_TYPES = [
+  "Adventure",
+  "Nature",
+  "Heritage",
+  "Religious",
+  "Wildlife",
+];
+
 export default function BlogSidebarFilters({ filters, onChange, onReset }) {
   return (
-    <aside className="w-full md:w-64 bg-[#0f3b24] text-white rounded-2xl p-4 md:p-5 flex flex-col gap-4">
-      {/* Search */}
+    <aside className="rounded-[1.8rem] border border-emerald-950/10 bg-[#103923] p-4 text-white shadow-[0_22px_60px_rgba(15,23,42,0.12)] md:p-5">
       <div>
-        <h3 className="text-sm font-semibold mb-2">Search Blogs</h3>
-        <input
-          type="text"
-          value={filters.search || ""}
-          onChange={(e) => onChange({ ...filters, search: e.target.value })}
-          placeholder="Search..."
-          className="w-full h-9 rounded-md px-3 text-xs bg-transparent text-white placeholder-white border border-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-400"
-        />
+        <div className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-100">
+          Filter Blogs
+        </div>
       </div>
 
-      {/* Quick Filters */}
-      <div>
-        <h3 className="text-sm font-semibold mb-2">Quick Filters</h3>
+      <div className="mt-5">
+        <label className="mb-2 block text-sm font-semibold text-white">
+          Search
+        </label>
+        <div className="relative">
+          <FiSearch
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-emerald-100/70"
+            size={15}
+          />
+          <input
+            type="text"
+            value={filters.search || ""}
+            onChange={(e) => onChange({ ...filters, search: e.target.value })}
+            placeholder="Search blogs..."
+            className="h-11 w-full rounded-xl border border-white/15 bg-white/10 pl-10 pr-3 text-sm text-white placeholder:text-white/55 outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-400/25"
+          />
+        </div>
+      </div>
 
-        {/* Latest */}
-        <button
-          onClick={() =>
-            onChange({
-              ...filters,
-              sort: filters.sort === "latest" ? "" : "latest",
-            })
-          }
-          className={`w-full h-9 rounded-md text-xs font-medium flex items-center gap-2 px-3 border ${
-            filters.sort === "latest"
-              ? "bg-emerald-400 text-[#0f3b24] border-transparent"
-              : "bg-white text-gray-800 border-gray-200"
-          }`}
+      <div className="mt-5">
+        <label className="mb-2 block text-sm font-semibold text-white">
+          Type
+        </label>
+        <select
+          value={filters.type || ""}
+          onChange={(e) => onChange({ ...filters, type: e.target.value })}
+          className="h-11 w-full rounded-xl border border-white/15 bg-white/10 px-3 text-sm text-white outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-400/25"
         >
-          🕒 Latest
-        </button>
+          <option value="" className="text-slate-900">
+            All type
+          </option>
+          {BLOG_TYPES.map((type) => (
+            <option key={type} value={type} className="text-slate-900">
+              {type}
+            </option>
+          ))}
+        </select>
+      </div>
 
-        {/* Oldest */}
-        <button
-          onClick={() =>
-            onChange({
-              ...filters,
-              sort: filters.sort === "oldest" ? "" : "oldest",
-            })
-          }
-          className={`mt-2 w-full h-9 rounded-md text-xs font-medium flex items-center gap-2 px-3 border ${
-            filters.sort === "oldest"
-              ? "bg-emerald-400 text-[#0f3b24] border-transparent"
-              : "bg-white text-gray-800 border-gray-200"
-          }`}
-        >
-          📅 Oldest
-        </button>
+      <div className="mt-5">
+        <h3 className="mb-3 text-sm font-semibold text-white">Quick Filters</h3>
 
-        {/* Top Agencies */}
-        <button
-          onClick={() =>
-            onChange({
-              ...filters,
-              sort: filters.sort === "top-agencies" ? "" : "top-agencies",
-            })
-          }
-          className={`mt-2 w-full h-9 rounded-md text-xs font-medium flex items-center gap-2 px-3 border ${
-            filters.sort === "top-agencies"
-              ? "bg-emerald-400 text-[#0f3b24] border-transparent"
-              : "bg-white text-gray-800 border-gray-200"
-          }`}
-        >
-          🏆 Top Agencies
-        </button>
+        <div className="space-y-2.5">
+          <button
+            onClick={() =>
+              onChange({
+                ...filters,
+                sort: filters.sort === "latest" ? "" : "latest",
+              })
+            }
+            className={`flex min-h-[44px] w-full items-center gap-2 rounded-xl px-3 text-sm font-medium transition ${
+              filters.sort === "latest"
+                ? "bg-emerald-400 text-[#0f3b24]"
+                : "bg-white text-slate-800 hover:bg-emerald-50"
+            }`}
+            type="button"
+          >
+            <FiClock size={16} />
+            Latest
+          </button>
 
-        {/* Reset */}
+          <button
+            onClick={() =>
+              onChange({
+                ...filters,
+                sort: filters.sort === "oldest" ? "" : "oldest",
+              })
+            }
+            className={`flex min-h-[44px] w-full items-center gap-2 rounded-xl px-3 text-sm font-medium transition ${
+              filters.sort === "oldest"
+                ? "bg-emerald-400 text-[#0f3b24]"
+                : "bg-white text-slate-800 hover:bg-emerald-50"
+            }`}
+            type="button"
+          >
+            <FiCalendar size={16} />
+            Oldest
+          </button>
+
+          <button
+            onClick={() =>
+              onChange({
+                ...filters,
+                sort: filters.sort === "top-agencies" ? "" : "top-agencies",
+              })
+            }
+            className={`flex min-h-[44px] w-full items-center gap-2 rounded-xl px-3 text-sm font-medium transition ${
+              filters.sort === "top-agencies"
+                ? "bg-emerald-400 text-[#0f3b24]"
+                : "bg-white text-slate-800 hover:bg-emerald-50"
+            }`}
+            type="button"
+          >
+            <FiAward size={16} />
+            Top Agencies
+          </button>
+        </div>
+
         <button
           onClick={onReset}
-          className="mt-3 w-full h-9 rounded-md border border-emerald-200 text-xs font-medium hover:bg-emerald-500 hover:text-white transition"
+          className="mt-4 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-emerald-200/20 bg-transparent text-sm font-medium text-emerald-50 transition hover:bg-white/10"
+          type="button"
         >
+          <FiRotateCcw size={16} />
           Reset
         </button>
       </div>

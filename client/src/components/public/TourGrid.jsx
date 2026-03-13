@@ -1,6 +1,7 @@
 // client/src/components/public/TourGrid.jsx
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
 import {
   fetchWishlistIds,
@@ -10,7 +11,7 @@ import {
 import { FaHeart, FaMapMarkerAlt, FaUsers, FaEye, FaCheck } from "react-icons/fa";
 import { toPublicImageUrl, FALLBACK_TOUR_IMG } from "../../utils/publicImageUrl";
 
-export default function TourGrid({ tours }) {
+export default function TourGrid({ tours, onRequireLogin }) {
   const navigate = useNavigate();
   const { token } = useAuth();
 
@@ -19,7 +20,9 @@ export default function TourGrid({ tours }) {
 
   const requireLogin = () => {
     if (!token) {
-      alert("Please login or signup to access this feature.");
+      if (typeof onRequireLogin === "function") {
+        return onRequireLogin();
+      }
       return false;
     }
     return true;
@@ -31,6 +34,7 @@ export default function TourGrid({ tours }) {
         setWishlistIds(new Set());
         return;
       }
+
       try {
         const res = await fetchWishlistIds(token);
         const ids = Array.isArray(res?.data)
@@ -41,6 +45,7 @@ export default function TourGrid({ tours }) {
         console.error("Failed to load wishlist ids", e);
       }
     };
+
     load();
   }, [token]);
 
@@ -72,7 +77,6 @@ export default function TourGrid({ tours }) {
       }
     } catch (e) {
       console.error("Wishlist toggle failed", e);
-      alert("Wishlist update failed. Please try again.");
     } finally {
       setBusyId(null);
     }
@@ -80,111 +84,126 @@ export default function TourGrid({ tours }) {
 
   if (!tours || tours.length === 0) {
     return (
-      <div className="flex-1 bg-white rounded-2xl border border-gray-100 p-6 text-center text-sm text-gray-500">
+      <motion.div
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex-1 rounded-2xl border border-gray-100 bg-white p-6 text-center text-sm text-gray-500"
+      >
         No tours found. Try different filters.
-      </div>
+      </motion.div>
     );
   }
 
   return (
     <div className="flex-1">
-      <div className="grid gap-4 md:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-        {tours.map((tour) => {
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-5 lg:grid-cols-3">
+        {tours.map((tour, index) => {
           const idNum = Number(tour.id);
           const inWishlist = wishlistIds.has(idNum);
           const isBusy = busyId === idNum;
-
-          // IMPORTANT: list endpoint may return image_url OR image
           const imgSrc = toPublicImageUrl(tour.image_url || tour.image) || FALLBACK_TOUR_IMG;
 
           return (
-            <article
+            <motion.article
               key={tour.id}
-              className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col"
+              initial={{ opacity: 0, y: 22 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.18 }}
+              transition={{
+                duration: 0.4,
+                delay: Math.min(index * 0.04, 0.2),
+                ease: [0.22, 1, 0.36, 1],
+              }}
+              className="flex flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm"
             >
               <div className="h-44 w-full overflow-hidden">
                 <img
                   src={imgSrc}
                   alt={tour.title}
-                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                  className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
                   onError={(e) => {
                     e.currentTarget.src = FALLBACK_TOUR_IMG;
                   }}
                 />
               </div>
 
-              <div className="p-4 flex-1 flex flex-col">
-                <h3 className="text-sm md:text-base font-semibold text-gray-900 line-clamp-2">
+              <div className="flex flex-1 flex-col p-4">
+                <h3 className="line-clamp-2 text-sm font-semibold text-gray-900 md:text-base">
                   {tour.title}
                 </h3>
 
-                <p className="mt-1 text-xs text-gray-600 line-clamp-2">
+                <p className="mt-1 line-clamp-2 text-xs text-gray-600">
                   {tour.short_description}
                 </p>
 
-                <div className="mt-2 flex flex-wrap gap-2 items-center text-[11px]">
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-medium">
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+                  <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700">
                     {tour.type}
                   </span>
-                  <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
+                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-gray-700">
                     {tour.location}
                   </span>
                 </div>
 
                 <div className="mt-3 text-sm text-gray-900">
-                  <span className="text-gray-500 text-xs">From </span>
+                  <span className="text-xs text-gray-500">From </span>
                   <span className="font-semibold">
                     NPR {Number(tour.starting_price).toLocaleString()}
                   </span>
                 </div>
 
                 <div className="mt-4 grid grid-cols-2 gap-2">
-                  <button
+                  <motion.button
+                    whileHover={{ y: -1 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => navigate(`/tours/${tour.id}`)}
-                    className="flex items-center justify-center gap-2 px-2 py-2 rounded-md bg-gradient-to-r from-emerald-600 to-emerald-500 text-white text-[11px] md:text-xs font-medium shadow hover:scale-105 transition-transform"
+                    className="flex items-center justify-center gap-2 rounded-md bg-gradient-to-r from-emerald-600 to-emerald-500 px-2 py-2 text-[11px] font-medium text-white shadow transition-transform md:text-xs"
                     type="button"
                   >
                     <FaEye size={14} /> View Details
-                  </button>
+                  </motion.button>
 
-                  <button
+                  <motion.button
+                    whileHover={isBusy ? {} : { y: -1 }}
+                    whileTap={isBusy ? {} : { scale: 0.98 }}
                     disabled={isBusy}
                     onClick={() => toggleWishlist(tour.id)}
-                    className={`flex items-center justify-center gap-2 px-2 py-2 rounded-md text-[11px] md:text-xs font-medium shadow transition-all
-                      ${
-                        inWishlist
-                          ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                          : "bg-[#e6f4ed] text-emerald-700 hover:bg-gradient-to-r hover:from-emerald-600 hover:to-emerald-500 hover:text-white"
-                      }
-                      ${isBusy ? "opacity-70 cursor-not-allowed" : "hover:scale-105"}
-                    `}
+                    className={`flex items-center justify-center gap-2 rounded-md px-2 py-2 text-[11px] font-medium shadow transition-all md:text-xs ${
+                      inWishlist
+                        ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                        : "bg-[#e6f4ed] text-emerald-700 hover:bg-gradient-to-r hover:from-emerald-600 hover:to-emerald-500 hover:text-white"
+                    } ${isBusy ? "cursor-not-allowed opacity-70" : ""}`}
                     type="button"
                   >
                     {inWishlist ? <FaCheck size={14} /> : <FaHeart size={14} />}
                     {inWishlist ? "Added to Wishlist" : "Add to Wishlist"}
-                  </button>
+                  </motion.button>
 
-                  <button
+                  <motion.button
+                    whileHover={{ y: -1 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => navigate(`/tours/${tour.id}#agencies`)}
-                    className="flex items-center justify-center gap-2 px-2 py-2 rounded-md bg-[#e6f4ed] text-emerald-700 text-[11px] md:text-xs font-medium shadow hover:bg-gradient-to-r hover:from-emerald-600 hover:to-emerald-500 hover:text-white hover:scale-105 transition-all"
+                    className="flex items-center justify-center gap-2 rounded-md bg-[#e6f4ed] px-2 py-2 text-[11px] font-medium text-emerald-700 shadow transition-all hover:bg-gradient-to-r hover:from-emerald-600 hover:to-emerald-500 hover:text-white md:text-xs"
                     type="button"
                   >
                     <FaUsers size={14} /> Show All Agencies
-                  </button>
+                  </motion.button>
 
-                  <button
+                  <motion.button
+                    whileHover={{ y: -1 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => {
                       if (!requireLogin()) return;
                       navigate(`/map?tour=${tour.id}`);
                     }}
-                    className="flex items-center justify-center gap-2 px-2 py-2 rounded-md bg-[#e6f4ed] text-emerald-700 text-[11px] md:text-xs font-medium shadow hover:bg-gradient-to-r hover:from-emerald-600 hover:to-emerald-500 hover:text-white hover:scale-105 transition-all"
+                    className="flex items-center justify-center gap-2 rounded-md bg-[#e6f4ed] px-2 py-2 text-[11px] font-medium text-emerald-700 shadow transition-all hover:bg-gradient-to-r hover:from-emerald-600 hover:to-emerald-500 hover:text-white md:text-xs"
                     type="button"
                   >
                     <FaMapMarkerAlt size={14} /> View on Map
-                  </button>
+                  </motion.button>
                 </div>
               </div>
-            </article>
+            </motion.article>
           );
         })}
       </div>

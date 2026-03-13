@@ -1,5 +1,7 @@
+// client/src/pages/tourist/WriteReviewPage.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import NavbarTourist from "../../components/tourist/NavbarTourist";
 import FooterTourist from "../../components/tourist/FooterTourist";
 import { useAuth } from "../../context/AuthContext";
@@ -32,7 +34,32 @@ function formatReviewDate(value) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "—";
 
-  return d.toLocaleDateString();
+  return d.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatBookingDateLabel(row) {
+  const raw = String(row?.selected_date_label || "").trim();
+
+  if (raw) {
+    return raw.replace(/\b(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+/g, "").trim();
+  }
+
+  if (row?.booking_date) {
+    const d = new Date(row.booking_date);
+    if (!Number.isNaN(d.getTime())) {
+      return d.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+    }
+  }
+
+  return "—";
 }
 
 function getReviewCardImage(row) {
@@ -71,6 +98,15 @@ function getPopupVariant(title = "") {
   };
 }
 
+const fadeUp = {
+  hidden: { opacity: 0, y: 22 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] },
+  },
+};
+
 export default function WriteReviewPage() {
   const { token } = useAuth();
   const navigate = useNavigate();
@@ -83,7 +119,6 @@ export default function WriteReviewPage() {
   const [row, setRow] = useState(null);
 
   const [rating, setRating] = useState(0);
-  const [hover, setHover] = useState(0);
   const [comment, setComment] = useState("");
 
   const [reviewsLoading, setReviewsLoading] = useState(false);
@@ -177,7 +212,6 @@ export default function WriteReviewPage() {
       } else {
         setEditingReviewId(null);
         setRating(0);
-        setHover(0);
         setComment("");
       }
     } catch (error) {
@@ -207,11 +241,7 @@ export default function WriteReviewPage() {
     return {
       title: row.tour_title || row.title || "Tour",
       agency: row.agency_name || "Agency",
-      date:
-        row.selected_date_label ||
-        (row.booking_date
-          ? new Date(row.booking_date).toLocaleDateString()
-          : "—"),
+      date: formatBookingDateLabel(row),
       image: getReviewCardImage(row),
     };
   }, [row]);
@@ -219,14 +249,12 @@ export default function WriteReviewPage() {
   const resetForm = () => {
     setEditingReviewId(null);
     setRating(0);
-    setHover(0);
     setComment("");
   };
 
   const startEdit = (review) => {
     setEditingReviewId(review.id);
     setRating(Number(review.rating) || 0);
-    setHover(0);
     setComment(review.comment || "");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -340,121 +368,177 @@ export default function WriteReviewPage() {
     <>
       <NavbarTourist />
 
-      <main className="bg-[#e6f4ec] min-h-screen pt-6 pb-10">
-        <div className="max-w-6xl mx-auto px-4 md:px-6">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-lg md:text-xl font-semibold text-gray-900">
+      <main className="min-h-screen bg-[#e6f4ec] pt-6 pb-10">
+        <div className="mx-auto max-w-6xl px-4 md:px-6">
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            animate="show"
+            className="mb-4 flex items-center justify-between"
+          >
+            <h1 className="text-lg font-semibold text-gray-900 md:text-xl">
               Write a Review
             </h1>
 
-            <button
+            <motion.button
+              whileHover={{ y: -1 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => navigate("/bookings")}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold hover:bg-gray-50"
+              className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold transition-colors hover:bg-gray-50"
             >
               <FaArrowLeft /> Back to Bookings
-            </button>
-          </div>
+            </motion.button>
+          </motion.div>
 
-          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            animate="show"
+            transition={{ delay: 0.05 }}
+            className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm"
+          >
             <div className="p-5">
               {loading ? (
                 <div className="text-sm text-gray-500">Loading...</div>
               ) : (
                 <>
-                  <div className="flex items-start gap-3">
-                    <img
+                  <motion.div
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.35 }}
+                    className="flex items-start gap-3"
+                  >
+                    <motion.img
+                      whileHover={{ scale: 1.04 }}
                       src={topInfo.image}
                       alt={topInfo.title}
                       onError={(e) => {
                         e.currentTarget.src = FALLBACK_TOUR_IMG;
                       }}
-                      className="h-14 w-14 rounded-xl object-cover border"
+                      className="h-14 w-14 rounded-xl border object-cover"
                     />
 
                     <div>
-                      <div className="font-bold text-gray-900 text-lg">
+                      <div className="text-lg font-bold text-gray-900">
                         {topInfo.title}
                       </div>
-                      <div className="text-sm text-emerald-700 mt-0.5">
+                      <div className="mt-0.5 text-sm text-emerald-700">
                         {topInfo.agency} • {topInfo.date}
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
 
-                  <div className="mt-5">
-                    <div className="text-sm font-semibold text-gray-700 mb-2">
+                  <motion.div
+                    initial={{ opacity: 0, y: 18 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.08, duration: 0.35 }}
+                    className="mt-5"
+                  >
+                    <div className="mb-2 text-sm font-semibold text-gray-700">
                       Star rating
                     </div>
 
                     <div className="flex gap-2">
                       {[1, 2, 3, 4, 5].map((i) => {
-                        const active = (hover || rating) >= i;
+                        const active = rating >= i;
 
                         return (
-                          <button
+                          <motion.button
                             key={i}
                             type="button"
-                            onMouseEnter={() => setHover(i)}
-                            onMouseLeave={() => setHover(0)}
+                            whileHover={{ y: -2, scale: 1.04 }}
+                            whileTap={{ scale: 0.96 }}
                             onClick={() => setRating(i)}
-                            className={`h-10 w-10 rounded-xl border flex items-center justify-center transition ${
+                            className={`flex h-10 w-10 items-center justify-center rounded-xl border transition ${
                               active
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                : "bg-white border-gray-200 text-gray-500"
+                                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                : "border-gray-200 bg-white text-gray-500"
                             }`}
                           >
                             {active ? <FaStar /> : <FaRegStar />}
-                          </button>
+                          </motion.button>
                         );
                       })}
                     </div>
-                  </div>
+                  </motion.div>
 
-                  <div className="mt-4">
-                    <div className="text-sm font-semibold text-gray-700 mb-2">
+                  <motion.div
+                    initial={{ opacity: 0, y: 18 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.12, duration: 0.35 }}
+                    className="mt-4"
+                  >
+                    <div className="mb-2 text-sm font-semibold text-gray-700">
                       Comment
                     </div>
 
-                    <textarea
+                    <motion.textarea
+                      whileFocus={{ scale: 1.002 }}
                       value={comment}
                       onChange={(e) => setComment(e.target.value)}
                       placeholder="Share details about your experience..."
-                      className="w-full min-h-[130px] rounded-2xl border border-gray-200 px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-200 focus:outline-none"
+                      className="min-h-[130px] w-full rounded-2xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200"
                     />
-                  </div>
+                  </motion.div>
 
-                  {ownReviewForThisBooking && !editingReviewId ? (
-                    <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                      You already reviewed this booking. You can edit or delete
-                      your review below.
-                    </div>
-                  ) : null}
+                  <AnimatePresence>
+                    {ownReviewForThisBooking && !editingReviewId ? (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+                      >
+                        You already reviewed this booking. You can edit or delete
+                        your review below.
+                      </motion.div>
+                    ) : null}
+                  </AnimatePresence>
 
-                  <div className="mt-4 flex justify-end gap-2">
+                  <motion.div
+                    initial={{ opacity: 0, y: 18 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.16, duration: 0.35 }}
+                    className="mt-4 flex justify-end gap-2"
+                  >
                     {editingReviewId ? (
-                      <button
+                      <motion.button
                         type="button"
+                        whileHover={{ y: -1 }}
+                        whileTap={{ scale: 0.98 }}
                         onClick={resetForm}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold"
+                        className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold"
                       >
                         <FaTimes /> Cancel Edit
-                      </button>
+                      </motion.button>
                     ) : (
-                      <button
+                      <motion.button
+                        whileHover={{ y: -1 }}
+                        whileTap={{ scale: 0.98 }}
                         onClick={() => navigate("/bookings")}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold"
+                        className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold"
                       >
                         <FaTimes /> Cancel
-                      </button>
+                      </motion.button>
                     )}
 
-                    <button
+                    <motion.button
+                      whileHover={
+                        submitting || (!!ownReviewForThisBooking && !editingReviewId)
+                          ? {}
+                          : { y: -1 }
+                      }
+                      whileTap={
+                        submitting || (!!ownReviewForThisBooking && !editingReviewId)
+                          ? {}
+                          : { scale: 0.98 }
+                      }
                       onClick={handleSubmit}
                       disabled={
                         submitting ||
-                        (!!ownReviewForThisBooking && !editingReviewId)
+                        !!ownReviewForThisBooking && !editingReviewId
                       }
-                      className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-emerald-700 text-white text-sm font-semibold hover:bg-emerald-800 disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <FaPaperPlane />
                       {submitting
@@ -462,179 +546,232 @@ export default function WriteReviewPage() {
                           ? "Updating..."
                           : "Submitting..."
                         : editingReviewId
-                        ? "Update Review"
-                        : "Submit Review"}
-                    </button>
-                  </div>
+                          ? "Update Review"
+                          : "Submit Review"}
+                    </motion.button>
+                  </motion.div>
                 </>
               )}
             </div>
 
             <div className="border-t border-gray-100 p-5">
-              <div className="text-lg font-bold text-gray-900">
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.08, duration: 0.35 }}
+                className="text-lg font-bold text-gray-900"
+              >
                 Recent Reviews
-              </div>
+              </motion.div>
 
               {reviewsLoading ? (
-                <div className="mt-4 text-sm text-gray-500">
-                  Loading reviews...
-                </div>
+                <div className="mt-4 text-sm text-gray-500">Loading reviews...</div>
               ) : reviews.length === 0 ? (
                 <div className="mt-4 text-sm text-gray-500">
                   No reviews yet for this tour.
                 </div>
               ) : (
                 <div className="mt-4 space-y-4">
-                  {reviews.map((item) => (
-                    <div
-                      key={item.id}
-                      className="rounded-2xl border border-gray-100 bg-gray-50 p-4"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="font-semibold text-gray-900">
-                            {item.user_name || "Traveller"}
-                            {item.is_owner ? (
-                              <span className="ml-2 text-xs font-medium text-emerald-700">
-                                (You)
-                              </span>
-                            ) : null}
+                  <AnimatePresence initial={false}>
+                    {reviews.map((item, index) => (
+                      <motion.div
+                        key={item.id}
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -12 }}
+                        transition={{ duration: 0.3, delay: index * 0.04 }}
+                        className="rounded-2xl border border-gray-100 bg-gray-50 p-4 transition-colors hover:bg-gray-50/80"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="font-semibold text-gray-900">
+                              {item.user_name || "Traveller"}
+                              {item.is_owner ? (
+                                <span className="ml-2 text-xs font-medium text-emerald-700">
+                                  
+                                </span>
+                              ) : null}
+                            </div>
+                            <div className="mt-1 text-xs text-gray-500">
+                              {formatReviewDate(item.created_at)}
+                            </div>
                           </div>
-                          <div className="text-xs text-gray-500 mt-1">
-                            {formatReviewDate(item.created_at)}
+
+                          <div className="flex items-center gap-1 text-amber-500">
+                            {[1, 2, 3, 4, 5].map((star) =>
+                              star <= Number(item.rating) ? (
+                                <FaStar key={star} />
+                              ) : (
+                                <FaRegStar key={star} />
+                              )
+                            )}
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-1 text-amber-500">
-                          {[1, 2, 3, 4, 5].map((star) =>
-                            star <= Number(item.rating) ? (
-                              <FaStar key={star} />
-                            ) : (
-                              <FaRegStar key={star} />
-                            )
-                          )}
-                        </div>
-                      </div>
+                        <p className="mt-3 text-sm leading-6 text-gray-700">
+                          {item.comment}
+                        </p>
 
-                      <p className="mt-3 text-sm text-gray-700 leading-6">
-                        {item.comment}
-                      </p>
+                        {item.is_owner ? (
+                          <div className="mt-3 flex justify-end gap-2">
+                            <motion.button
+                              type="button"
+                              whileHover={{ y: -1 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => startEdit(item)}
+                              className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-semibold hover:bg-gray-50"
+                            >
+                              <FaPen /> Edit
+                            </motion.button>
 
-                      {item.is_owner ? (
-                        <div className="mt-3 flex justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => startEdit(item)}
-                            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold hover:bg-gray-50"
-                          >
-                            <FaPen /> Edit
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => openDeletePopup(item.id)}
-                            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-red-200 bg-white text-sm font-semibold text-red-600 hover:bg-red-50"
-                          >
-                            <FaTrash /> Delete
-                          </button>
-                        </div>
-                      ) : null}
-                    </div>
-                  ))}
+                            <motion.button
+                              type="button"
+                              whileHover={{ y: -1 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => openDeletePopup(item.id)}
+                              className="inline-flex items-center gap-2 rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
+                            >
+                              <FaTrash /> Delete
+                            </motion.button>
+                          </div>
+                        ) : null}
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
                 </div>
               )}
             </div>
-          </div>
+          </motion.div>
 
-          {popup.open && (
-            <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm px-4">
-              <div className="w-full max-w-md overflow-hidden rounded-3xl border border-white/60 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]">
-                <div className="relative px-6 pt-6 pb-4">
-                  <button
-                    onClick={closePopup}
-                    type="button"
-                    className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition hover:bg-gray-200 hover:text-gray-700"
-                  >
-                    <FaTimes />
-                  </button>
-
-                  <div className="flex flex-col items-center text-center">
-                    <div
-                      className={`flex h-16 w-16 items-center justify-center rounded-full text-2xl ${popupVariant.iconWrap}`}
+          <AnimatePresence>
+            {popup.open && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-900/50 px-4 backdrop-blur-sm"
+              >
+                <motion.div
+                  initial={{ opacity: 0, y: 20, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 16, scale: 0.97 }}
+                  transition={{ duration: 0.22 }}
+                  className="w-full max-w-md overflow-hidden rounded-3xl border border-white/60 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.18)]"
+                >
+                  <div className="relative px-6 pt-6 pb-4">
+                    <button
+                      onClick={closePopup}
+                      type="button"
+                      className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition hover:bg-gray-200 hover:text-gray-700"
                     >
-                      {popupVariant.icon}
+                      <FaTimes />
+                    </button>
+
+                    <div className="flex flex-col items-center text-center">
+                      <motion.div
+                        initial={{ scale: 0.86, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ delay: 0.05, duration: 0.22 }}
+                        className={`flex h-16 w-16 items-center justify-center rounded-full text-2xl ${popupVariant.iconWrap}`}
+                      >
+                        {popupVariant.icon}
+                      </motion.div>
+
+                      <h3 className="mt-4 text-xl font-bold tracking-tight text-gray-900">
+                        {popup.title}
+                      </h3>
+
+                      <p className="mt-2 max-w-sm text-sm leading-6 text-gray-600">
+                        {popup.message}
+                      </p>
                     </div>
-
-                    <h3 className="mt-4 text-xl font-bold tracking-tight text-gray-900">
-                      {popup.title}
-                    </h3>
-
-                    <p className="mt-2 max-w-sm text-sm leading-6 text-gray-600">
-                      {popup.message}
-                    </p>
                   </div>
-                </div>
 
-                <div className="px-6 pb-6 pt-2">
-                  <button
-                    onClick={closePopup}
-                    type="button"
-                    className={`w-full rounded-2xl px-4 py-3 text-sm font-semibold transition ${popupVariant.button}`}
-                  >
-                    Got it
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+                  <div className="px-6 pb-6 pt-2">
+                    <motion.button
+                      whileHover={{ y: -1 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={closePopup}
+                      type="button"
+                      className={`w-full rounded-2xl px-4 py-3 text-sm font-semibold transition ${popupVariant.button}`}
+                    >
+                      Got it
+                    </motion.button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          {deletePopup.open && (
-            <div className="fixed inset-0 z-[95] flex items-center justify-center bg-slate-900/55 backdrop-blur-sm px-4">
-              <div className="w-full max-w-md overflow-hidden rounded-3xl border border-white/60 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.2)]">
-                <div className="relative px-6 pt-6 pb-4">
-                  <button
-                    onClick={closeDeletePopup}
-                    type="button"
-                    className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition hover:bg-gray-200 hover:text-gray-700"
-                  >
-                    <FaTimes />
-                  </button>
+          <AnimatePresence>
+            {deletePopup.open && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[95] flex items-center justify-center bg-slate-900/55 px-4 backdrop-blur-sm"
+              >
+                <motion.div
+                  initial={{ opacity: 0, y: 20, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 16, scale: 0.97 }}
+                  transition={{ duration: 0.22 }}
+                  className="w-full max-w-md overflow-hidden rounded-3xl border border-white/60 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.2)]"
+                >
+                  <div className="relative px-6 pt-6 pb-4">
+                    <button
+                      onClick={closeDeletePopup}
+                      type="button"
+                      className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition hover:bg-gray-200 hover:text-gray-700"
+                    >
+                      <FaTimes />
+                    </button>
 
-                  <div className="flex flex-col items-center text-center">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-100 text-2xl text-red-600 ring-8 ring-red-50">
-                      <FaTrash />
+                    <div className="flex flex-col items-center text-center">
+                      <motion.div
+                        initial={{ scale: 0.86, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ delay: 0.05, duration: 0.22 }}
+                        className="flex h-16 w-16 items-center justify-center rounded-full bg-red-100 text-2xl text-red-600 ring-8 ring-red-50"
+                      >
+                        <FaTrash />
+                      </motion.div>
+
+                      <h3 className="mt-4 text-xl font-bold tracking-tight text-gray-900">
+                        Delete Review
+                      </h3>
+
+                      <p className="mt-2 max-w-sm text-sm leading-6 text-gray-600">
+                        Are you sure you want to delete your review? This action cannot be undone.
+                      </p>
                     </div>
-
-                    <h3 className="mt-4 text-xl font-bold tracking-tight text-gray-900">
-                      Delete Review
-                    </h3>
-
-                    <p className="mt-2 max-w-sm text-sm leading-6 text-gray-600">
-                      Are you sure you want to delete your review? This action cannot be undone.
-                    </p>
                   </div>
-                </div>
 
-                <div className="flex gap-3 px-6 pb-6 pt-2">
-                  <button
-                    onClick={closeDeletePopup}
-                    type="button"
-                    className="flex-1 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
+                  <div className="flex gap-3 px-6 pb-6 pt-2">
+                    <motion.button
+                      whileHover={{ y: -1 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={closeDeletePopup}
+                      type="button"
+                      className="flex-1 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+                    >
+                      Cancel
+                    </motion.button>
 
-                  <button
-                    onClick={() => handleDelete(deletePopup.reviewId)}
-                    type="button"
-                    className="flex-1 rounded-2xl bg-red-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-700"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+                    <motion.button
+                      whileHover={{ y: -1 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => handleDelete(deletePopup.reviewId)}
+                      type="button"
+                      className="flex-1 rounded-2xl bg-red-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-700"
+                    >
+                      Delete
+                    </motion.button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </main>
 

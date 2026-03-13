@@ -1,5 +1,6 @@
 // client/src/pages/tourist/BookingsPage.jsx
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import NavbarTourist from "../../components/tourist/NavbarTourist";
 import FooterTourist from "../../components/tourist/FooterTourist";
 import { useAuth } from "../../context/AuthContext";
@@ -17,6 +18,46 @@ import { useNavigate } from "react-router-dom";
 import { toPublicImageUrl, FALLBACK_TOUR_IMG } from "../../utils/publicImageUrl";
 
 const PAGE_SIZE = 5;
+
+const pageIntro = {
+  hidden: { opacity: 0, y: 22 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] },
+  },
+};
+
+const sectionReveal = {
+  hidden: { opacity: 0, y: 18 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.42, ease: [0.22, 1, 0.36, 1] },
+  },
+};
+
+const modalBackdrop = {
+  hidden: { opacity: 0 },
+  show: { opacity: 1, transition: { duration: 0.2 } },
+  exit: { opacity: 0, transition: { duration: 0.18 } },
+};
+
+const modalPanel = {
+  hidden: { opacity: 0, y: 18, scale: 0.98 },
+  show: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: 0.24, ease: [0.22, 1, 0.36, 1] },
+  },
+  exit: {
+    opacity: 0,
+    y: 12,
+    scale: 0.985,
+    transition: { duration: 0.18 },
+  },
+};
 
 export default function BookingsPage() {
   const { token } = useAuth();
@@ -79,7 +120,11 @@ export default function BookingsPage() {
       const progress = Math.min((time - startTime) / duration, 1);
       const eased = easeOutCubic(progress);
 
-      window.scrollTo(0, start * (1 - eased));
+      if (window.__lenis?.scrollTo) {
+        window.__lenis.scrollTo(start * (1 - eased), { immediate: true });
+      } else {
+        window.scrollTo(0, start * (1 - eased));
+      }
 
       if (progress < 1) requestAnimationFrame(animate);
     };
@@ -207,7 +252,8 @@ export default function BookingsPage() {
     };
 
     return (
-      <span
+      <motion.span
+        whileHover={{ y: -1 }}
         className={[
           "inline-flex items-center px-3 py-1 rounded-full text-xs font-bold shadow-sm",
           map[status] || "bg-gray-700 text-white",
@@ -215,12 +261,13 @@ export default function BookingsPage() {
         title="Current status"
       >
         {status}
-      </span>
+      </motion.span>
     );
   };
 
   const PaymentChip = ({ paid }) => (
-    <span
+    <motion.span
+      whileHover={{ y: -1 }}
       className={[
         "inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border",
         paid
@@ -229,7 +276,7 @@ export default function BookingsPage() {
       ].join(" ")}
     >
       {paid ? "Paid" : "Unpaid"}
-    </span>
+    </motion.span>
   );
 
   const handleReset = () => {
@@ -413,15 +460,23 @@ export default function BookingsPage() {
     "transition-all duration-300 ease-out transform active:scale-95 shadow-sm hover:shadow-md";
 
   const fadeWrapClass = fadeState === "in" ? "opacity-100" : "opacity-0";
-  const transitionClass = "transition-opacity duration-600 ease-[cubic-bezier(.22,1,.36,1)]";
+  const transitionClass = "transition-opacity duration-500 ease-[cubic-bezier(.22,1,.36,1)]";
 
   return (
     <>
       <NavbarTourist />
 
-      <main className="bg-[#e6f4ec] pt-6 pb-6">
+      <motion.main
+        initial="hidden"
+        animate="show"
+        variants={pageIntro}
+        className="bg-[#e6f4ec] pt-6 pb-6"
+      >
         <div className="max-w-6xl mx-auto px-4 md:px-6">
-          <div className="bg-white border border-gray-100 rounded-2xl p-4 md:p-5 shadow-sm">
+          <motion.div
+            variants={sectionReveal}
+            className="bg-white border border-gray-100 rounded-2xl p-4 md:p-5 shadow-sm"
+          >
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h1 className="text-lg md:text-xl font-semibold text-gray-900">Booking History</h1>
@@ -430,24 +485,34 @@ export default function BookingsPage() {
                 </p>
               </div>
 
-              <button
+              <motion.button
+                whileHover={{ y: -1 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={handleRefresh}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-gray-200 bg-white text-gray-900 hover:bg-gray-50"
                 title="Refresh bookings"
               >
-                <FaRedo /> Refresh
-              </button>
+                <motion.span
+                  animate={loading ? { rotate: 360 } : { rotate: 0 }}
+                  transition={loading ? { repeat: Infinity, duration: 0.9, ease: "linear" } : { duration: 0.2 }}
+                >
+                  <FaRedo />
+                </motion.span>
+                Refresh
+              </motion.button>
             </div>
 
             <div className="mt-4 flex flex-col md:flex-row gap-2 md:items-center">
-              <input
+              <motion.input
+                whileFocus={{ y: -1 }}
                 value={draft.q}
                 onChange={(e) => setDraft((p) => ({ ...p, q: e.target.value }))}
                 placeholder="Filter: Tour or Agency"
                 className="w-full md:w-[320px] px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200"
               />
 
-              <select
+              <motion.select
+                whileFocus={{ y: -1 }}
                 value={draft.date}
                 onChange={(e) => setDraft((p) => ({ ...p, date: e.target.value }))}
                 className="w-full md:w-[170px] px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm"
@@ -455,9 +520,10 @@ export default function BookingsPage() {
                 <option value="All">Date: All</option>
                 <option value="Last30">Last 30 days</option>
                 <option value="Last90">Last 90 days</option>
-              </select>
+              </motion.select>
 
-              <select
+              <motion.select
+                whileFocus={{ y: -1 }}
                 value={draft.status}
                 onChange={(e) => setDraft((p) => ({ ...p, status: e.target.value }))}
                 className="w-full md:w-[200px] px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm"
@@ -468,44 +534,52 @@ export default function BookingsPage() {
                 <option value="Confirmed">Confirmed</option>
                 <option value="Completed">Completed</option>
                 <option value="Cancelled">Cancelled</option>
-              </select>
+              </motion.select>
 
-              <select
+              <motion.select
+                whileFocus={{ y: -1 }}
                 value={draft.sort}
                 onChange={(e) => setDraft((p) => ({ ...p, sort: e.target.value }))}
                 className="w-full md:w-[170px] px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm"
               >
                 <option value="Latest">Latest</option>
                 <option value="Oldest">Oldest</option>
-              </select>
+              </motion.select>
 
-              <button
+              <motion.button
+                whileHover={{ y: -1 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={handleReset}
                 className={[
                   "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200",
-                  "hover:-translate-y-[1px] hover:shadow-md active:translate-y-0 active:shadow-sm",
+                  "hover:shadow-md active:shadow-sm",
                   "w-full md:w-auto justify-center border border-gray-200 bg-white text-gray-900 hover:bg-gray-50",
                 ].join(" ")}
               >
                 <FaRedo /> Reset
-              </button>
+              </motion.button>
             </div>
-          </div>
+          </motion.div>
 
-          <div className="mt-5 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <motion.div
+            variants={sectionReveal}
+            className="mt-5 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
+          >
             {!token ? (
               <div className="p-10 text-center">
                 <div className="font-semibold text-gray-900">Please login to view bookings</div>
-                <button
+                <motion.button
+                  whileHover={{ y: -1 }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={() => navigate("/login")}
                   className={[
                     "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200",
-                    "hover:-translate-y-[1px] hover:shadow-md active:translate-y-0 active:shadow-sm",
+                    "hover:shadow-md active:shadow-sm",
                     "mt-4 bg-emerald-700 text-white hover:bg-emerald-800",
                   ].join(" ")}
                 >
                   Go to Login
-                </button>
+                </motion.button>
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -531,124 +605,146 @@ export default function BookingsPage() {
                         </td>
                       </tr>
                     ) : (
-                      pageRows.map((b) => {
-                        const statusText = displayStatus(b);
-                        const cancelled = statusText === "Cancelled";
-                        const completed = statusText === "Completed";
-                        const approved = statusText === "Approved";
-                        const paid = String(b.payment_status || "") === "Paid";
-                        const unpaid = String(b.payment_status || "") === "Unpaid";
-                        const rowBusy = busyId === b.id;
+                      <AnimatePresence mode="popLayout" initial={false}>
+                        {pageRows.map((b, index) => {
+                          const statusText = displayStatus(b);
+                          const cancelled = statusText === "Cancelled";
+                          const completed = statusText === "Completed";
+                          const approved = statusText === "Approved";
+                          const paid = String(b.payment_status || "") === "Paid";
+                          const unpaid = String(b.payment_status || "") === "Unpaid";
+                          const rowBusy = busyId === b.id;
 
-                        const canPay = unpaid && !cancelled && approved;
+                          const canPay = unpaid && !cancelled && approved;
 
-                        return (
-                          <tr key={b.id} className="hover:bg-gray-50/60 transition-colors">
-                            <td className="px-4 py-5">
-                              <div className="flex gap-3 items-center">
-                                <img
-                                  src={toPublicImageUrl(b.tour_image_url) || FALLBACK_TOUR_IMG}
-                                  alt={b.tour_title}
-                                  className="h-12 w-16 rounded-xl object-cover border"
-                                  onError={(e) => (e.currentTarget.src = FALLBACK_TOUR_IMG)}
-                                />
-                                <div className="min-w-0">
-                                  <div className="font-semibold text-gray-900 leading-tight line-clamp-2">
-                                    {b.tour_title}
+                          return (
+                            <motion.tr
+                              key={b.id}
+                              layout
+                              initial={{ opacity: 0, y: 14 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -8 }}
+                              transition={{ duration: 0.22, delay: index * 0.03 }}
+                              className="hover:bg-gray-50/60 transition-colors"
+                            >
+                              <td className="px-4 py-5">
+                                <div className="flex gap-3 items-center">
+                                  <motion.img
+                                    whileHover={{ scale: 1.03 }}
+                                    src={toPublicImageUrl(b.tour_image_url) || FALLBACK_TOUR_IMG}
+                                    alt={b.tour_title}
+                                    className="h-12 w-16 rounded-xl object-cover border"
+                                    onError={(e) => (e.currentTarget.src = FALLBACK_TOUR_IMG)}
+                                  />
+                                  <div className="min-w-0">
+                                    <div className="font-semibold text-gray-900 leading-tight line-clamp-2">
+                                      {b.tour_title}
+                                    </div>
+                                    <div className="text-xs text-gray-500 mt-1.5">Ref. #{b.ref_code}</div>
                                   </div>
-                                  <div className="text-xs text-gray-500 mt-1.5">Ref. #{b.ref_code}</div>
                                 </div>
-                              </div>
-                            </td>
+                              </td>
 
-                            <td className="px-4 py-5 font-semibold text-gray-900">{b.agency_name}</td>
+                              <td className="px-4 py-5 font-semibold text-gray-900">{b.agency_name}</td>
 
-                            <td className="px-4 py-5 whitespace-nowrap font-semibold text-gray-900">
-                              {new Date(b.booking_date).toLocaleDateString()}
-                            </td>
+                              <td className="px-4 py-5 whitespace-nowrap font-semibold text-gray-900">
+                                {new Date(b.booking_date).toLocaleDateString()}
+                              </td>
 
-                            <td className="px-4 py-5">
-                              <div className="flex items-center gap-2">
-                                <span className="text-[11px] text-gray-500 font-semibold">Current:</span>
-                                <StatusBadge status={statusText} />
-                              </div>
-                            </td>
+                              <td className="px-4 py-5">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[11px] text-gray-500 font-semibold">Current:</span>
+                                  <StatusBadge status={statusText} />
+                                </div>
+                              </td>
 
-                            <td className="px-4 py-5">
-                              <PaymentChip paid={paid} />
-                            </td>
+                              <td className="px-4 py-5">
+                                <PaymentChip paid={paid} />
+                              </td>
 
-                            <td className="px-4 py-5">
-                              <div className="flex gap-2 justify-end flex-nowrap">
-                                {canPay && (
-                                  <button
-                                    disabled={rowBusy}
-                                    onClick={() => handlePayNow(b.id)}
-                                    className={[
-                                      "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200",
-                                      "hover:-translate-y-[1px] hover:shadow-md active:translate-y-0 active:shadow-sm",
-                                      rowBusy
-                                        ? "bg-emerald-300 text-white cursor-not-allowed animate-pulse"
-                                        : "bg-emerald-700 text-white hover:bg-emerald-800",
-                                    ].join(" ")}
-                                  >
-                                    <FaCreditCard />
-                                    {rowBusy ? "Processing..." : "Pay Now"}
-                                  </button>
-                                )}
+                              <td className="px-4 py-5">
+                                <div className="flex gap-2 justify-end flex-nowrap">
+                                  {canPay && (
+                                    <motion.button
+                                      whileHover={{ y: -1 }}
+                                      whileTap={{ scale: 0.98 }}
+                                      disabled={rowBusy}
+                                      onClick={() => handlePayNow(b.id)}
+                                      className={[
+                                        "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200",
+                                        "hover:shadow-md active:shadow-sm",
+                                        rowBusy
+                                          ? "bg-emerald-300 text-white cursor-not-allowed animate-pulse"
+                                          : "bg-emerald-700 text-white hover:bg-emerald-800",
+                                      ].join(" ")}
+                                    >
+                                      <FaCreditCard />
+                                      {rowBusy ? "Processing..." : "Pay Now"}
+                                    </motion.button>
+                                  )}
 
-                                {paid && !cancelled && (
-                                  <button
-                                    onClick={() => {
-                                      if (!completed) {
-                                        openInfoModal("You can write a review only after the tour is completed.");
-                                        return;
-                                      }
-                                      navigate(`/review?booking=${b.id}`);
-                                    }}
-                                    className={[
-                                      "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200",
-                                      "hover:-translate-y-[1px] hover:shadow-md active:translate-y-0 active:shadow-sm",
-                                      completed
-                                        ? "bg-emerald-700 text-white hover:bg-emerald-800"
-                                        : "bg-white text-emerald-800 border border-emerald-200 hover:bg-emerald-50",
-                                    ].join(" ")}
-                                  >
-                                    <FaPen /> Write Review
-                                  </button>
-                                )}
+                                  {paid && !cancelled && (
+                                    <motion.button
+                                      whileHover={{ y: -1 }}
+                                      whileTap={{ scale: 0.98 }}
+                                      onClick={() => {
+                                        if (!completed) {
+                                          openInfoModal("You can write a review only after the tour is completed.");
+                                          return;
+                                        }
+                                        navigate(`/review?booking=${b.id}`);
+                                      }}
+                                      className={[
+                                        "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200",
+                                        "hover:shadow-md active:shadow-sm",
+                                        completed
+                                          ? "bg-emerald-700 text-white hover:bg-emerald-800"
+                                          : "bg-white text-emerald-800 border border-emerald-200 hover:bg-emerald-50",
+                                      ].join(" ")}
+                                    >
+                                      <FaPen /> Write Review
+                                    </motion.button>
+                                  )}
 
-                                {!paid && !cancelled && (
-                                  <button
-                                    disabled={rowBusy}
-                                    onClick={() => openCancelModal(b)}
-                                    className={[
-                                      "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200",
-                                      "hover:-translate-y-[1px] hover:shadow-md active:translate-y-0 active:shadow-sm",
-                                      rowBusy
-                                        ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
-                                        : "bg-white text-red-600 border border-red-200 hover:bg-red-50 hover:border-red-300",
-                                    ].join(" ")}
-                                  >
-                                    <FaTimes />
-                                    {rowBusy ? "Cancelling..." : "Cancel"}
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })
+                                  {!paid && !cancelled && (
+                                    <motion.button
+                                      whileHover={{ y: -1 }}
+                                      whileTap={{ scale: 0.98 }}
+                                      disabled={rowBusy}
+                                      onClick={() => openCancelModal(b)}
+                                      className={[
+                                        "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200",
+                                        "hover:shadow-md active:shadow-sm",
+                                        rowBusy
+                                          ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
+                                          : "bg-white text-red-600 border border-red-200 hover:bg-red-50 hover:border-red-300",
+                                      ].join(" ")}
+                                    >
+                                      <FaTimes />
+                                      {rowBusy ? "Cancelling..." : "Cancel"}
+                                    </motion.button>
+                                  )}
+                                </div>
+                              </td>
+                            </motion.tr>
+                          );
+                        })}
+                      </AnimatePresence>
                     )}
                   </tbody>
                 </table>
               </div>
             )}
-          </div>
+          </motion.div>
 
           {!loading && token && sortedRows.length > PAGE_SIZE && (
-            <div className="mt-7 flex items-center justify-center gap-3">
-              <button
+            <motion.div
+              variants={sectionReveal}
+              className="mt-7 flex items-center justify-center gap-3"
+            >
+              <motion.button
+                whileHover={page === 1 ? {} : { y: -1 }}
+                whileTap={page === 1 ? {} : { scale: 0.98 }}
                 onClick={() => setSafePage(page - 1, totalPages)}
                 disabled={page === 1}
                 className={`${pagerBtn} ${
@@ -658,13 +754,18 @@ export default function BookingsPage() {
                 }`}
               >
                 Prev
-              </button>
+              </motion.button>
 
-              <div className="px-4 py-2.5 rounded-2xl text-sm font-semibold bg-emerald-50 text-emerald-900 border border-emerald-100 shadow-sm">
+              <motion.div
+                whileHover={{ y: -1 }}
+                className="px-4 py-2.5 rounded-2xl text-sm font-semibold bg-emerald-50 text-emerald-900 border border-emerald-100 shadow-sm"
+              >
                 Page {page} / {totalPages}
-              </div>
+              </motion.div>
 
-              <button
+              <motion.button
+                whileHover={page === totalPages ? {} : { y: -1 }}
+                whileTap={page === totalPages ? {} : { scale: 0.98 }}
                 onClick={() => setSafePage(page + 1, totalPages)}
                 disabled={page === totalPages}
                 className={`${pagerBtn} ${
@@ -674,118 +775,156 @@ export default function BookingsPage() {
                 }`}
               >
                 Next
-              </button>
-            </div>
+              </motion.button>
+            </motion.div>
           )}
         </div>
 
-        {cancelModal.open && (
-          <div
-            className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 px-4"
-            onMouseDown={(e) => {
-              if (e.target === e.currentTarget) closeCancelModal();
-            }}
-          >
-            <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-              <div className="p-5 border-b border-gray-100 flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center border border-red-100">
-                    <FaExclamationTriangle />
+        <AnimatePresence>
+          {cancelModal.open && (
+            <motion.div
+              variants={modalBackdrop}
+              initial="hidden"
+              animate="show"
+              exit="exit"
+              className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 px-4"
+              onMouseDown={(e) => {
+                if (e.target === e.currentTarget) closeCancelModal();
+              }}
+            >
+              <motion.div
+                variants={modalPanel}
+                initial="hidden"
+                animate="show"
+                exit="exit"
+                className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
+              >
+                <div className="p-5 border-b border-gray-100 flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <motion.div
+                      initial={{ scale: 0.92 }}
+                      animate={{ scale: 1 }}
+                      className="h-10 w-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center border border-red-100"
+                    >
+                      <FaExclamationTriangle />
+                    </motion.div>
+                    <div>
+                      <div className="text-base font-bold text-gray-900">Cancel Booking?</div>
+                      <div className="text-xs text-gray-500 mt-0.5">This action cannot be undone.</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-base font-bold text-gray-900">Cancel Booking?</div>
-                    <div className="text-xs text-gray-500 mt-0.5">This action cannot be undone.</div>
-                  </div>
+
+                  <button
+                    onClick={closeCancelModal}
+                    className="text-gray-400 hover:text-gray-700 transition"
+                    title="Close"
+                  >
+                    <FaTimesCircle size={20} />
+                  </button>
                 </div>
 
-                <button
-                  onClick={closeCancelModal}
-                  className="text-gray-400 hover:text-gray-700 transition"
-                  title="Close"
-                >
-                  <FaTimesCircle size={20} />
-                </button>
-              </div>
-
-              <div className="p-5 space-y-2">
-                <div className="text-sm text-gray-800">
-                  <span className="font-semibold">{cancelModal.tourTitle}</span>
-                </div>
-                <div className="text-xs text-gray-500">
-                  Ref: <span className="font-semibold">#{cancelModal.refCode}</span>
-                </div>
-              </div>
-
-              <div className="p-5 pt-0 flex gap-2 justify-end">
-                <button
-                  onClick={closeCancelModal}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200 border border-gray-200 bg-white text-gray-900 hover:bg-gray-50 hover:-translate-y-[1px] hover:shadow-md active:translate-y-0 active:shadow-sm"
-                >
-                  Keep Booking
-                </button>
-
-                <button
-                  disabled={busyId === cancelModal.bookingId}
-                  onClick={confirmCancel}
-                  className={[
-                    "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200",
-                    "hover:-translate-y-[1px] hover:shadow-md active:translate-y-0 active:shadow-sm",
-                    busyId === cancelModal.bookingId
-                      ? "bg-red-300 text-white cursor-not-allowed animate-pulse"
-                      : "bg-red-600 text-white hover:bg-red-700",
-                  ].join(" ")}
-                >
-                  {busyId === cancelModal.bookingId ? "Cancelling..." : "Yes, Cancel"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {infoModal.open && (
-          <div
-            className="fixed inset-0 z-[85] flex items-center justify-center bg-black/40 px-4"
-            onMouseDown={(e) => {
-              if (e.target === e.currentTarget) closeInfoModal();
-            }}
-          >
-            <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
-              <div className="p-5 border-b border-gray-100 flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-100">
-                    <FaInfoCircle />
+                <div className="p-5 space-y-2">
+                  <div className="text-sm text-gray-800">
+                    <span className="font-semibold">{cancelModal.tourTitle}</span>
                   </div>
-                  <div>
-                    <div className="text-base font-bold text-gray-900">{infoModal.title}</div>
-                    <div className="text-xs text-gray-500 mt-0.5">Quick info</div>
+                  <div className="text-xs text-gray-500">
+                    Ref: <span className="font-semibold">#{cancelModal.refCode}</span>
                   </div>
                 </div>
 
-                <button
-                  onClick={closeInfoModal}
-                  className="text-gray-400 hover:text-gray-700 transition"
-                  title="Close"
-                >
-                  <FaTimesCircle size={20} />
-                </button>
-              </div>
+                <div className="p-5 pt-0 flex gap-2 justify-end">
+                  <motion.button
+                    whileHover={{ y: -1 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={closeCancelModal}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200 border border-gray-200 bg-white text-gray-900 hover:bg-gray-50 hover:shadow-md active:shadow-sm"
+                  >
+                    Keep Booking
+                  </motion.button>
 
-              <div className="p-5">
-                <div className="text-sm text-gray-700">{infoModal.message}</div>
-              </div>
+                  <motion.button
+                    whileHover={busyId === cancelModal.bookingId ? {} : { y: -1 }}
+                    whileTap={busyId === cancelModal.bookingId ? {} : { scale: 0.98 }}
+                    disabled={busyId === cancelModal.bookingId}
+                    onClick={confirmCancel}
+                    className={[
+                      "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200",
+                      "hover:shadow-md active:shadow-sm",
+                      busyId === cancelModal.bookingId
+                        ? "bg-red-300 text-white cursor-not-allowed animate-pulse"
+                        : "bg-red-600 text-white hover:bg-red-700",
+                    ].join(" ")}
+                  >
+                    {busyId === cancelModal.bookingId ? "Cancelling..." : "Yes, Cancel"}
+                  </motion.button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-              <div className="p-5 pt-0 flex justify-end">
-                <button
-                  onClick={closeInfoModal}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200 bg-emerald-700 text-white hover:bg-emerald-800 hover:-translate-y-[1px] hover:shadow-md active:translate-y-0 active:shadow-sm"
-                >
-                  Okay
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </main>
+        <AnimatePresence>
+          {infoModal.open && (
+            <motion.div
+              variants={modalBackdrop}
+              initial="hidden"
+              animate="show"
+              exit="exit"
+              className="fixed inset-0 z-[85] flex items-center justify-center bg-black/40 px-4"
+              onMouseDown={(e) => {
+                if (e.target === e.currentTarget) closeInfoModal();
+              }}
+            >
+              <motion.div
+                variants={modalPanel}
+                initial="hidden"
+                animate="show"
+                exit="exit"
+                className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
+              >
+                <div className="p-5 border-b border-gray-100 flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <motion.div
+                      initial={{ scale: 0.92 }}
+                      animate={{ scale: 1 }}
+                      className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-100"
+                    >
+                      <FaInfoCircle />
+                    </motion.div>
+                    <div>
+                      <div className="text-base font-bold text-gray-900">{infoModal.title}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">Quick info</div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={closeInfoModal}
+                    className="text-gray-400 hover:text-gray-700 transition"
+                    title="Close"
+                  >
+                    <FaTimesCircle size={20} />
+                  </button>
+                </div>
+
+                <div className="p-5">
+                  <div className="text-sm text-gray-700">{infoModal.message}</div>
+                </div>
+
+                <div className="p-5 pt-0 flex justify-end">
+                  <motion.button
+                    whileHover={{ y: -1 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={closeInfoModal}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200 bg-emerald-700 text-white hover:bg-emerald-800 hover:shadow-md active:shadow-sm"
+                  >
+                    Okay
+                  </motion.button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.main>
 
       <FooterTourist />
     </>

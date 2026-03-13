@@ -1,12 +1,11 @@
 // client/src/pages/public/PublicTourDetailsPage.jsx
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-
+import { motion } from "framer-motion";
 import NavbarPublic from "../../components/public/NavbarPublic";
 import FooterPublic from "../../components/public/FooterPublic";
 import NavbarTourist from "../../components/tourist/NavbarTourist";
 import FooterTourist from "../../components/tourist/FooterTourist";
-
 import TourAgenciesList from "../../components/public/TourAgenciesList";
 import { fetchPublicTourDetails } from "../../api/tourApi";
 import { useAuth } from "../../context/AuthContext";
@@ -48,7 +47,6 @@ export default function PublicTourDetailsPage() {
     return true;
   };
 
-  // Load tour + agencies
   useEffect(() => {
     async function loadDetails() {
       try {
@@ -65,7 +63,6 @@ export default function PublicTourDetailsPage() {
     loadDetails();
   }, [tourId]);
 
-  // Load wishlist ids
   useEffect(() => {
     const loadWishlist = async () => {
       if (!token) {
@@ -82,7 +79,6 @@ export default function PublicTourDetailsPage() {
     loadWishlist();
   }, [token]);
 
-  // Smooth scroll to agencies
   useEffect(() => {
     if (!tour) return;
 
@@ -90,6 +86,11 @@ export default function PublicTourDetailsPage() {
       setTimeout(() => {
         const el = document.getElementById("agencies-section");
         if (el) {
+          if (window.__lenis) {
+            window.__lenis.scrollTo(el, { offset: -80, duration: 1 });
+            return;
+          }
+
           const rect = el.getBoundingClientRect();
           window.scrollTo({
             top: rect.top + window.scrollY - 80,
@@ -164,21 +165,29 @@ export default function PublicTourDetailsPage() {
 
       <main className="bg-[#e6f4ec] min-h-screen pt-6 pb-10">
         <div className="max-w-6xl mx-auto px-4 md:px-6 space-y-6">
-          {/* Banner */}
-          <section className="bg-white rounded-3xl overflow-hidden shadow-sm">
+          <motion.section
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+            className="bg-white rounded-3xl overflow-hidden shadow-sm"
+          >
             <img
               src={bannerImg}
               alt={tour.title}
-              className="w-full h-56 md:h-72 lg:h-80 object-cover"
+              className="w-full h-56 md:h-72 lg:h-80 object-cover transition-transform duration-700 hover:scale-[1.02]"
               onError={(e) => {
                 e.currentTarget.src =
                   "https://via.placeholder.com/1200x600?text=Tour+Image";
               }}
             />
-          </section>
+          </motion.section>
 
-          {/* Title */}
-          <section className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <motion.section
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, delay: 0.04, ease: [0.22, 1, 0.36, 1] }}
+            className="flex flex-col md:flex-row md:items-center md:justify-between gap-3"
+          >
             <div>
               <h1 className="text-xl md:text-2xl font-semibold text-gray-900">
                 {tour.title}
@@ -194,25 +203,27 @@ export default function PublicTourDetailsPage() {
               </div>
             </div>
 
-            {/* Wishlist Toggle */}
-            <button
+            <motion.button
+              whileHover={busy ? {} : { y: -1 }}
+              whileTap={busy ? {} : { scale: 0.98 }}
               disabled={busy}
               onClick={toggleWishlist}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs md:text-sm border shadow transition-all
-                ${
-                  inWishlist
-                    ? "bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700"
-                    : "bg-white text-gray-800 border-gray-300 hover:bg-gray-50"
-                }
-                ${busy ? "opacity-60 cursor-not-allowed" : ""}
-              `}
+              className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs md:text-sm border shadow transition-all ${
+                inWishlist
+                  ? "bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700"
+                  : "bg-white text-gray-800 border-gray-300 hover:bg-gray-50"
+              } ${busy ? "opacity-60 cursor-not-allowed" : ""}`}
             >
               {inWishlist ? "✔ Added to Wishlist" : "♡ Add to Wishlist"}
-            </button>
-          </section>
+            </motion.button>
+          </motion.section>
 
-          {/* About */}
-          <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-5">
+          <motion.section
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
+            className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-5"
+          >
             <h2 className="text-sm md:text-base font-semibold text-gray-900 mb-2">
               About this tour
             </h2>
@@ -221,16 +232,21 @@ export default function PublicTourDetailsPage() {
                 tour.description ||
                 tour.short_description}
             </p>
-          </section>
+          </motion.section>
 
-          {/* Agencies */}
-          <section id="agencies-section" className="space-y-3">
+          <motion.section
+            id="agencies-section"
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
+            className="space-y-3"
+          >
             <h2 className="text-sm md:text-base font-semibold text-gray-900">
               All Agencies offering this Tour
             </h2>
 
             <TourAgenciesList agencies={agencies} onLoginAlert={requireLogin} />
-          </section>
+          </motion.section>
         </div>
       </main>
 

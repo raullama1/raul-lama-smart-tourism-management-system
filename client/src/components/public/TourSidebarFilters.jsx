@@ -1,3 +1,6 @@
+// client/src/components/public/TourSidebarFilters.jsx
+import { motion } from "framer-motion";
+
 export default function TourSidebarFilters({ filters, onFiltersChange }) {
   const setType = (type) =>
     onFiltersChange({ ...filters, type: filters.type === type ? "" : type });
@@ -20,7 +23,7 @@ export default function TourSidebarFilters({ filters, onFiltersChange }) {
   };
 
   const activeTypeClass = (type) =>
-    `px-3 py-1.5 rounded-full border text-xs font-medium cursor-pointer ${
+    `px-3 py-1.5 rounded-full border text-xs font-medium cursor-pointer transition-all duration-300 ${
       filters.type === type
         ? "bg-emerald-600 text-white border-emerald-600"
         : "bg-white text-gray-800 border-gray-300 hover:bg-emerald-50"
@@ -29,7 +32,7 @@ export default function TourSidebarFilters({ filters, onFiltersChange }) {
   const activePriceClass = (min, max) => {
     const isActive =
       (filters.minPrice || "") === min && (filters.maxPrice || "") === max;
-    return `w-full text-left px-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer ${
+    return `w-full text-left px-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-all duration-300 ${
       isActive
         ? "bg-emerald-600 text-white border-emerald-600"
         : "bg-white text-gray-800 border-gray-300 hover:bg-emerald-50"
@@ -37,36 +40,49 @@ export default function TourSidebarFilters({ filters, onFiltersChange }) {
   };
 
   return (
-    <aside className="w-full md:w-64 bg-[#e6f4ec] rounded-2xl p-4 self-start">
+    <motion.aside
+      initial={{ opacity: 0, x: -18 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+      className="w-full md:w-64 bg-[#e6f4ec] rounded-2xl p-4 self-start"
+    >
       <div className="mb-4">
         <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
           Tour Types
         </h3>
         <div className="mt-2 flex flex-wrap gap-2">
-          <button
+          <motion.button
+            whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.98 }}
             className={activeTypeClass("Adventure")}
             onClick={() => setType("Adventure")}
           >
             Adventure
-          </button>
-          <button
+          </motion.button>
+          <motion.button
+            whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.98 }}
             className={activeTypeClass("Cultural")}
             onClick={() => setType("Cultural")}
           >
             Cultural
-          </button>
-          <button
+          </motion.button>
+          <motion.button
+            whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.98 }}
             className={activeTypeClass("Nature")}
             onClick={() => setType("Nature")}
           >
             Nature
-          </button>
-          <button
+          </motion.button>
+          <motion.button
+            whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.98 }}
             className={activeTypeClass("Religious")}
             onClick={() => setType("Religious")}
           >
             Religious
-          </button>
+          </motion.button>
         </div>
       </div>
 
@@ -75,32 +91,40 @@ export default function TourSidebarFilters({ filters, onFiltersChange }) {
           Price
         </h3>
         <div className="mt-2 space-y-2">
-          <button
+          <motion.button
+            whileHover={{ x: 2 }}
+            whileTap={{ scale: 0.98 }}
             className={activePriceClass("", 10000)}
             onClick={() => setPriceRange("under-10k")}
           >
             Under NPR 10k
-          </button>
-          <button
+          </motion.button>
+          <motion.button
+            whileHover={{ x: 2 }}
+            whileTap={{ scale: 0.98 }}
             className={activePriceClass(10000, 25000)}
             onClick={() => setPriceRange("10-25k")}
           >
             NPR 10k–25k
-          </button>
-          <button
+          </motion.button>
+          <motion.button
+            whileHover={{ x: 2 }}
+            whileTap={{ scale: 0.98 }}
             className={activePriceClass(25000, 50000)}
             onClick={() => setPriceRange("25-50k")}
           >
             NPR 25k–50k
-          </button>
-          <button
+          </motion.button>
+          <motion.button
+            whileHover={{ x: 2 }}
+            whileTap={{ scale: 0.98 }}
             className={activePriceClass(50000, "")}
             onClick={() => setPriceRange("above-50k")}
           >
             Above NPR 50k
-          </button>
+          </motion.button>
         </div>
       </div>
-    </aside>
+    </motion.aside>
   );
 }

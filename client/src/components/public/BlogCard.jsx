@@ -1,9 +1,10 @@
 // client/src/components/public/BlogCard.jsx
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import { gsap } from "gsap";
-import { Draggable } from "gsap/Draggable";
+import { Draggable } from "gsap/all";
 
 gsap.registerPlugin(Draggable);
 
@@ -55,35 +56,35 @@ export function BlogCard({ blog }) {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden flex flex-col transform hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
-      <div className="relative h-40 w-full overflow-hidden">
+    <div className="group flex h-full flex-col overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.06)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(15,23,42,0.1)]">
+      <div className="relative h-44 w-full overflow-hidden md:h-48">
         <img
           src={resolveImageUrl(blog.image)}
           alt={blog.title}
           onError={(e) => {
             e.currentTarget.src = FALLBACK_BLOG_IMAGE;
           }}
-          className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
         />
       </div>
 
-      <div className="p-4 flex-1 flex flex-col">
-        <h3 className="font-semibold text-gray-900 text-sm md:text-base line-clamp-2">
+      <div className="flex flex-1 flex-col p-4 md:p-5">
+        <h3 className="line-clamp-2 text-base font-semibold text-slate-900 md:text-lg">
           {blog.title}
         </h3>
 
-        <p className="mt-1 text-gray-600 text-xs md:text-sm line-clamp-3">
+        <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-600">
           {plainPreview(blog.excerpt, 150)}
         </p>
 
-        <div className="mt-2 text-xs text-gray-500 flex justify-between gap-3">
+        <div className="mt-4 flex justify-between gap-3 text-xs text-slate-500 md:text-sm">
           <span className="line-clamp-1">{blog.agency}</span>
           <span>{blog.date}</span>
         </div>
 
         {blog.type ? (
-          <div className="mt-3">
-            <span className="inline-flex rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700">
+          <div className="mt-4">
+            <span className="inline-flex rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700">
               {blog.type}
             </span>
           </div>
@@ -91,7 +92,7 @@ export function BlogCard({ blog }) {
 
         <button
           onClick={handleReadMore}
-          className="mt-4 inline-flex items-center justify-center px-5 py-2.5 rounded-md bg-gradient-to-r from-emerald-600 to-emerald-500 text-white text-sm md:text-base font-medium hover:scale-105 hover:shadow-md transition-all"
+          className="mt-5 inline-flex min-h-[44px] items-center justify-center rounded-xl bg-emerald-700 px-5 py-3 text-sm font-semibold text-white transition-all hover:bg-emerald-800 md:text-base"
           type="button"
         >
           Read More
@@ -222,7 +223,7 @@ export function BlogCardSection({
 
     gsap.to(container, {
       x: `+=${delta}`,
-      duration: 0.45,
+      duration: 0.38,
       ease: "power2.out",
       onUpdate: applyWrap,
       onComplete: applyWrap,
@@ -230,55 +231,81 @@ export function BlogCardSection({
   };
 
   return (
-    <section className="bg-[#e6f4ec] py-8 md:py-10 relative">
-      <div className="max-w-6xl mx-auto px-4 md:px-6 relative">
-        <div className="flex items-center justify-between mb-4 md:mb-6">
-          <h2 className="text-lg md:text-xl font-semibold text-gray-900">
+    <section className="relative py-8 md:py-12">
+      <div className="mx-auto max-w-7xl px-4 md:px-6">
+        <div className="mb-5 flex items-center justify-between gap-4 md:mb-7">
+          <h2 className="text-2xl font-bold tracking-tight text-slate-950 md:text-3xl">
             {sectionTitle}
           </h2>
 
-          <a
-            href={viewAllLink}
-            className="px-4 py-2 rounded-md bg-emerald-700 text-white text-xs md:text-sm font-medium hover:bg-emerald-800 transition-colors"
+          <Link
+            to={viewAllLink}
+            className="inline-flex min-h-[42px] items-center justify-center rounded-full bg-emerald-700 px-5 py-2.5 text-xs font-semibold text-white transition-all hover:bg-emerald-800 md:text-sm"
           >
             View All
-          </a>
+          </Link>
         </div>
 
-        <button
-          onClick={() => moveBy(+Math.min(340, dims.itemW + dims.gap))}
-          className="absolute top-1/2 -left-4 transform -translate-y-1/2 z-10 p-2 bg-white rounded-full shadow hover:bg-gray-100 transition-all"
-          type="button"
-          aria-label="Previous"
-          title="Previous"
-        >
-          <FaChevronLeft size={20} />
-        </button>
-
-        <button
-          onClick={() => moveBy(-Math.min(340, dims.itemW + dims.gap))}
-          className="absolute top-1/2 -right-4 transform -translate-y-1/2 z-10 p-2 bg-white rounded-full shadow hover:bg-gray-100 transition-all"
-          type="button"
-          aria-label="Next"
-          title="Next"
-        >
-          <FaChevronRight size={20} />
-        </button>
-
-        <div className="overflow-hidden">
-          <div
-            ref={containerRef}
-            className="flex gap-4 md:gap-5 select-none"
-            style={{ width: "max-content", alignItems: "stretch" }}
+        <div className="relative md:px-10">
+          <button
+            onClick={() => moveBy(+Math.min(340, dims.itemW + dims.gap))}
+            className="absolute -left-2 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white text-slate-800 shadow-[0_12px_28px_rgba(15,23,42,0.14)] transition-all hover:scale-105 md:inline-flex"
+            type="button"
+            aria-label="Previous"
+            title="Previous"
           >
-            {tripled.map((blog, idx) => (
-              <div
-                key={`${blog.id}-${idx}`}
-                className="flex-shrink-0 w-[470px] md:w-[500px] lg:w-[520px]"
-              >
-                <BlogCard blog={blog} />
-              </div>
-            ))}
+            <FaChevronLeft size={16} />
+          </button>
+
+          <button
+            onClick={() => moveBy(-Math.min(340, dims.itemW + dims.gap))}
+            className="absolute -right-2 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white text-slate-800 shadow-[0_12px_28px_rgba(15,23,42,0.14)] transition-all hover:scale-105 md:inline-flex"
+            type="button"
+            aria-label="Next"
+            title="Next"
+          >
+            <FaChevronRight size={16} />
+          </button>
+
+          <button
+            onClick={() => moveBy(+Math.min(340, dims.itemW + dims.gap))}
+            className="absolute left-2 top-1/2 z-20 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white text-slate-800 shadow-[0_12px_28px_rgba(15,23,42,0.14)] transition-all hover:scale-105 md:hidden"
+            type="button"
+            aria-label="Previous"
+            title="Previous"
+          >
+            <FaChevronLeft size={14} />
+          </button>
+
+          <button
+            onClick={() => moveBy(-Math.min(340, dims.itemW + dims.gap))}
+            className="absolute right-2 top-1/2 z-20 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white text-slate-800 shadow-[0_12px_28px_rgba(15,23,42,0.14)] transition-all hover:scale-105 md:hidden"
+            type="button"
+            aria-label="Next"
+            title="Next"
+          >
+            <FaChevronRight size={14} />
+          </button>
+
+          <div className="overflow-hidden rounded-[1.8rem] bg-white/70 p-2 md:p-3">
+            <div
+              ref={containerRef}
+              className="flex gap-4 md:gap-5"
+              style={{ width: "max-content", alignItems: "stretch" }}
+            >
+              {tripled.map((blog, idx) => (
+                <motion.div
+                  key={`${blog.id}-${idx}`}
+                  className="flex-shrink-0 w-[18rem] sm:w-[22rem] md:w-[27rem] lg:w-[30rem]"
+                  initial={{ opacity: 0, y: 22 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, amount: 0.18 }}
+                  transition={{ duration: 0.42, delay: (idx % 5) * 0.03 }}
+                >
+                  <BlogCard blog={blog} />
+                </motion.div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

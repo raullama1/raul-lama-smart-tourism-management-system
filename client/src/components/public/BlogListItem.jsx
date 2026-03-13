@@ -51,69 +51,69 @@ export default function BlogListItem({ blog }) {
   };
 
   return (
-    <article className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-5 mb-4">
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="w-full md:w-[240px] lg:w-[270px] shrink-0">
-          <div className="overflow-hidden rounded-2xl border border-gray-100 bg-[#eef8f2]">
+    <article className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-[0_14px_40px_rgba(15,23,42,0.05)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_22px_50px_rgba(15,23,42,0.08)] md:p-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:gap-5">
+        <div className="w-full shrink-0 lg:w-[260px] xl:w-[290px]">
+          <div className="overflow-hidden rounded-[1.4rem] bg-[#eef8f2]">
             <img
               src={resolveImageUrl(blog.image_url)}
               alt={blog.title}
               onError={(e) => {
                 e.currentTarget.src = FALLBACK_BLOG_IMAGE;
               }}
-              className="h-48 w-full object-cover"
+              className="h-52 w-full object-cover transition-transform duration-500 hover:scale-[1.04] lg:h-full lg:min-h-[260px]"
             />
           </div>
         </div>
 
-        <div className="flex-1 min-w-0">
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div className="min-w-0">
-              <h2 className="text-sm md:text-lg font-semibold text-gray-900">
+              <h2 className="text-lg font-semibold tracking-tight text-slate-950 md:text-2xl">
                 {blog.title}
               </h2>
 
-              <div className="mt-1 text-xs md:text-sm text-gray-600">
-                <div className="font-medium text-gray-800">
-                  {blog.agency_name}
-                </div>
-                <div>{blog.formattedDate}</div>
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 md:text-sm">
+                <span className="font-medium text-slate-700">{blog.agency_name}</span>
+                <span>{blog.formattedDate}</span>
               </div>
             </div>
+
+            {blog.type ? (
+              <div className="shrink-0">
+                <span className="inline-flex rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700">
+                  {blog.type}
+                </span>
+              </div>
+            ) : null}
           </div>
 
-          <p className="mt-4 text-xs md:text-sm text-gray-700 leading-relaxed">
+          <p className="mt-4 text-sm leading-7 text-slate-700 md:text-[15px]">
             {cleanPreview(blog.content || blog.excerpt, 260)}
           </p>
 
-          {blog.type ? (
-            <div className="mt-4">
-              <span className="inline-flex rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700">
-                {blog.type}
-              </span>
-            </div>
-          ) : null}
-
-          <div className="mt-5 border-t border-gray-100 pt-3">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-xs font-semibold text-gray-800">Comments</h3>
-              <span className="text-[11px] text-gray-500">
+          <div className="mt-5 rounded-[1.25rem] border border-emerald-100 bg-[#f3fbf6] p-3 md:p-4">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-800">
+                Comments
+              </h3>
+              <span className="text-[11px] text-slate-500">
                 {commentCount} comment{commentCount === 1 ? "" : "s"}
               </span>
             </div>
 
             {commentsPreview.length > 0 ? (
-              <div className="max-h-32 overflow-y-auto space-y-2 pr-1">
+              <div className="space-y-2">
                 {commentsPreview.map((c) => (
                   <div
                     key={c.id}
-                    className="bg-[#e6f4ec] rounded-lg px-3 py-2 text-[11px]"
+                    className="rounded-xl border border-emerald-100 bg-white px-3 py-2.5"
                   >
-                    <div className="flex items-center justify-between mb-0.5 gap-2">
-                      <span className="font-medium text-gray-800">
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-medium text-slate-800">
                         {c.user_name || "User"}
                       </span>
-                      <span className="text-gray-500 text-[10px]">
+                      <span className="text-[10px] text-slate-500">
                         {new Date(c.created_at).toLocaleDateString("en-GB", {
                           day: "2-digit",
                           month: "short",
@@ -121,19 +121,21 @@ export default function BlogListItem({ blog }) {
                         })}
                       </span>
                     </div>
-                    <p className="text-gray-700 line-clamp-2">{c.comment}</p>
+                    <p className="line-clamp-2 text-[12px] leading-5 text-slate-700">
+                      {c.comment}
+                    </p>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-[11px] text-gray-400">No comments yet.</p>
+              <p className="text-[12px] text-slate-400">No comments yet.</p>
             )}
           </div>
 
-          <div className="mt-4 flex justify-end">
+          <div className="mt-5 flex justify-end">
             <button
               onClick={handleReadMore}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white transition-all hover:bg-emerald-700"
               type="button"
             >
               Read More

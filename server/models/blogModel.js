@@ -132,7 +132,13 @@ export async function getSmartRecentBlogs({
 }
 
 export async function getPublicBlogs(filters) {
-  const { search = "", sort = "latest", page = 1, limit = 6 } = filters;
+  const {
+    search = "",
+    type = "",
+    sort = "latest",
+    page = 1,
+    limit = 6,
+  } = filters;
 
   const whereParts = [];
   const params = [];
@@ -143,6 +149,11 @@ export async function getPublicBlogs(filters) {
     );
     const s = `%${search}%`;
     params.push(s, s, s, s, s);
+  }
+
+  if (type) {
+    whereParts.push("b.type = ?");
+    params.push(type);
   }
 
   const whereClause = whereParts.length

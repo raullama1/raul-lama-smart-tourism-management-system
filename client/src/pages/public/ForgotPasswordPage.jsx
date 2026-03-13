@@ -1,13 +1,38 @@
 // client/src/pages/public/ForgotPasswordPage.jsx
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import { requestPasswordReset } from "../../api/authApi";
+
+const containerVariants = {
+  hidden: {},
+  show: {
+    transition: {
+      staggerChildren: 0.08,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 18 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] },
+  },
+};
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  const fieldClassName = useMemo(
+    () =>
+      "w-full h-10 md:h-11 px-3 rounded-xl border border-gray-300 text-xs md:text-sm outline-none transition-all duration-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100",
+    []
+  );
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -32,30 +57,72 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#e6f4ec] flex items-center justify-center py-10">
-      <div className="w-full max-w-md mx-4">
-        <div className="bg-white rounded-3xl shadow-md border border-gray-100 p-6 md:p-8">
-          <h1 className="text-xl md:text-2xl font-semibold text-gray-900 text-center mb-2">
+    <main className="relative min-h-screen bg-[#e6f4ec] flex items-center justify-center py-10 overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <motion.div
+          animate={{ x: [0, 16, 0], y: [0, -12, 0] }}
+          transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute left-[-4rem] top-16 h-40 w-40 rounded-full bg-emerald-300/25 blur-3xl md:h-56 md:w-56"
+        />
+        <motion.div
+          animate={{ x: [0, -16, 0], y: [0, 14, 0] }}
+          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute bottom-10 right-[-4rem] h-44 w-44 rounded-full bg-cyan-200/20 blur-3xl md:h-60 md:w-60"
+        />
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 24, scale: 0.985 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        className="w-full max-w-md mx-4"
+      >
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="show"
+          className="bg-white rounded-3xl shadow-md border border-gray-100 p-6 md:p-8"
+        >
+          <motion.h1
+            variants={itemVariants}
+            className="text-xl md:text-2xl font-semibold text-gray-900 text-center mb-2"
+          >
             Forgot password?
-          </h1>
-          <p className="text-xs md:text-sm text-gray-500 text-center mb-4 md:mb-6">
+          </motion.h1>
+
+          <motion.p
+            variants={itemVariants}
+            className="text-xs md:text-sm text-gray-500 text-center mb-4 md:mb-6"
+          >
             Enter your email address and we&apos;ll send you a reset link.
-          </p>
+          </motion.p>
 
           {error && (
-            <div className="mb-3 text-xs md:text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-3 text-xs md:text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2"
+            >
               {error}
-            </div>
+            </motion.div>
           )}
 
           {message && (
-            <div className="mb-3 text-xs md:text-sm text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-3 text-xs md:text-sm text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2"
+            >
               {message}
-            </div>
+            </motion.div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-3 md:space-y-4">
-            <div className="space-y-1">
+          <motion.form
+            variants={containerVariants}
+            onSubmit={handleSubmit}
+            className="space-y-3 md:space-y-4"
+          >
+            <motion.div variants={itemVariants} className="space-y-1">
               <label className="text-xs md:text-sm font-medium text-gray-700">
                 Email
               </label>
@@ -67,21 +134,27 @@ export default function ForgotPasswordPage() {
                   setEmail(e.target.value);
                   if (error) setError("");
                 }}
-                className="w-full h-10 md:h-11 px-3 rounded-xl border border-gray-300 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className={fieldClassName}
                 placeholder="Enter your email"
               />
-            </div>
+            </motion.div>
 
-            <button
+            <motion.button
+              variants={itemVariants}
+              whileHover={{ scale: 1.015, y: -1 }}
+              whileTap={{ scale: 0.995 }}
               type="submit"
               disabled={submitting}
-              className="w-full h-10 md:h-11 rounded-full bg-gradient-to-r from-emerald-600 to-emerald-500 text-white text-sm md:text-base font-semibold shadow-md hover:scale-[1.02] active:scale-100 transition-transform disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full h-10 md:h-11 rounded-full bg-gradient-to-r from-emerald-600 to-emerald-500 text-white text-sm md:text-base font-semibold shadow-md transition-transform disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {submitting ? "Sending link..." : "Send reset link"}
-            </button>
-          </form>
+            </motion.button>
+          </motion.form>
 
-          <p className="mt-4 text-[11px] md:text-xs text-gray-600 text-center">
+          <motion.p
+            variants={itemVariants}
+            className="mt-4 text-[11px] md:text-xs text-gray-600 text-center"
+          >
             Remember your password?{" "}
             <Link
               to="/login"
@@ -89,9 +162,9 @@ export default function ForgotPasswordPage() {
             >
               Back to login
             </Link>
-          </p>
-        </div>
-      </div>
+          </motion.p>
+        </motion.div>
+      </motion.div>
     </main>
   );
 }

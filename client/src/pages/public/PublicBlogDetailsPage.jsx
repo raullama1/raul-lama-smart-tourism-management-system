@@ -1,6 +1,7 @@
 // client/src/pages/public/PublicBlogDetailsPage.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { motion } from "framer-motion";
 import NavbarPublic from "../../components/public/NavbarPublic";
 import FooterPublic from "../../components/public/FooterPublic";
 import NavbarTourist from "../../components/tourist/NavbarTourist";
@@ -71,28 +72,42 @@ function renderInlineMarkdown(text) {
 function renderContentHtml(text) {
   const lines = String(text || "").split(/\r?\n/);
   const html = [];
+  let inList = false;
 
   for (const rawLine of lines) {
     const line = rawLine.trim();
 
     if (!line) {
+      if (inList) {
+        html.push("</ul>");
+        inList = false;
+      }
       html.push('<div class="h-4"></div>');
       continue;
     }
 
     const bulletMatch = line.match(/^(?:•|-)\s+(.*)$/);
     if (bulletMatch) {
-      html.push(
-        `<div class="leading-7 text-gray-800">&bull; ${renderInlineMarkdown(
-          bulletMatch[1]
-        )}</div>`
-      );
+      if (!inList) {
+        html.push('<ul class="list-disc space-y-2 pl-5 text-slate-700">');
+        inList = true;
+      }
+      html.push(`<li>${renderInlineMarkdown(bulletMatch[1])}</li>`);
       continue;
     }
 
+    if (inList) {
+      html.push("</ul>");
+      inList = false;
+    }
+
     html.push(
-      `<div class="leading-7 text-gray-800">${renderInlineMarkdown(line)}</div>`
+      `<p class="leading-8 text-slate-700">${renderInlineMarkdown(line)}</p>`
     );
+  }
+
+  if (inList) {
+    html.push("</ul>");
   }
 
   return html.join("");
@@ -104,25 +119,28 @@ function AuthPopup({ open, onClose, onLogin, onSignup }) {
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative w-full max-w-sm rounded-2xl bg-white shadow-xl border border-gray-100 p-5">
-        <div className="text-base font-semibold text-gray-900">
-          Login required
-        </div>
-        <p className="mt-1 text-sm text-gray-600">
+      <motion.div
+        initial={{ opacity: 0, y: 18, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 10, scale: 0.98 }}
+        className="relative w-full max-w-sm rounded-[1.6rem] border border-slate-200 bg-white p-5 shadow-[0_24px_70px_rgba(15,23,42,0.16)]"
+      >
+        <div className="text-base font-semibold text-slate-950">Login required</div>
+        <p className="mt-1 text-sm text-slate-600">
           Please login or signup to post a comment.
         </p>
 
         <div className="mt-4 flex gap-2">
           <button
             onClick={onLogin}
-            className="flex-1 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+            className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700"
             type="button"
           >
             Login
           </button>
           <button
             onClick={onSignup}
-            className="flex-1 rounded-xl border border-emerald-600 px-4 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
+            className="flex-1 rounded-xl border border-emerald-600 px-4 py-2.5 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
             type="button"
           >
             Signup
@@ -131,12 +149,12 @@ function AuthPopup({ open, onClose, onLogin, onSignup }) {
 
         <button
           onClick={onClose}
-          className="mt-3 w-full rounded-xl border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+          className="mt-3 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50"
           type="button"
         >
           Cancel
         </button>
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -271,8 +289,8 @@ export default function PublicBlogDetailsPage() {
     return (
       <>
         <Navbar />
-        <main className="bg-[#e6f4ec] min-h-screen pt-6 pb-10">
-          <div className="max-w-6xl mx-auto px-4 md:px-6 text-sm text-gray-500">
+        <main className="min-h-screen bg-[#edf7f1] pb-12 pt-6">
+          <div className="mx-auto max-w-6xl px-4 text-sm text-slate-500 md:px-6">
             Loading blog...
           </div>
         </main>
@@ -285,8 +303,8 @@ export default function PublicBlogDetailsPage() {
     return (
       <>
         <Navbar />
-        <main className="bg-[#e6f4ec] min-h-screen pt-6 pb-10">
-          <div className="max-w-6xl mx-auto px-4 md:px-6 text-sm text-red-500">
+        <main className="min-h-screen bg-[#edf7f1] pb-12 pt-6">
+          <div className="mx-auto max-w-6xl px-4 text-sm text-red-500 md:px-6">
             Blog not found.
           </div>
         </main>
@@ -318,67 +336,78 @@ export default function PublicBlogDetailsPage() {
     <>
       <Navbar />
 
-      <main className="bg-[#e6f4ec] min-h-screen pt-6 pb-10">
-        <div className="max-w-6xl mx-auto px-4 md:px-6 space-y-6">
-          <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-5">
-            <h1 className="text-lg md:text-xl font-semibold text-gray-900">
-              {blog.title}
-            </h1>
+      <main className="min-h-screen bg-[#edf7f1] pb-12 pt-6 md:pt-8">
+        <div className="mx-auto max-w-6xl space-y-6 px-4 md:px-6">
+          <motion.section
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="overflow-hidden rounded-[2rem] border border-white/70 bg-white shadow-[0_22px_70px_rgba(15,23,42,0.08)]"
+          >
+            <div className="px-5 pb-5 pt-5 md:px-7 md:pb-7 md:pt-7">
+              <div className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700 md:text-xs">
+                {blog.type || "Travel Blog"}
+              </div>
 
-            <div className="mt-1 text-xs md:text-sm text-gray-600">
-              <div className="font-medium">{blog.agency_name}</div>
-              <div>{formattedDate}</div>
+              <h1 className="mt-4 text-2xl font-black tracking-tight text-slate-950 md:text-4xl">
+                {blog.title}
+              </h1>
+
+              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-500">
+                <span className="font-medium text-slate-700">{blog.agency_name}</span>
+                <span>{formattedDate}</span>
+              </div>
             </div>
 
-            <div className="mt-4 rounded-2xl overflow-hidden">
+            <div className="overflow-hidden">
               <img
                 src={resolveImageUrl(blog.image_url)}
                 alt={blog.title}
                 onError={(e) => {
                   e.currentTarget.src = FALLBACK_BLOG_IMAGE;
                 }}
-                className="w-full h-56 md:h-72 lg:h-80 object-cover"
+                className="h-64 w-full object-cover md:h-80 lg:h-[28rem]"
               />
             </div>
 
-            <div
-              className="mt-4 text-xs md:text-sm leading-relaxed"
-              dangerouslySetInnerHTML={{
-                __html: renderContentHtml(blog.content),
-              }}
-            />
+            <div className="px-5 pb-6 pt-6 md:px-7 md:pb-8 md:pt-7">
+              <div
+                className="space-y-4 text-sm md:text-base"
+                dangerouslySetInnerHTML={{
+                  __html: renderContentHtml(blog.content),
+                }}
+              />
+            </div>
+          </motion.section>
 
-            {blog.type ? (
-              <div className="mt-4">
-                <span className="inline-flex rounded-full bg-emerald-50 text-emerald-700 text-xs border border-emerald-100 px-3 py-1 font-medium">
-                  {blog.type}
-                </span>
-              </div>
-            ) : null}
-          </section>
-
-          <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 md:p-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm md:text-base font-semibold text-gray-900">
+          <motion.section
+            initial={{ opacity: 0, y: 22 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.16 }}
+            transition={{ duration: 0.45 }}
+            className="rounded-[1.8rem] border border-white/70 bg-white p-4 shadow-[0_18px_55px_rgba(15,23,42,0.07)] md:p-5"
+          >
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="text-base font-semibold text-slate-950 md:text-lg">
                 Comments
               </h2>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-slate-500">
                 {commentPagination.total} total
               </span>
             </div>
 
-            <div className="flex gap-2 items-center">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <input
                 type="text"
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
                 placeholder="Write a comment..."
-                className="flex-1 bg-[#e6f4ec] rounded-lg px-3 py-2 text-xs text-gray-700 border border-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                className="min-h-[46px] flex-1 rounded-xl border border-emerald-100 bg-[#eef8f2] px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-emerald-300 focus:ring-2 focus:ring-emerald-500/20"
               />
               <button
                 onClick={handlePostComment}
                 disabled={posting || !commentText.trim()}
-                className="inline-flex items-center justify-center px-4 py-2 rounded-md bg-emerald-600 text-white text-xs md:text-sm font-medium hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="inline-flex min-h-[46px] items-center justify-center rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                 type="button"
               >
                 {posting ? "Posting..." : "Post Comment"}
@@ -386,24 +415,28 @@ export default function PublicBlogDetailsPage() {
             </div>
 
             {loadingComments ? (
-              <div className="text-xs text-gray-500">Loading comments...</div>
+              <div className="mt-4 text-sm text-slate-500">Loading comments...</div>
             ) : comments.length === 0 ? (
-              <div className="text-xs text-gray-500">No comments yet.</div>
+              <div className="mt-4 text-sm text-slate-500">No comments yet.</div>
             ) : (
               <>
-                <div className="mt-2 space-y-2 pr-1">
-                  {comments.map((c) => (
-                    <div
+                <div className="mt-4 space-y-3">
+                  {comments.map((c, index) => (
+                    <motion.div
                       key={c.id}
-                      className="bg-[#e6f4ec] rounded-lg px-3 py-2 text-[11px]"
+                      initial={{ opacity: 0, y: 14 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true, amount: 0.2 }}
+                      transition={{ duration: 0.32, delay: index * 0.03 }}
+                      className="rounded-2xl border border-emerald-100 bg-[#eef8f2] px-4 py-3"
                     >
-                      <div className="flex items-center justify-between mb-0.5 gap-2">
-                        <span className="font-medium text-gray-800">
+                      <div className="mb-1 flex items-center justify-between gap-2">
+                        <span className="font-medium text-slate-800">
                           {c.user_name || "User"}
                         </span>
 
                         <div className="flex items-center gap-2">
-                          <span className="text-gray-500 text-[10px]">
+                          <span className="text-[11px] text-slate-500">
                             {new Date(c.created_at).toLocaleDateString("en-GB", {
                               day: "2-digit",
                               month: "short",
@@ -415,7 +448,7 @@ export default function PublicBlogDetailsPage() {
                             <button
                               onClick={() => handleDelete(c.id)}
                               disabled={deletingId === c.id}
-                              className="text-[10px] px-2 py-1 rounded-md border border-gray-300 text-gray-700 hover:bg-white disabled:opacity-60"
+                              className="rounded-lg border border-slate-300 px-2.5 py-1 text-[11px] text-slate-700 hover:bg-white disabled:opacity-60"
                               type="button"
                             >
                               {deletingId === c.id ? "Deleting..." : "Delete"}
@@ -424,18 +457,18 @@ export default function PublicBlogDetailsPage() {
                         </div>
                       </div>
 
-                      <p className="text-gray-800 whitespace-pre-line">
+                      <p className="whitespace-pre-line text-sm leading-6 text-slate-700">
                         {c.comment}
                       </p>
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
 
                 {commentPagination.hasMore && (
-                  <div className="pt-2 flex justify-center">
+                  <div className="flex justify-center pt-4">
                     <button
                       onClick={loadMoreComments}
-                      className="px-5 py-2.5 rounded-full border border-gray-300 bg-white text-sm text-gray-800 hover:bg-gray-50"
+                      className="inline-flex min-h-[44px] items-center justify-center rounded-full border border-slate-200 bg-white px-6 py-2.5 text-sm font-medium text-slate-800 transition hover:bg-slate-50"
                       type="button"
                     >
                       Load More
@@ -444,10 +477,10 @@ export default function PublicBlogDetailsPage() {
                 )}
               </>
             )}
-          </section>
+          </motion.section>
 
           {mappedRecentBlogs.length > 0 && (
-            <section className="bg-[#e6f4ec] -mx-4 md:-mx-6">
+            <section className="-mx-4 md:-mx-6">
               <BlogCardSection
                 blogs={mappedRecentBlogs}
                 sectionTitle="Recent Blogs"

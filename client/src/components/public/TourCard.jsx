@@ -1,8 +1,9 @@
 // client/src/components/public/TourCard.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { gsap } from "gsap";
-import { Draggable } from "gsap/Draggable";
+import { Draggable } from "gsap/all";
 import {
   FaHeart,
   FaMapMarkerAlt,
@@ -26,10 +27,11 @@ export default function TourCard({
   tours = [],
   showSectionHeader = false,
   sectionTitle = "Popular Tours",
-  cardWidth = "w-64 md:w-72 lg:w-72",
+  cardWidth = "w-[18rem] md:w-[19rem] lg:w-[20rem]",
   onRequireLogin,
   onWishlistChanged,
 }) {
+  const sectionRef = useRef(null);
   const containerRef = useRef(null);
   const viewportRef = useRef(null);
   const draggableRef = useRef(null);
@@ -39,8 +41,8 @@ export default function TourCard({
   const { token } = useAuth();
 
   const [dims, setDims] = useState({
-    itemW: 288,
-    gap: 16,
+    itemW: 304,
+    gap: 18,
     segmentW: 0,
     ready: false,
   });
@@ -79,9 +81,7 @@ export default function TourCard({
   const requireLogin = () => {
     if (!token) {
       if (typeof onRequireLogin === "function") {
-        onRequireLogin();
-      } else {
-        alert("Please login or signup to access this feature.");
+        return onRequireLogin();
       }
       return false;
     }
@@ -143,8 +143,6 @@ export default function TourCard({
         else next.delete(idNum);
         return next;
       });
-
-      alert("Wishlist update failed. Please try again.");
     } finally {
       setBusyId(null);
     }
@@ -168,11 +166,11 @@ export default function TourCard({
     const firstSegmentLastCard = cards[repeatedBaseTours.length - 1];
     if (!firstCard || !firstSegmentLastCard) return;
 
-    const itemW = firstCard.getBoundingClientRect().width || 288;
+    const itemW = firstCard.getBoundingClientRect().width || 304;
 
     const styles = getComputedStyle(container);
     const gapStr = styles.gap || styles.columnGap || "0";
-    const gap = Number.parseFloat(gapStr) || 16;
+    const gap = Number.parseFloat(gapStr) || 18;
 
     const segmentStart = firstCard.offsetLeft;
     const segmentEnd =
@@ -245,7 +243,9 @@ export default function TourCard({
 
   useEffect(() => {
     const container = containerRef.current;
-    if (!container || !dims.ready || !dims.segmentW || !repeatedBaseTours.length) return;
+    if (!container || !dims.ready || !dims.segmentW || !repeatedBaseTours.length) {
+      return;
+    }
 
     destroyDraggable();
 
@@ -285,7 +285,7 @@ export default function TourCard({
 
     gsap.to(container, {
       x: `+=${delta}`,
-      duration: 0.45,
+      duration: 0.38,
       ease: "power2.out",
       onUpdate: applyWrap,
       onComplete: applyWrap,
@@ -296,137 +296,202 @@ export default function TourCard({
   const scrollRight = () => moveBy(-(dims.itemW + dims.gap));
 
   return (
-    <div className="bg-[#e6f4ec] py-8 md:py-10 relative">
-      <section className="max-w-6xl mx-auto px-4 md:px-6 relative">
+    <motion.section
+      ref={sectionRef}
+      initial={{ opacity: 0, y: 18 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.12 }}
+      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+      className="relative py-8 md:py-12"
+    >
+      <div className="mx-auto max-w-7xl px-4 md:px-6">
         {showSectionHeader && (
-          <div className="flex items-center justify-between mb-4 md:mb-6">
-            <h2 className="text-lg md:text-xl font-semibold text-gray-900">
+          <div className="mb-5 flex items-center justify-between gap-4 md:mb-7">
+            <h2 className="text-2xl font-bold tracking-tight text-slate-950 md:text-3xl">
               {sectionTitle}
             </h2>
           </div>
         )}
 
-        <button
-          onClick={scrollLeft}
-          className="absolute top-1/2 -left-4 transform -translate-y-1/2 z-10 p-2 bg-white rounded-full shadow hover:bg-gray-100 transition-all"
-          type="button"
-          aria-label="Previous"
-          title="Previous"
-        >
-          <FaChevronLeft size={20} />
-        </button>
-
-        <button
-          onClick={scrollRight}
-          className="absolute top-1/2 -right-4 transform -translate-y-1/2 z-10 p-2 bg-white rounded-full shadow hover:bg-gray-100 transition-all"
-          type="button"
-          aria-label="Next"
-          title="Next"
-        >
-          <FaChevronRight size={20} />
-        </button>
-
-        <div ref={viewportRef} className="overflow-hidden">
-          <div
-            ref={containerRef}
-            className="flex gap-4 md:gap-5 select-none"
-            style={{ width: "max-content", alignItems: "stretch" }}
+        <div className="relative md:px-10">
+          <motion.button
+            whileHover={{ scale: 1.05, x: -1 }}
+            whileTap={{ scale: 0.96 }}
+            onClick={scrollLeft}
+            className="absolute -left-2 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white text-slate-800 shadow-[0_12px_28px_rgba(15,23,42,0.14)] transition-all md:inline-flex"
+            type="button"
+            aria-label="Previous"
+            title="Previous"
           >
-            {tripledTours.map((tour, idx) => {
-              const idNum = Number(tour.id);
-              const inWishlist = wishlistIds.has(idNum);
-              const isBusy = busyId === idNum;
-              const imgSrc = toPublicImageUrl(tour.image) || FALLBACK_TOUR_IMG;
+            <FaChevronLeft size={16} />
+          </motion.button>
 
-              return (
-                <div
-                  key={`${tour.id}-${idx}`}
-                  className={`flex-shrink-0 ${cardWidth}`}
-                  data-tour-card="true"
-                >
-                  <div className="bg-white rounded-xl shadow-md overflow-hidden flex flex-col hover:shadow-xl transition-shadow duration-300">
-                    <img
-                      src={imgSrc}
-                      alt={tour.title}
-                      className="h-40 w-full object-cover transition-transform duration-500 hover:scale-105"
-                      draggable="false"
-                      onError={(e) => {
-                        e.currentTarget.src = FALLBACK_TOUR_IMG;
-                      }}
-                    />
+          <motion.button
+            whileHover={{ scale: 1.05, x: 1 }}
+            whileTap={{ scale: 0.96 }}
+            onClick={scrollRight}
+            className="absolute -right-2 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white text-slate-800 shadow-[0_12px_28px_rgba(15,23,42,0.14)] transition-all md:inline-flex"
+            type="button"
+            aria-label="Next"
+            title="Next"
+          >
+            <FaChevronRight size={16} />
+          </motion.button>
 
-                    <div className="p-4 flex-1 flex flex-col">
-                      <h3 className="font-semibold text-gray-900 text-sm md:text-base line-clamp-2">
-                        {tour.title}
-                      </h3>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.96 }}
+            onClick={scrollLeft}
+            className="absolute left-2 top-1/2 z-20 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white text-slate-800 shadow-[0_12px_28px_rgba(15,23,42,0.14)] transition-all md:hidden"
+            type="button"
+            aria-label="Previous"
+            title="Previous"
+          >
+            <FaChevronLeft size={14} />
+          </motion.button>
 
-                      <div className="mt-1 text-xs text-gray-500 flex items-center gap-2">
-                        <span className="line-clamp-1">{tour.location}</span>
-                        <span>•</span>
-                        <span className="line-clamp-1">{tour.type}</span>
-                      </div>
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.96 }}
+            onClick={scrollRight}
+            className="absolute right-2 top-1/2 z-20 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white text-slate-800 shadow-[0_12px_28px_rgba(15,23,42,0.14)] transition-all md:hidden"
+            type="button"
+            aria-label="Next"
+            title="Next"
+          >
+            <FaChevronRight size={14} />
+          </motion.button>
 
-                      <div className="mt-2 text-sm text-gray-800">
-                        <span className="text-gray-500">From </span>
-                        <span className="font-semibold">
-                          Rs {Number(tour.price || 0).toLocaleString()}
-                        </span>
-                      </div>
+          <div
+            ref={viewportRef}
+            className="overflow-hidden rounded-[1.8rem] bg-white/70 p-2 md:p-3"
+          >
+            <div
+              ref={containerRef}
+              className="flex gap-4 md:gap-[18px]"
+              style={{ width: "max-content", alignItems: "stretch" }}
+            >
+              {tripledTours.map((tour, idx) => {
+                const idNum = Number(tour.id);
+                const inWishlist = wishlistIds.has(idNum);
+                const isBusy = busyId === idNum;
+                const imgSrc = toPublicImageUrl(tour.image) || FALLBACK_TOUR_IMG;
 
-                      <div className="mt-4 grid grid-cols-2 gap-2">
-                        <button
-                          onClick={() => navigate(`/tours/${tour.id}`)}
-                          className="w-full flex items-center justify-center gap-2 px-2 py-2 rounded-md bg-gradient-to-r from-emerald-600 to-emerald-500 text-white text-xs md:text-sm font-medium shadow hover:scale-105 transition-transform"
-                          type="button"
-                        >
-                          <FaEye size={14} /> View Details
-                        </button>
-
-                        <button
-                          disabled={isBusy}
-                          onClick={() => toggleWishlist(tour.id)}
-                          className={`w-full flex items-center justify-center gap-2 px-2 py-2 rounded-md text-xs md:text-sm font-medium shadow transition-all ${
-                            inWishlist
-                              ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                              : "bg-[#e6f4ed] text-emerald-700 hover:bg-gradient-to-r hover:from-emerald-600 hover:to-emerald-500 hover:text-white"
-                          } ${isBusy ? "opacity-70 cursor-not-allowed" : "hover:scale-105"}`}
-                          type="button"
-                        >
-                          {inWishlist ? <FaCheck size={14} /> : <FaHeart size={14} />}
-                          {inWishlist ? "Added to Wishlist" : "Add to Wishlist"}
-                        </button>
-
-                        <button
-                          onClick={() => navigate(`/tours/${tour.id}#agencies`)}
-                          className="w-full flex items-center justify-center gap-2 px-2 py-2 rounded-md bg-[#e6f4ed] text-emerald-700 text-xs md:text-sm font-medium shadow hover:bg-gradient-to-r hover:from-emerald-600 hover:to-emerald-500 hover:text-white hover:scale-105 transition-all"
-                          type="button"
-                        >
-                          <FaUsers size={14} /> Show All Agencies
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            if (!requireLogin()) return;
-                            navigate(`/map?tour=${tour.id}`);
+                return (
+                  <motion.div
+                    key={`${tour.id}-${idx}`}
+                    data-tour-card="true"
+                    className={`flex-shrink-0 ${cardWidth}`}
+                    initial={{ opacity: 0, y: 22 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, amount: 0.2 }}
+                    transition={{ duration: 0.42, delay: (idx % 6) * 0.03 }}
+                  >
+                    <motion.div
+                      whileHover={{ y: -4 }}
+                      transition={{ duration: 0.22 }}
+                      className="group flex h-full flex-col overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.06)] transition-all duration-300 hover:shadow-[0_18px_40px_rgba(15,23,42,0.1)]"
+                    >
+                      <div className="relative overflow-hidden">
+                        <img
+                          src={imgSrc}
+                          alt={tour.title}
+                          className="h-44 w-full object-cover transition-transform duration-500 group-hover:scale-[1.04] md:h-48"
+                          draggable="false"
+                          onError={(e) => {
+                            e.currentTarget.src = FALLBACK_TOUR_IMG;
                           }}
-                          className="w-full flex items-center justify-center gap-2 px-2 py-2 rounded-md bg-[#e6f4ed] text-emerald-700 text-xs md:text-sm font-medium shadow hover:bg-gradient-to-r hover:from-emerald-600 hover:to-emerald-500 hover:text-white hover:scale-105 transition-all"
-                          type="button"
-                        >
-                          <FaMapMarkerAlt size={14} /> View on Map
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                        />
 
-            {normalizedTours.length === 0 && (
-              <div className="text-sm text-gray-500 p-4">No tours available.</div>
-            )}
+                        <div className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold text-emerald-700 shadow-sm">
+                          {tour.type || "Tour"}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-1 flex-col p-4">
+                        <h3 className="line-clamp-2 text-base font-semibold text-slate-900 md:text-[17px]">
+                          {tour.title}
+                        </h3>
+
+                        <div className="mt-2 flex items-center gap-2 text-sm text-slate-500">
+                          <span className="line-clamp-1">{tour.location}</span>
+                          <span className="text-slate-300">•</span>
+                          <span className="line-clamp-1">{tour.type}</span>
+                        </div>
+
+                        <div className="mt-4">
+                          <span className="text-sm text-slate-500">From </span>
+                          <span className="text-lg font-bold text-emerald-700">
+                            Rs {Number(tour.price || 0).toLocaleString()}
+                          </span>
+                        </div>
+
+                        <div className="mt-4 grid grid-cols-2 gap-2.5">
+                          <motion.button
+                            whileHover={{ y: -1 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => navigate(`/tours/${tour.id}`)}
+                            className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-emerald-700 px-3 py-2.5 text-xs font-semibold text-white transition-all hover:bg-emerald-800 md:text-sm"
+                            type="button"
+                          >
+                            <FaEye size={13} />
+                            View Details
+                          </motion.button>
+
+                          <motion.button
+                            whileHover={isBusy ? {} : { y: -1 }}
+                            whileTap={isBusy ? {} : { scale: 0.98 }}
+                            disabled={isBusy}
+                            onClick={() => toggleWishlist(tour.id)}
+                            className={`inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold transition-all md:text-sm ${
+                              inWishlist
+                                ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                                : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                            } ${isBusy ? "cursor-not-allowed opacity-70" : ""}`}
+                            type="button"
+                          >
+                            {inWishlist ? <FaCheck size={13} /> : <FaHeart size={13} />}
+                            {inWishlist ? "Added" : "Wishlist"}
+                          </motion.button>
+
+                          <motion.button
+                            whileHover={{ y: -1 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => navigate(`/tours/${tour.id}#agencies`)}
+                            className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-xs font-semibold text-slate-700 transition-all hover:bg-slate-100 md:text-sm"
+                            type="button"
+                          >
+                            <FaUsers size={13} />
+                            Agencies
+                          </motion.button>
+
+                          <motion.button
+                            whileHover={{ y: -1 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => {
+                              if (!requireLogin()) return;
+                              navigate(`/map?tour=${tour.id}`);
+                            }}
+                            className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-slate-50 px-3 py-2.5 text-xs font-semibold text-slate-700 transition-all hover:bg-slate-100 md:text-sm"
+                            type="button"
+                          >
+                            <FaMapMarkerAlt size={13} />
+                            Map View
+                          </motion.button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                );
+              })}
+
+              {normalizedTours.length === 0 && (
+                <div className="p-4 text-sm text-gray-500">No tours available.</div>
+              )}
+            </div>
           </div>
         </div>
-      </section>
-    </div>
+      </div>
+    </motion.section>
   );
 }

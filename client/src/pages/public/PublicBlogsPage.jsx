@@ -1,6 +1,7 @@
 // client/src/pages/public/PublicBlogsPage.jsx
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import NavbarPublic from "../../components/public/NavbarPublic";
 import FooterPublic from "../../components/public/FooterPublic";
 import NavbarTourist from "../../components/tourist/NavbarTourist";
@@ -31,6 +32,7 @@ export default function PublicBlogsPage() {
 
   const [filters, setFilters] = useState({
     search: "",
+    type: "",
     sort: "latest",
     page: 1,
     limit: 6,
@@ -43,33 +45,24 @@ export default function PublicBlogsPage() {
   const [commentsByBlog, setCommentsByBlog] = useState({});
   const [loadingComments, setLoadingComments] = useState(false);
 
-  const [fadeState, setFadeState] = useState("out");
+  const [swapKey, setSwapKey] = useState(0);
   const firstLoadRef = useRef(true);
 
-  useEffect(() => {
-    const t = setTimeout(() => setFadeState("in"), 40);
-    return () => clearTimeout(t);
-  }, []);
-
-  const fadeWrapClass = fadeState === "in" ? "opacity-100" : "opacity-0";
-  const transitionClass =
-    "transition-opacity duration-700 ease-[cubic-bezier(.22,1,.36,1)]";
-
   const loadBlogs = useCallback(
-    async ({ search, sort, page, limit, append, smoothSwap }) => {
+    async ({ search, type, sort, page, limit, append, smoothSwap }) => {
       try {
-        if (smoothSwap && !append) setFadeState("out");
         setLoading(true);
 
         const res = await fetchPublicBlogs({
           search,
+          type,
           sort,
           page,
           limit,
         });
 
-        if (smoothSwap && !append) {
-          await new Promise((resolve) => setTimeout(resolve, 140));
+        if (!append && smoothSwap) {
+          setSwapKey((prev) => prev + 1);
         }
 
         if (append) {
@@ -79,11 +72,8 @@ export default function PublicBlogsPage() {
         }
 
         setPagination(res.pagination || { total: 0, hasMore: false });
-
-        requestAnimationFrame(() => setFadeState("in"));
       } catch (err) {
         console.error("Failed to load blogs", err);
-        requestAnimationFrame(() => setFadeState("in"));
       } finally {
         setLoading(false);
         firstLoadRef.current = false;
@@ -129,13 +119,14 @@ export default function PublicBlogsPage() {
 
     loadBlogs({
       search: filters.search,
+      type: filters.type,
       sort: filters.sort,
       page: 1,
       limit: filters.limit,
       append: false,
       smoothSwap: smooth,
     });
-  }, [filters.search, filters.sort, filters.limit, loadBlogs]);
+  }, [filters.search, filters.type, filters.sort, filters.limit, loadBlogs]);
 
   useEffect(() => {
     if (blogs.length > 0) {
@@ -162,6 +153,7 @@ export default function PublicBlogsPage() {
   const handleReset = () => {
     setFilters({
       search: "",
+      type: "",
       sort: "latest",
       page: 1,
       limit: 6,
@@ -180,6 +172,7 @@ export default function PublicBlogsPage() {
 
     await loadBlogs({
       search: filters.search,
+      type: filters.type,
       sort: filters.sort,
       page: nextPage,
       limit: filters.limit,
@@ -213,53 +206,77 @@ export default function PublicBlogsPage() {
     <>
       <Navbar />
 
-      <main className="bg-[#e6f4ec] min-h-screen pt-6 pb-10">
-        <div className="max-w-6xl mx-auto px-4 md:px-6 flex flex-col md:flex-row gap-4">
-          <BlogSidebarFilters
-            filters={filters}
-            onChange={handleSidebarChange}
-            onReset={handleReset}
-          />
+      <main className="min-h-screen bg-[#edf7f1] pb-12 pt-6 md:pt-8">
+        <div className="mx-auto max-w-7xl px-4 md:px-6">
+          <div className="flex flex-col gap-5 lg:flex-row lg:gap-6">
+            <aside className="lg:w-[18rem] lg:flex-shrink-0">
+              <div className="lg:sticky lg:top-28">
+                <BlogSidebarFilters
+                  filters={filters}
+                  onChange={handleSidebarChange}
+                  onReset={handleReset}
+                />
+              </div>
+            </aside>
 
-          <section className="flex-1">
-            <header className="mb-4">
-              <h1 className="text-xl md:text-2xl font-semibold text-gray-900">
-                Blogs
-              </h1>
-              <p className="text-xs md:text-sm text-gray-500">
-                Discover travel stories, guides, and tips from local agencies.
-              </p>
-            </header>
+            <section className="min-w-0 flex-1">
+              <div className="mb-4 flex flex-col gap-2 rounded-[1.6rem] border border-white/70 bg-white/75 px-4 py-4 shadow-[0_16px_45px_rgba(15,23,42,0.05)] md:mb-5 md:flex-row md:items-center md:justify-between md:px-5">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-950 md:text-xl">
+                    Blogs
+                  </h2>
+                  <p className="text-xs text-slate-500 md:text-sm">
+                    {pagination.total || mappedBlogs.length} result
+                    {(pagination.total || mappedBlogs.length) === 1 ? "" : "s"}
+                  </p>
+                </div>
 
-            <div className={`${transitionClass} ${fadeWrapClass}`}>
+                {loadingComments ? (
+                  <div className="text-xs text-slate-500">Updating comments...</div>
+                ) : null}
+              </div>
+
               {loading && blogs.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-gray-100 p-6 text-sm text-gray-500">
+                <div className="rounded-[1.75rem] border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-[0_14px_40px_rgba(15,23,42,0.05)]">
                   Loading blogs...
                 </div>
               ) : mappedBlogs.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-gray-100 p-6 text-sm text-gray-500">
-                  No blogs found. Try different keywords.
+                <div className="rounded-[1.75rem] border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-[0_14px_40px_rgba(15,23,42,0.05)]">
+                  No blogs found. Try different keywords or type.
                 </div>
               ) : (
                 <>
-                  {loadingComments && (
-                    <div className="mb-2 text-xs text-gray-500">
-                      Updating comments...
-                    </div>
-                  )}
-
-                  {mappedBlogs.map((blog) => (
-                    <BlogListItem key={blog.id} blog={blog} />
-                  ))}
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={swapKey}
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      transition={{ duration: 0.35 }}
+                      className="space-y-4"
+                    >
+                      {mappedBlogs.map((blog, index) => (
+                        <motion.div
+                          key={blog.id}
+                          initial={{ opacity: 0, y: 22 }}
+                          whileInView={{ opacity: 1, y: 0 }}
+                          viewport={{ once: true, amount: 0.15 }}
+                          transition={{ duration: 0.42, delay: index * 0.04 }}
+                        >
+                          <BlogListItem blog={blog} />
+                        </motion.div>
+                      ))}
+                    </motion.div>
+                  </AnimatePresence>
 
                   {pagination.hasMore && (
-                    <div className="mt-4 flex justify-center">
+                    <div className="mt-5 flex justify-center">
                       <button
                         onClick={handleLoadMore}
                         disabled={loading}
                         className={[
-                          "px-5 py-2.5 rounded-full border border-gray-300 bg-white text-sm text-gray-800 hover:bg-gray-50",
-                          loading ? "opacity-60 cursor-not-allowed" : "",
+                          "inline-flex min-h-[46px] items-center justify-center rounded-full border border-slate-200 bg-white px-6 py-2.5 text-sm font-medium text-slate-800 shadow-[0_12px_28px_rgba(15,23,42,0.06)] transition-all hover:-translate-y-0.5 hover:bg-slate-50",
+                          loading ? "cursor-not-allowed opacity-60" : "",
                         ].join(" ")}
                         type="button"
                       >
@@ -269,8 +286,8 @@ export default function PublicBlogsPage() {
                   )}
                 </>
               )}
-            </div>
-          </section>
+            </section>
+          </div>
         </div>
       </main>
 

@@ -5,6 +5,7 @@ export async function fetchPublicBlogs(params = {}) {
   const searchParams = new URLSearchParams();
 
   if (params.search) searchParams.set("search", params.search);
+  if (params.type) searchParams.set("type", params.type);
   if (params.sort) searchParams.set("sort", params.sort);
   if (params.page != null) searchParams.set("page", String(params.page));
   if (params.limit != null) searchParams.set("limit", String(params.limit));
@@ -18,7 +19,7 @@ export async function fetchPublicBlogs(params = {}) {
 
 export async function fetchPublicBlogDetails(blogId) {
   const res = await apiClient.get(`/public/blogs/${blogId}`);
-  return res.data; // { blog, recentBlogs }
+  return res.data;
 }
 
 export async function fetchBlogComments(blogId, params = {}) {
@@ -30,7 +31,7 @@ export async function fetchBlogComments(blogId, params = {}) {
   const url = qs ? `/blogs/${blogId}/comments?${qs}` : `/blogs/${blogId}/comments`;
 
   const res = await apiClient.get(url);
-  return res.data; // { comments, pagination }
+  return res.data;
 }
 
 export async function postBlogComment(blogId, comment, token) {
