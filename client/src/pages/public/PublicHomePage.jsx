@@ -1,3 +1,4 @@
+// client/src/pages/public/PublicHomePage.jsx
 import NavbarPublic from "../../components/public/NavbarPublic";
 import FooterPublic from "../../components/public/FooterPublic";
 import HomeContent from "../../components/shared/HomeContent";

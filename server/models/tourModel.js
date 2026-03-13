@@ -176,6 +176,178 @@ export async function getPopularTours(limit = 6) {
 }
 
 // --------------------------------------------------
+// Get Recommended Tours For Tourist Home
+// Based on:
+// - wishlist tour types
+// - paid booking tour types
+// Excludes already wishlisted/booked source tours
+// Shows only tours with ACTIVE listings from UNBLOCKED agencies
+// --------------------------------------------------
+export async function getRecommendedToursForUser(userId, limit = 8) {
+  const [wishlistRows] = await db.query(
+    `
+      SELECT DISTINCT
+        t.id,
+        t.type
+      FROM wishlists w
+      INNER JOIN tours t ON t.id = w.tour_id
+      WHERE w.user_id = ?
+        AND t.type IS NOT NULL
+        AND t.type <> ''
+    `,
+    [userId]
+  );
+
+  const [paidRows] = await db.query(
+    `
+      SELECT DISTINCT
+        t.id,
+        t.type
+      FROM bookings b
+      INNER JOIN tours t ON t.id = b.tour_id
+      WHERE b.user_id = ?
+        AND b.payment_status = 'Paid'
+        AND t.type IS NOT NULL
+        AND t.type <> ''
+    `,
+    [userId]
+  );
+
+  const typeScoreMap = new Map();
+  const sourceTourIds = new Set();
+
+  for (const row of wishlistRows) {
+    const type = String(row.type || "").trim();
+    const id = Number(row.id);
+
+    if (type) {
+      typeScoreMap.set(type, (typeScoreMap.get(type) || 0) + 1);
+    }
+
+    if (id) {
+      sourceTourIds.add(id);
+    }
+  }
+
+  for (const row of paidRows) {
+    const type = String(row.type || "").trim();
+    const id = Number(row.id);
+
+    if (type) {
+      typeScoreMap.set(type, (typeScoreMap.get(type) || 0) + 1);
+    }
+
+    if (id) {
+      sourceTourIds.add(id);
+    }
+  }
+
+  const preferredTypes = [...typeScoreMap.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([type]) => type);
+
+  if (!preferredTypes.length) {
+    return [];
+  }
+
+  const typePlaceholders = preferredTypes.map(() => "?").join(",");
+  const excludedIds = [...sourceTourIds];
+  const excludeClause = excludedIds.length
+    ? `AND t.id NOT IN (${excludedIds.map(() => "?").join(",")})`
+    : "";
+
+  const [candidateRows] = await db.query(
+    `
+      SELECT
+        t.id,
+        t.title,
+        SUBSTRING(COALESCE(t.long_description, ''), 1, 140) AS short_description,
+        t.location,
+        t.latitude,
+        t.longitude,
+        t.type,
+        MIN(at.price) AS starting_price,
+        t.image_url,
+        COALESCE(t.popularity_score, 0) AS popularity_score,
+        COALESCE(t.created_at, CURRENT_TIMESTAMP) AS created_at
+      FROM tours t
+      INNER JOIN agency_tours at ON at.tour_id = t.id
+      INNER JOIN agencies a ON a.id = at.agency_id
+      WHERE at.listing_status = 'active'
+        AND a.is_blocked = 0
+        AND t.type IN (${typePlaceholders})
+        ${excludeClause}
+      GROUP BY
+        t.id,
+        t.title,
+        t.long_description,
+        t.location,
+        t.latitude,
+        t.longitude,
+        t.type,
+        t.image_url,
+        t.popularity_score,
+        t.created_at
+    `,
+    [...preferredTypes, ...excludedIds]
+  );
+
+  if (!candidateRows.length) {
+    return [];
+  }
+
+  const groupedByType = new Map();
+
+  for (const type of preferredTypes) {
+    groupedByType.set(type, []);
+  }
+
+  for (const row of candidateRows) {
+    const type = String(row.type || "").trim();
+    if (!groupedByType.has(type)) {
+      groupedByType.set(type, []);
+    }
+    groupedByType.get(type).push(row);
+  }
+
+  for (const [type, rows] of groupedByType.entries()) {
+    rows.sort((a, b) => {
+      const scoreA = typeScoreMap.get(type) || 0;
+      const scoreB = typeScoreMap.get(type) || 0;
+
+      if (scoreB !== scoreA) return scoreB - scoreA;
+
+      const popularityDiff =
+        Number(b.popularity_score || 0) - Number(a.popularity_score || 0);
+      if (popularityDiff !== 0) return popularityDiff;
+
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+  }
+
+  const picked = [];
+  let hasRemaining = true;
+
+  while (hasRemaining && picked.length < Number(limit)) {
+    hasRemaining = false;
+
+    for (const type of preferredTypes) {
+      const rows = groupedByType.get(type) || [];
+      if (!rows.length) continue;
+
+      hasRemaining = true;
+      picked.push(rows.shift());
+
+      if (picked.length >= Number(limit)) {
+        break;
+      }
+    }
+  }
+
+  return picked;
+}
+
+// --------------------------------------------------
 // Get Single Tour + Agencies (Details Page)
 // Public side:
 // - Tour must have at least 1 ACTIVE listing from an UNBLOCKED agency

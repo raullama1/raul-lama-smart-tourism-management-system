@@ -25,21 +25,28 @@ gsap.registerPlugin(Draggable);
 export default function TourCard({
   tours = [],
   showSectionHeader = false,
+  sectionTitle = "Popular Tours",
   cardWidth = "w-64 md:w-72 lg:w-72",
+  onRequireLogin,
+  onWishlistChanged,
 }) {
   const containerRef = useRef(null);
+  const viewportRef = useRef(null);
   const draggableRef = useRef(null);
   const resizeObsRef = useRef(null);
 
   const navigate = useNavigate();
   const { token } = useAuth();
 
-  const [dims, setDims] = useState({ itemW: 288, gap: 16, ready: false });
-
+  const [dims, setDims] = useState({
+    itemW: 288,
+    gap: 16,
+    segmentW: 0,
+    ready: false,
+  });
   const [wishlistIds, setWishlistIds] = useState(new Set());
   const [busyId, setBusyId] = useState(null);
 
-  // normalize tour fields
   const normalizedTours = useMemo(() => {
     return (tours || []).map((t) => ({
       id: t.id,
@@ -51,27 +58,43 @@ export default function TourCard({
     }));
   }, [tours]);
 
-  // Render 3 copies for seamless infinite wrap (React-controlled, NO DOM clone)
-  const tripledTours = useMemo(() => {
+  const repeatedBaseTours = useMemo(() => {
     if (!normalizedTours.length) return [];
-    return [...normalizedTours, ...normalizedTours, ...normalizedTours];
+
+    if (normalizedTours.length >= 6) {
+      return normalizedTours;
+    }
+
+    const targetMinCards = Math.max(6, normalizedTours.length * 2);
+    const loops = Math.ceil(targetMinCards / normalizedTours.length);
+
+    return Array.from({ length: loops }, () => normalizedTours).flat();
   }, [normalizedTours]);
+
+  const tripledTours = useMemo(() => {
+    if (!repeatedBaseTours.length) return [];
+    return [...repeatedBaseTours, ...repeatedBaseTours, ...repeatedBaseTours];
+  }, [repeatedBaseTours]);
 
   const requireLogin = () => {
     if (!token) {
-      alert("Please login or signup to access this feature.");
+      if (typeof onRequireLogin === "function") {
+        onRequireLogin();
+      } else {
+        alert("Please login or signup to access this feature.");
+      }
       return false;
     }
     return true;
   };
 
-  // load wishlist ids
   useEffect(() => {
     const load = async () => {
       if (!token) {
         setWishlistIds(new Set());
         return;
       }
+
       try {
         const res = await fetchWishlistIds(token);
         const ids = Array.isArray(res?.data) ? res.data : res?.ids || res?.data || [];
@@ -80,6 +103,7 @@ export default function TourCard({
         console.error("Failed to load wishlist ids", e);
       }
     };
+
     load();
   }, [token]);
 
@@ -106,6 +130,10 @@ export default function TourCard({
       } else {
         await addToWishlist(token, idNum);
       }
+
+      if (typeof onWishlistChanged === "function") {
+        onWishlistChanged();
+      }
     } catch (e) {
       console.error("Wishlist update failed", e);
 
@@ -122,39 +150,6 @@ export default function TourCard({
     }
   };
 
-  // --------- Infinite wrap helpers (smooth, no teleport) ---------
-  const measure = () => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const firstCard = container.querySelector("[data-tour-card='true']");
-    if (!firstCard) return;
-
-    const itemW = firstCard.getBoundingClientRect().width || 288;
-
-    const styles = getComputedStyle(container);
-    const gapStr = styles.gap || styles.columnGap || "0";
-    const gap = Number.parseFloat(gapStr) || 16;
-
-    setDims({ itemW, gap, ready: true });
-  };
-
-  const singleWidth = () => normalizedTours.length * (dims.itemW + dims.gap);
-
-  const wrapX = (x) => {
-    const single = singleWidth();
-    if (!single || !normalizedTours.length) return x;
-    const wrap = gsap.utils.wrap(-2 * single, 0);
-    return wrap(x);
-  };
-
-  const applyWrap = () => {
-    const container = containerRef.current;
-    if (!container) return;
-    const x = Number(gsap.getProperty(container, "x")) || 0;
-    gsap.set(container, { x: wrapX(x) });
-  };
-
   const destroyDraggable = () => {
     if (draggableRef.current) {
       draggableRef.current.kill();
@@ -162,16 +157,83 @@ export default function TourCard({
     }
   };
 
-  // measure on mount + resize
+  const measure = () => {
+    const container = containerRef.current;
+    if (!container || !repeatedBaseTours.length) return;
+
+    const cards = container.querySelectorAll("[data-tour-card='true']");
+    if (!cards.length) return;
+
+    const firstCard = cards[0];
+    const firstSegmentLastCard = cards[repeatedBaseTours.length - 1];
+    if (!firstCard || !firstSegmentLastCard) return;
+
+    const itemW = firstCard.getBoundingClientRect().width || 288;
+
+    const styles = getComputedStyle(container);
+    const gapStr = styles.gap || styles.columnGap || "0";
+    const gap = Number.parseFloat(gapStr) || 16;
+
+    const segmentStart = firstCard.offsetLeft;
+    const segmentEnd =
+      firstSegmentLastCard.offsetLeft + firstSegmentLastCard.offsetWidth;
+    let segmentW = Math.max(segmentEnd - segmentStart, itemW);
+
+    const viewportW = viewportRef.current?.clientWidth || 0;
+    if (viewportW > 0 && segmentW < viewportW * 1.5) {
+      segmentW = Math.max(segmentW, viewportW * 1.5);
+    }
+
+    setDims({
+      itemW,
+      gap,
+      segmentW,
+      ready: true,
+    });
+  };
+
+  const wrapX = (x) => {
+    const segment = dims.segmentW;
+    if (!segment || !repeatedBaseTours.length) return x;
+
+    while (x >= 0) x -= segment;
+    while (x < -2 * segment) x += segment;
+
+    return x;
+  };
+
+  const applyWrap = () => {
+    const container = containerRef.current;
+    if (!container || !dims.segmentW) return;
+
+    const x = Number(gsap.getProperty(container, "x")) || 0;
+    const wrapped = wrapX(x);
+
+    if (wrapped !== x) {
+      gsap.set(container, { x: wrapped });
+    }
+  };
+
   useEffect(() => {
     const container = containerRef.current;
-    if (!container || !normalizedTours.length) return;
+    const viewport = viewportRef.current;
+    if (!container || !viewport || !repeatedBaseTours.length) return;
 
     measure();
 
     if (resizeObsRef.current) resizeObsRef.current.disconnect();
-    resizeObsRef.current = new ResizeObserver(() => measure());
+
+    resizeObsRef.current = new ResizeObserver(() => {
+      measure();
+    });
+
     resizeObsRef.current.observe(container);
+    resizeObsRef.current.observe(viewport);
+
+    const firstCard = container.querySelector("[data-tour-card='true']");
+    if (firstCard) {
+      resizeObsRef.current.observe(firstCard);
+    }
 
     return () => {
       if (resizeObsRef.current) {
@@ -179,17 +241,16 @@ export default function TourCard({
         resizeObsRef.current = null;
       }
     };
-  }, [normalizedTours.length]);
+  }, [repeatedBaseTours.length, cardWidth]);
 
-  // init draggable after measure
   useEffect(() => {
     const container = containerRef.current;
-    if (!container || !dims.ready || !normalizedTours.length) return;
+    if (!container || !dims.ready || !dims.segmentW || !repeatedBaseTours.length) return;
 
     destroyDraggable();
 
-    const single = singleWidth();
-    gsap.set(container, { x: -single });
+    gsap.killTweensOf(container);
+    gsap.set(container, { x: -dims.segmentW });
 
     draggableRef.current = Draggable.create(container, {
       type: "x",
@@ -197,6 +258,7 @@ export default function TourCard({
       dragResistance: 0.12,
       allowContextMenu: true,
       onPress() {
+        gsap.killTweensOf(container);
         container.style.cursor = "grabbing";
       },
       onRelease() {
@@ -204,6 +266,7 @@ export default function TourCard({
       },
       onDrag: applyWrap,
       onThrowUpdate: applyWrap,
+      onThrowComplete: applyWrap,
     })[0];
 
     container.style.cursor = "grab";
@@ -212,11 +275,13 @@ export default function TourCard({
       destroyDraggable();
       container.style.cursor = "";
     };
-  }, [dims.ready, dims.itemW, dims.gap, normalizedTours.length]);
+  }, [dims.ready, dims.segmentW, repeatedBaseTours.length]);
 
   const moveBy = (delta) => {
     const container = containerRef.current;
-    if (!container) return;
+    if (!container || !dims.segmentW) return;
+
+    gsap.killTweensOf(container);
 
     gsap.to(container, {
       x: `+=${delta}`,
@@ -235,7 +300,9 @@ export default function TourCard({
       <section className="max-w-6xl mx-auto px-4 md:px-6 relative">
         {showSectionHeader && (
           <div className="flex items-center justify-between mb-4 md:mb-6">
-            <h2 className="text-lg md:text-xl font-semibold text-gray-900">Popular Tours</h2>
+            <h2 className="text-lg md:text-xl font-semibold text-gray-900">
+              {sectionTitle}
+            </h2>
           </div>
         )}
 
@@ -259,7 +326,7 @@ export default function TourCard({
           <FaChevronRight size={20} />
         </button>
 
-        <div className="overflow-hidden">
+        <div ref={viewportRef} className="overflow-hidden">
           <div
             ref={containerRef}
             className="flex gap-4 md:gap-5 select-none"
@@ -269,7 +336,6 @@ export default function TourCard({
               const idNum = Number(tour.id);
               const inWishlist = wishlistIds.has(idNum);
               const isBusy = busyId === idNum;
-
               const imgSrc = toPublicImageUrl(tour.image) || FALLBACK_TOUR_IMG;
 
               return (
@@ -284,7 +350,9 @@ export default function TourCard({
                       alt={tour.title}
                       className="h-40 w-full object-cover transition-transform duration-500 hover:scale-105"
                       draggable="false"
-                      onError={(e) => (e.currentTarget.src = FALLBACK_TOUR_IMG)}
+                      onError={(e) => {
+                        e.currentTarget.src = FALLBACK_TOUR_IMG;
+                      }}
                     />
 
                     <div className="p-4 flex-1 flex flex-col">
@@ -317,14 +385,11 @@ export default function TourCard({
                         <button
                           disabled={isBusy}
                           onClick={() => toggleWishlist(tour.id)}
-                          className={`w-full flex items-center justify-center gap-2 px-2 py-2 rounded-md text-xs md:text-sm font-medium shadow transition-all
-                            ${
-                              inWishlist
-                                ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                                : "bg-[#e6f4ed] text-emerald-700 hover:bg-gradient-to-r hover:from-emerald-600 hover:to-emerald-500 hover:text-white"
-                            }
-                            ${isBusy ? "opacity-70 cursor-not-allowed" : "hover:scale-105"}
-                          `}
+                          className={`w-full flex items-center justify-center gap-2 px-2 py-2 rounded-md text-xs md:text-sm font-medium shadow transition-all ${
+                            inWishlist
+                              ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                              : "bg-[#e6f4ed] text-emerald-700 hover:bg-gradient-to-r hover:from-emerald-600 hover:to-emerald-500 hover:text-white"
+                          } ${isBusy ? "opacity-70 cursor-not-allowed" : "hover:scale-105"}`}
                           type="button"
                         >
                           {inWishlist ? <FaCheck size={14} /> : <FaHeart size={14} />}
