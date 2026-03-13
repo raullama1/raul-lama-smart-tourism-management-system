@@ -189,7 +189,7 @@ export default function NavbarTourist() {
               </Link>
             </div>
 
-            <nav className="hidden items-center justify-center gap-1 lg:ml-9 lg:flex">
+            <nav className="hidden items-center justify-center gap-1 lg:ml-10 lg:flex">
               {navItems.map((item) => (
                 <NavLink
                   key={item.to}
