@@ -1,9 +1,12 @@
 // server/controllers/tourController.js
-import { getPublicTours, getPopularTours, getPublicTourDetails } from "../models/tourModel.js";
+import {
+  getPublicTours,
+  getPopularTours,
+  getPublicTourDetails,
+  getPublicTourSuggestions,
+} from "../models/tourModel.js";
 
-// --------------------------------------------------
-// List tours (search / filter / sort / pagination)
-// --------------------------------------------------
+// List tours
 export async function getPublicToursController(req, res) {
   try {
     const tours = await getPublicTours(req.query);
@@ -14,15 +17,25 @@ export async function getPublicToursController(req, res) {
   }
 }
 
-// --------------------------------------------------
-// Home data: popular tours + (later blogs, etc.)
-// --------------------------------------------------
+// Title autocomplete suggestions
+export async function getPublicTourSuggestionsController(req, res) {
+  try {
+    const q = String(req.query?.q || "").trim();
+    const suggestions = await getPublicTourSuggestions(q);
+
+    res.json({
+      data: suggestions,
+    });
+  } catch (err) {
+    console.error("getPublicTourSuggestionsController error", err);
+    res.status(500).json({ message: "Failed to fetch tour suggestions" });
+  }
+}
+
+// Home data
 export async function getPublicHomeController(req, res) {
   try {
-    const popularTours = await getPopularTours(10); // or 6, as you like
-
-    // For now, just empty array for blogs (you already mapped)
-    // Later you will plug real blogs table.
+    const popularTours = await getPopularTours(10);
     const latestBlogs = [];
 
     res.json({
@@ -35,9 +48,7 @@ export async function getPublicHomeController(req, res) {
   }
 }
 
-// --------------------------------------------------
-// Single tour details (tour + agencies)
-// --------------------------------------------------
+// Single tour details
 export async function getPublicTourDetailsController(req, res) {
   try {
     const { tourId } = req.params;
@@ -47,7 +58,7 @@ export async function getPublicTourDetailsController(req, res) {
       return res.status(404).json({ message: "Tour not found" });
     }
 
-    res.json(result); // { tour, agencies }
+    res.json(result);
   } catch (err) {
     console.error("getPublicTourDetailsController error", err);
     res.status(500).json({ message: "Failed to fetch tour details" });

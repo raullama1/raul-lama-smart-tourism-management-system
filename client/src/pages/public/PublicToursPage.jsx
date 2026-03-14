@@ -9,7 +9,7 @@ import FooterTourist from "../../components/tourist/FooterTourist";
 import TourFiltersBar from "../../components/public/TourFiltersBar";
 import TourSidebarFilters from "../../components/public/TourSidebarFilters";
 import TourGrid from "../../components/public/TourGrid";
-import { fetchPublicTours } from "../../api/tourApi";
+import { fetchPublicTours, fetchPublicTourSuggestions } from "../../api/tourApi";
 import { useAuth } from "../../context/AuthContext";
 
 export default function PublicToursPage() {
@@ -38,6 +38,9 @@ export default function PublicToursPage() {
     open: false,
     message: "",
   });
+
+  const [suggestions, setSuggestions] = useState([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setFadeState("in"), 40);
@@ -161,6 +164,42 @@ export default function PublicToursPage() {
   ]);
 
   useEffect(() => {
+    const keyword = String(filters.search || "").trim();
+
+    if (keyword.length < 1) {
+      setSuggestions([]);
+      setSuggestionsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const timer = setTimeout(async () => {
+      try {
+        setSuggestionsLoading(true);
+        const res = await fetchPublicTourSuggestions(keyword);
+
+        if (cancelled) return;
+        setSuggestions(res?.data || []);
+      } catch (err) {
+        if (!cancelled) {
+          console.error("Failed to load tour suggestions", err);
+          setSuggestions([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setSuggestionsLoading(false);
+        }
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [filters.search]);
+
+  useEffect(() => {
     if (!userPagingRef.current) return;
     if (loading) return;
 
@@ -182,6 +221,18 @@ export default function PublicToursPage() {
     loadTours(query, { smoothSwap: true });
   };
 
+  const handleSearchSelect = (title) => {
+    const nextFilters = {
+      ...filters,
+      search: title,
+      page: 1,
+    };
+
+    setFilters(nextFilters);
+    setSuggestions([]);
+    loadTours(nextFilters, { smoothSwap: true });
+  };
+
   const handleClearFilters = () => {
     const cleared = {
       search: "",
@@ -195,6 +246,7 @@ export default function PublicToursPage() {
     };
 
     setFilters(cleared);
+    setSuggestions([]);
     loadTours(cleared, { smoothSwap: true });
   };
 
@@ -289,8 +341,11 @@ export default function PublicToursPage() {
 
           <TourFiltersBar
             filters={filters}
+            suggestions={suggestions}
+            suggestionsLoading={suggestionsLoading}
             onFiltersChange={handleFiltersChange}
             onSearchClick={handleSearchClick}
+            onSearchSelect={handleSearchSelect}
             onClearFilters={handleClearFilters}
           />
 

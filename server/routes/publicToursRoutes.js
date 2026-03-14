@@ -2,10 +2,14 @@
 import express from "express";
 import {
   getPublicToursController,
+  getPublicTourSuggestionsController,
   getPublicTourDetailsController,
 } from "../controllers/tourController.js";
 
 const router = express.Router();
+
+// /api/public/tours/suggestions?q=
+router.get("/suggestions", getPublicTourSuggestionsController);
 
 // /api/public/tours?search=&location=&...
 router.get("/", getPublicToursController);

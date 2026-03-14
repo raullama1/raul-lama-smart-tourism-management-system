@@ -19,10 +19,7 @@ function sqlEndDateExpr() {
   `;
 }
 
-// --------------------------------------------------
 // Get Public Tours
-// ONLY tours that have ACTIVE listings from UNBLOCKED agencies
-// --------------------------------------------------
 export async function getPublicTours(filters) {
   const {
     search = "",
@@ -42,8 +39,8 @@ export async function getPublicTours(filters) {
   whereParts.push("a.is_blocked = 0");
 
   if (search) {
-    whereParts.push("(t.title LIKE ? OR t.location LIKE ?)");
-    params.push(`%${search}%`, `%${search}%`);
+    whereParts.push("t.title LIKE ?");
+    params.push(`%${search}%`);
   }
 
   if (location) {
@@ -135,10 +132,43 @@ export async function getPublicTours(filters) {
   };
 }
 
-// --------------------------------------------------
-// Get Popular Tours (Home Page)
-// ONLY tours that have ACTIVE listings from UNBLOCKED agencies
-// --------------------------------------------------
+// Get title-only autocomplete suggestions
+export async function getPublicTourSuggestions(q, limit = 8) {
+  const keyword = String(q || "").trim();
+
+  if (!keyword) {
+    return [];
+  }
+
+  const [rows] = await db.query(
+    `
+      SELECT
+        t.id,
+        t.title,
+        t.location
+      FROM tours t
+      INNER JOIN agency_tours at ON at.tour_id = t.id
+      INNER JOIN agencies a ON a.id = at.agency_id
+      WHERE at.listing_status = 'active'
+        AND a.is_blocked = 0
+        AND t.title LIKE ?
+      GROUP BY t.id, t.title, t.location
+      ORDER BY
+        CASE
+          WHEN t.title LIKE ? THEN 0
+          ELSE 1
+        END,
+        t.popularity_score DESC,
+        COALESCE(t.created_at, CURRENT_TIMESTAMP) DESC
+      LIMIT ?
+    `,
+    [`%${keyword}%`, `${keyword}%`, Number(limit)]
+  );
+
+  return rows;
+}
+
+// Get Popular Tours
 export async function getPopularTours(limit = 6) {
   const [rows] = await db.query(
     `
@@ -175,14 +205,7 @@ export async function getPopularTours(limit = 6) {
   return rows;
 }
 
-// --------------------------------------------------
 // Get Recommended Tours For Tourist Home
-// Based on:
-// - wishlist tour types
-// - paid booking tour types
-// Excludes already wishlisted/booked source tours
-// Shows only tours with ACTIVE listings from UNBLOCKED agencies
-// --------------------------------------------------
 export async function getRecommendedToursForUser(userId, limit = 8) {
   const [wishlistRows] = await db.query(
     `
@@ -347,12 +370,7 @@ export async function getRecommendedToursForUser(userId, limit = 8) {
   return picked;
 }
 
-// --------------------------------------------------
-// Get Single Tour + Agencies (Details Page)
-// Public side:
-// - Tour must have at least 1 ACTIVE listing from an UNBLOCKED agency
-// - Agencies list must show only ACTIVE listings from UNBLOCKED agencies
-// --------------------------------------------------
+// Get Single Tour + Agencies
 export async function getPublicTourDetails(tourId) {
   const [tourRows] = await db.query(
     `
