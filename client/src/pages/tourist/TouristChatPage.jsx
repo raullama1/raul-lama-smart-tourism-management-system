@@ -58,6 +58,9 @@ export default function TouristChatPage() {
 
   const [showNewChat, setShowNewChat] = useState(false);
   const [typingText, setTypingText] = useState("");
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth < 768 : false
+  );
 
   const socketRef = useRef(null);
   const activeConvoReqRef = useRef(0);
@@ -75,6 +78,18 @@ export default function TouristChatPage() {
 
   const messageCacheRef = useRef(new Map());
   const pendingEmptyConvosRef = useRef(new Set());
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const onResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   const writeCache = (conversationId, nextMessages, nextPagination) => {
     if (!conversationId) return;
@@ -690,35 +705,87 @@ export default function TouristChatPage() {
     socketRef.current.emit("chat:stopTyping", { conversationId });
   };
 
+  const showSidebarMobile = isMobile && !selected;
+  const showWindowMobile = isMobile && !!selected;
+  const showDesktopLayout = !isMobile;
+
   return (
     <>
       <NavbarTourist />
 
-      <main className="bg-[#f3faf6] pt-6 pb-6">
-        <div className="max-w-6xl mx-auto px-4 md:px-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <ChatSidebar
-              search={search}
-              onSearch={setSearch}
-              conversations={filteredConvos}
-              selectedId={selectedId}
-              onSelect={handleSelect}
-              onStartNew={() => setShowNewChat(true)}
-            />
+      <main className="bg-[#f3faf6] pb-6 pt-4 md:pb-8 md:pt-6">
+        <div className="mx-auto max-w-6xl px-4 md:px-6">
+          <div className="mb-4">
+            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/80 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-700">
+              Tourist Chat
+            </div>
+            <h1 className="mt-3 text-2xl font-black tracking-tight text-slate-900 md:text-3xl">
+              Message Agencies
+            </h1>
+            <p className="mt-1 text-sm font-medium text-slate-500">
+              Chat with travel agencies and manage your conversations easily.
+            </p>
+          </div>
 
-            <ChatWindow
-              selected={selected}
-              messages={messages}
-              loading={msgLoading}
-              hasMore={!!pagination?.hasMore}
-              onLoadMore={loadOlder}
-              onSend={handleSend}
-              typingText={typingText}
-              onTyping={handleTyping}
-              onStopTyping={handleStopTyping}
-              onDeleteMessage={handleDeleteMessage}
-              onDeleteConversation={handleDeleteConversation}
-            />
+          <div className="min-h-[70dvh]">
+            {showDesktopLayout ? (
+              <div className="grid min-h-[72dvh] grid-cols-1 gap-4 md:grid-cols-[340px_minmax(0,1fr)]">
+                <ChatSidebar
+                  search={search}
+                  onSearch={setSearch}
+                  conversations={filteredConvos}
+                  selectedId={selectedId}
+                  onSelect={handleSelect}
+                  onStartNew={() => setShowNewChat(true)}
+                />
+
+                <ChatWindow
+                  selected={selected}
+                  messages={messages}
+                  loading={msgLoading}
+                  hasMore={!!pagination?.hasMore}
+                  onLoadMore={loadOlder}
+                  onSend={handleSend}
+                  typingText={typingText}
+                  onTyping={handleTyping}
+                  onStopTyping={handleStopTyping}
+                  onDeleteMessage={handleDeleteMessage}
+                  onDeleteConversation={handleDeleteConversation}
+                />
+              </div>
+            ) : (
+              <div className="min-h-[72dvh]">
+                {showSidebarMobile ? (
+                  <ChatSidebar
+                    search={search}
+                    onSearch={setSearch}
+                    conversations={filteredConvos}
+                    selectedId={selectedId}
+                    onSelect={handleSelect}
+                    onStartNew={() => setShowNewChat(true)}
+                    isMobile
+                  />
+                ) : null}
+
+                {showWindowMobile ? (
+                  <ChatWindow
+                    selected={selected}
+                    messages={messages}
+                    loading={msgLoading}
+                    hasMore={!!pagination?.hasMore}
+                    onLoadMore={loadOlder}
+                    onSend={handleSend}
+                    typingText={typingText}
+                    onTyping={handleTyping}
+                    onStopTyping={handleStopTyping}
+                    onDeleteMessage={handleDeleteMessage}
+                    onDeleteConversation={handleDeleteConversation}
+                    isMobile
+                    onBack={() => setSelectedId(null)}
+                  />
+                ) : null}
+              </div>
+            )}
           </div>
 
           {loadingConvos && <div className="mt-3 text-xs text-gray-500">Loading chats...</div>}

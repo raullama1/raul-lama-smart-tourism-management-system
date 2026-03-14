@@ -1,5 +1,6 @@
 // client/src/components/tourist/chat/ChatWindow.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
+import { FiArrowLeft, FiMoreHorizontal, FiSend } from "react-icons/fi";
 import { toPublicImageUrl } from "../../../utils/publicImageUrl";
 
 function ConfirmModal({ open, title, message, dangerText = "Delete", onCancel, onConfirm }) {
@@ -8,7 +9,7 @@ function ConfirmModal({ open, title, message, dangerText = "Delete", onCancel, o
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-black/50" onClick={onCancel} />
-      <div className="relative w-full max-w-sm rounded-2xl bg-white shadow-2xl border border-gray-100 p-5">
+      <div className="relative w-full max-w-sm rounded-2xl border border-gray-100 bg-white p-5 shadow-2xl">
         <div className="text-base font-semibold text-gray-900">{title}</div>
         <div className="mt-1 text-sm text-gray-600">{message}</div>
 
@@ -40,21 +41,21 @@ function ActionMenu({ open, onClose, onDelete }) {
     <>
       <div className="fixed inset-0 z-[115]" onClick={onClose} />
 
-      <div className="absolute right-0 top-full mt-2 z-[116]">
+      <div className="absolute right-0 top-full z-[116] mt-2">
         <div className="flex justify-end pr-3">
-          <div className="h-3 w-3 bg-white border-l border-t border-gray-100 rotate-45 translate-y-[6px]" />
+          <div className="h-3 w-3 translate-y-[6px] rotate-45 border-l border-t border-gray-100 bg-white" />
         </div>
 
-        <div className="w-56 rounded-2xl bg-white shadow-xl border border-gray-100 overflow-hidden origin-top-right animate-[menuIn_120ms_ease-out]">
-          <div className="px-4 py-3 border-b border-gray-100">
+        <div className="w-56 origin-top-right animate-[menuIn_120ms_ease-out] overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-xl">
+          <div className="border-b border-gray-100 px-4 py-3">
             <div className="text-xs font-semibold text-gray-900">Chat options</div>
-            <div className="text-[11px] text-gray-500 mt-0.5">Manage this conversation</div>
+            <div className="mt-0.5 text-[11px] text-gray-500">Manage this conversation</div>
           </div>
 
           <button
             type="button"
             onClick={onDelete}
-            className="w-full text-left px-4 py-3 text-sm font-semibold text-red-600 hover:bg-red-50"
+            className="w-full px-4 py-3 text-left text-sm font-semibold text-red-600 hover:bg-red-50"
           >
             Delete chat
           </button>
@@ -62,7 +63,7 @@ function ActionMenu({ open, onClose, onDelete }) {
           <button
             type="button"
             onClick={onClose}
-            className="w-full text-left px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            className="w-full px-4 py-3 text-left text-sm font-semibold text-gray-700 hover:bg-gray-50"
           >
             Cancel
           </button>
@@ -85,8 +86,8 @@ function LoadingOverlay({ show }) {
   return (
     <div className="absolute inset-0 z-[5] flex items-center justify-center">
       <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px]" />
-      <div className="relative z-[6] rounded-2xl bg-white border border-gray-100 shadow-md px-4 py-2 text-xs font-semibold text-gray-700">
-        Start a new chat…
+      <div className="relative z-[6] rounded-2xl border border-gray-100 bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-md">
+        Loading messages...
       </div>
     </div>
   );
@@ -101,14 +102,14 @@ function Avatar({ name, image, size = "h-9 w-9", rounded = "rounded-full" }) {
       <img
         src={src}
         alt={name || "Agency"}
-        className={`${size} ${rounded} object-cover border border-emerald-200 bg-white shrink-0`}
+        className={`${size} ${rounded} shrink-0 border border-emerald-200 bg-white object-cover`}
       />
     );
   }
 
   return (
     <div
-      className={`${size} ${rounded} bg-emerald-200 flex items-center justify-center font-semibold text-emerald-900 border border-emerald-200 shrink-0`}
+      className={`${size} ${rounded} flex shrink-0 items-center justify-center border border-emerald-200 bg-emerald-200 font-semibold text-emerald-900`}
     >
       {letter}
     </div>
@@ -127,25 +128,25 @@ export default function ChatWindow({
   onStopTyping,
   onDeleteMessage,
   onDeleteConversation,
+  isMobile = false,
+  onBack,
 }) {
   const [text, setText] = useState("");
-
   const [openMenuId, setOpenMenuId] = useState(null);
   const [confirmUnsend, setConfirmUnsend] = useState({ open: false, messageId: null });
-
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const [confirmDeleteChat, setConfirmDeleteChat] = useState(false);
 
   const listRef = useRef(null);
-
   const typingTimerRef = useRef(null);
   const typingActiveRef = useRef(false);
-
   const msgMenuCloseTimerRef = useRef(null);
+
   const scheduleCloseMsgMenu = (delayMs = 300) => {
     if (msgMenuCloseTimerRef.current) clearTimeout(msgMenuCloseTimerRef.current);
     msgMenuCloseTimerRef.current = setTimeout(() => setOpenMenuId(null), delayMs);
   };
+
   const cancelCloseMsgMenu = () => {
     if (msgMenuCloseTimerRef.current) clearTimeout(msgMenuCloseTimerRef.current);
     msgMenuCloseTimerRef.current = null;
@@ -195,6 +196,7 @@ export default function ChatWindow({
 
     document.addEventListener("mousedown", onDoc);
     window.addEventListener("keydown", onKey);
+
     return () => {
       document.removeEventListener("mousedown", onDoc);
       window.removeEventListener("keydown", onKey);
@@ -293,8 +295,8 @@ export default function ChatWindow({
 
   if (!selected) {
     return (
-      <section className="flex-1 bg-white rounded-2xl border border-gray-100 h-[570px] flex items-center justify-center">
-        <div className="text-center max-w-md px-6">
+      <section className="flex min-h-[72dvh] flex-1 items-center justify-center rounded-[28px] border border-gray-100 bg-white">
+        <div className="max-w-md px-6 text-center">
           <div className="text-lg font-semibold text-gray-900">Select a chat</div>
           <div className="mt-1 text-sm text-gray-500">
             Choose an agency from the left to view messages.
@@ -307,18 +309,34 @@ export default function ChatWindow({
   const showEmpty = !loading && (messages?.length || 0) === 0;
 
   return (
-    <section className="flex-1 min-h-0 bg-white rounded-2xl border border-gray-100 h-[570px] flex flex-col overflow-hidden">
-      <div className="px-4 md:px-5 py-3 border-b border-gray-100 bg-emerald-50 flex items-center justify-between">
-        <div className="flex items-center gap-3 min-w-0">
-          <Avatar name={title} image={profileImage} size="h-10 w-10" />
+    <section
+      className={`flex min-h-0 flex-1 flex-col overflow-hidden rounded-[28px] border border-gray-100 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.06)] ${
+        isMobile ? "h-[calc(100dvh-10rem)] min-h-[520px] max-h-[calc(100dvh-10rem)]" : "h-[72dvh]"
+      }`}
+    >
+      <div className="flex items-center justify-between gap-3 border-b border-gray-100 bg-emerald-50 px-4 py-3 md:px-5">
+        <div className="flex min-w-0 items-center gap-3">
+          {isMobile ? (
+            <button
+              type="button"
+              onClick={onBack}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-emerald-200 bg-white text-emerald-900 transition hover:bg-emerald-50"
+              aria-label="Back to chats"
+            >
+              <FiArrowLeft size={18} />
+            </button>
+          ) : null}
+
+          <Avatar name={title} image={profileImage} size="h-10 w-10" rounded="rounded-2xl" />
+
           <div className="min-w-0">
-            <div className="font-semibold text-gray-900 text-sm md:text-base truncate">{title}</div>
-            <div className="text-[11px] text-gray-500 truncate">{subtitle}</div>
+            <div className="truncate text-sm font-semibold text-gray-900 md:text-base">{title}</div>
+            <div className="truncate text-[11px] text-gray-500">{subtitle}</div>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="text-[11px] text-emerald-900/70 hidden md:block">
+          <div className="hidden text-[11px] text-emerald-900/70 md:block">
             {new Date().toLocaleDateString("en-GB", {
               weekday: "short",
               day: "2-digit",
@@ -327,14 +345,14 @@ export default function ChatWindow({
             })}
           </div>
 
-          {/* <div className="relative" data-headmenu>
+          <div className="relative" data-headmenu>
             <button
               type="button"
               onClick={() => setHeaderMenuOpen((v) => !v)}
-              className="h-9 w-9 rounded-full border border-emerald-200 bg-white text-emerald-900 hover:bg-emerald-50 flex items-center justify-center"
+              className="flex h-10 w-10 items-center justify-center rounded-2xl border border-emerald-200 bg-white text-emerald-900 transition hover:bg-emerald-50"
               title="Menu"
             >
-              ⋯
+              <FiMoreHorizontal size={18} />
             </button>
 
             <ActionMenu
@@ -345,23 +363,23 @@ export default function ChatWindow({
                 setConfirmDeleteChat(true);
               }}
             />
-          </div> */}
+          </div>
         </div>
       </div>
 
-      <div className="relative flex-1 min-h-0 bg-white">
+      <div className="relative min-h-0 flex-1 bg-white">
         <LoadingOverlay show={showOverlay} />
 
         <div
           ref={listRef}
-          className="h-full min-h-0 overflow-y-auto overscroll-contain scroll-smooth px-4 md:px-5 py-4 space-y-3"
+          className="h-full min-h-0 space-y-3 overflow-y-auto overscroll-contain scroll-smooth px-4 py-4 md:px-5"
         >
           {hasMore && !loading && (
             <div className="flex justify-center">
               <button
                 onClick={onLoadMore}
                 type="button"
-                className="px-4 py-2 rounded-full border border-gray-100 text-xs text-gray-700 hover:bg-gray-50"
+                className="rounded-full border border-gray-100 px-4 py-2 text-xs text-gray-700 hover:bg-gray-50"
               >
                 Load older messages
               </button>
@@ -377,20 +395,26 @@ export default function ChatWindow({
 
               return (
                 <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                  <div className={`flex items-end gap-2 max-w-[85%] ${mine ? "flex-row-reverse" : ""}`}>
-                    {!mine && <Avatar name={title} image={profileImage} size="h-8 w-8" />}
+                  <div
+                    className={`flex max-w-[94%] items-end gap-2 sm:max-w-[88%] ${
+                      mine ? "flex-row-reverse" : ""
+                    }`}
+                  >
+                    {!mine && (
+                      <Avatar name={title} image={profileImage} size="h-8 w-8" rounded="rounded-full" />
+                    )}
 
-                    <div className="relative group max-w-[80%]">
+                    <div className="relative max-w-[100%] group">
                       <div
                         className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                           isDeleted
-                            ? "bg-gray-50 text-gray-500 italic border border-gray-100"
+                            ? "border border-gray-100 bg-gray-50 italic text-gray-500"
                             : mine
-                            ? "bg-emerald-700 text-white"
-                            : "bg-emerald-100 text-emerald-900"
+                              ? "bg-emerald-700 text-white"
+                              : "bg-emerald-100 text-emerald-900"
                         }`}
                       >
-                        <div className="whitespace-pre-line">
+                        <div className="whitespace-pre-line break-words">
                           {isDeleted ? "This message was deleted" : m.message}
                         </div>
 
@@ -399,8 +423,8 @@ export default function ChatWindow({
                             isDeleted
                               ? "text-gray-400"
                               : mine
-                              ? "text-white/70"
-                              : "text-emerald-900/60"
+                                ? "text-white/70"
+                                : "text-emerald-900/60"
                           }`}
                         >
                           {new Date(m.created_at).toLocaleTimeString("en-GB", {
@@ -412,7 +436,7 @@ export default function ChatWindow({
 
                       {mine && !isDeleted && !String(m.id).startsWith("tmp-") && (
                         <div
-                          className="absolute -left-10 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition"
+                          className="absolute -left-10 top-1/2 -translate-y-1/2 opacity-100 transition md:opacity-0 md:group-hover:opacity-100"
                           data-msgmenu
                           onMouseEnter={cancelCloseMsgMenu}
                           onMouseLeave={() => scheduleCloseMsgMenu(320)}
@@ -423,7 +447,7 @@ export default function ChatWindow({
                               cancelCloseMsgMenu();
                               setOpenMenuId((prev) => (prev === m.id ? null : m.id));
                             }}
-                            className="h-8 w-8 rounded-full border border-gray-100 bg-white text-gray-700 hover:bg-gray-50 flex items-center justify-center shadow-sm"
+                            className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-sm hover:bg-gray-50"
                             title="More"
                           >
                             ⋯
@@ -431,7 +455,7 @@ export default function ChatWindow({
 
                           {openMenuId === m.id && (
                             <div
-                              className="absolute bottom-full mb-2 right-0 w-36 rounded-xl border border-gray-100 bg-white shadow-lg overflow-hidden"
+                              className="absolute bottom-full right-0 mb-2 w-36 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-lg"
                               onMouseEnter={cancelCloseMsgMenu}
                               onMouseLeave={() => scheduleCloseMsgMenu(320)}
                             >
@@ -441,7 +465,7 @@ export default function ChatWindow({
                                   setOpenMenuId(null);
                                   setConfirmUnsend({ open: true, messageId: m.id });
                                 }}
-                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
                               >
                                 Unsend
                               </button>
@@ -456,12 +480,12 @@ export default function ChatWindow({
             })
           )}
 
-          {typingText ? <div className="text-xs text-gray-500 italic">{typingText}</div> : null}
+          {typingText ? <div className="text-xs italic text-gray-500">{typingText}</div> : null}
         </div>
       </div>
 
-      <div className="p-3 md:p-4 border-t border-gray-100 bg-white">
-        <div className="flex gap-2">
+      <div className="border-t border-gray-100 bg-white p-3 md:p-4">
+        <div className="flex items-end gap-2">
           <input
             value={text}
             onChange={(e) => {
@@ -469,7 +493,7 @@ export default function ChatWindow({
               emitTyping();
             }}
             placeholder="Type a message..."
-            className="flex-1 rounded-xl border border-gray-100 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="min-h-[48px] flex-1 rounded-2xl border border-gray-100 px-4 py-3 text-sm outline-none transition focus:ring-2 focus:ring-emerald-500"
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -487,9 +511,10 @@ export default function ChatWindow({
           <button
             onClick={handleSend}
             type="button"
-            className="rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white px-5 py-3 text-sm font-semibold"
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-emerald-700 px-4 text-sm font-semibold text-white transition hover:bg-emerald-800 md:px-5"
           >
-            Send
+            <FiSend size={16} />
+            <span className="hidden sm:inline">Send</span>
           </button>
         </div>
       </div>
