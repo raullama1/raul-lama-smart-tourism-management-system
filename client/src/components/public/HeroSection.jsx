@@ -97,14 +97,6 @@ export default function HeroSection({
       <div className="mx-auto max-w-7xl px-4 pb-10 md:px-6 md:pb-14 lg:pb-16">
         <div className="grid items-center gap-8 lg:grid-cols-[1.02fr_0.98fr] lg:gap-10">
           <div ref={contentRef} className="order-2 lg:order-1">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.45, delay: 0.05 }}
-              className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700 md:text-xs"
-            >
-              Tourism Nepal
-            </motion.div>
 
             <motion.h1
               initial={{ opacity: 0, y: 16 }}

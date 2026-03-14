@@ -22,13 +22,13 @@ export default function AgencyLayout({ children }) {
 
   return (
     <>
-      <main className="flex min-h-screen bg-[#e6f4ec]">
-        <aside className="sticky top-0 h-screen shrink-0">
-          <AgencySidebar />
-        </aside>
+      <main className="flex min-h-screen overflow-x-hidden bg-[#e6f4ec] lg:h-screen lg:overflow-hidden">
+        <AgencySidebar />
 
-        <section className="flex-1 px-6 py-6">
-          <div className="mx-auto w-full max-w-6xl">{content}</div>
+        <section className="flex min-w-0 flex-1 px-3 pb-3 pt-20 sm:px-4 sm:pb-4 sm:pt-20 lg:h-screen lg:overflow-y-auto lg:px-6 lg:py-5">
+          <div className="mx-auto flex w-full max-w-6xl min-w-0">
+            <div className="w-full min-w-0">{content}</div>
+          </div>
         </section>
       </main>
 

@@ -806,25 +806,18 @@ function AgencyChatPageContent({ openNotifications }) {
 
   return (
     <>
-      <div className="relative min-h-[calc(100vh-140px)] overflow-hidden rounded-[32px] border border-white/60 bg-gradient-to-br from-emerald-50 via-white to-teal-100/70 p-3 sm:p-4 lg:p-5 shadow-[0_20px_80px_rgba(16,185,129,0.10)]">
+      <div className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-[28px] border border-white/60 bg-gradient-to-br from-emerald-50 via-white to-teal-100/70 p-2.5 sm:p-3 lg:p-4 shadow-[0_18px_70px_rgba(16,185,129,0.10)]">
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -left-16 top-10 h-40 w-40 rounded-full bg-emerald-300/20 blur-3xl" />
-          <div className="absolute right-0 top-0 h-56 w-56 rounded-full bg-cyan-300/20 blur-3xl" />
-          <div className="absolute bottom-0 left-1/3 h-44 w-44 rounded-full bg-teal-300/20 blur-3xl" />
+          <div className="absolute -left-16 top-10 h-36 w-36 rounded-full bg-emerald-300/20 blur-3xl" />
+          <div className="absolute right-0 top-0 h-48 w-48 rounded-full bg-cyan-300/20 blur-3xl" />
+          <div className="absolute bottom-0 left-1/3 h-40 w-40 rounded-full bg-teal-300/20 blur-3xl" />
         </div>
 
-        <motion.div
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
-          animate={{ rotateX: tilt.y, rotateY: tilt.x }}
-          transition={{ type: "spring", stiffness: 120, damping: 14, mass: 0.7 }}
-          style={{ transformStyle: "preserve-3d" }}
-          className="relative rounded-[28px] border border-white/70 bg-white/75 backdrop-blur-2xl shadow-[0_18px_60px_rgba(15,23,42,0.08)]"
-        >
-          <div className="relative overflow-hidden rounded-[28px]">
+        <div className="relative flex h-full min-h-0 flex-col rounded-[24px] border border-white/70 bg-white/75 backdrop-blur-2xl shadow-[0_16px_50px_rgba(15,23,42,0.08)]">
+          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-[24px]">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.10),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(45,212,191,0.10),transparent_30%)]" />
 
-            <div className="relative border-b border-emerald-100/80 px-4 py-4 sm:px-6 sm:py-5 lg:px-7">
+            <div className="relative border-b border-emerald-100/80 px-4 py-3 sm:px-5 sm:py-3.5 lg:px-6">
               <div className="flex items-center justify-between gap-4">
                 <motion.div
                   initial={{ opacity: 0, y: 16 }}
@@ -832,16 +825,25 @@ function AgencyChatPageContent({ openNotifications }) {
                   transition={{ duration: 0.4 }}
                   className="flex items-center gap-3"
                 >
-                  <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/20">
-                    <FiMessageSquare className="text-[22px]" />
-                  </div>
+                  <motion.div
+                    onMouseMove={handleMouseMove}
+                    onMouseLeave={handleMouseLeave}
+                    animate={{ rotateX: tilt.y, rotateY: tilt.x }}
+                    transition={{ type: "spring", stiffness: 120, damping: 14, mass: 0.7 }}
+                    style={{ transformStyle: "preserve-3d" }}
+                    className="shrink-0"
+                  >
+                    <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/20">
+                      <FiMessageSquare className="text-[20px]" />
+                    </div>
+                  </motion.div>
 
                   <div className="flex flex-wrap items-center gap-2">
-                    <h1 className="text-xl font-black tracking-tight text-slate-900 sm:text-2xl">
+                    <h1 className="text-lg font-black tracking-tight text-slate-900 sm:text-xl">
                       Chat
                     </h1>
-                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-700">
-                      <FiZap className="text-[12px]" />
+                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-700">
+                      <FiZap className="text-[11px]" />
                       Live
                     </span>
                   </div>
@@ -853,13 +855,13 @@ function AgencyChatPageContent({ openNotifications }) {
                   transition={{ duration: 0.45, delay: 0.05 }}
                   type="button"
                   onClick={handleOpenNotifications}
-                  className="relative grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-emerald-100 bg-white/90 text-emerald-900 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:bg-emerald-50"
+                  className="relative grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-emerald-100 bg-white/90 text-emerald-900 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:bg-emerald-50"
                   title="Notifications"
                   aria-label="Notifications"
                 >
-                  <FiBell className="text-[18px]" />
+                  <FiBell className="text-[17px]" />
                   {Number(unreadCount || 0) > 0 && (
-                    <span className="absolute -right-1.5 -top-1.5 min-w-[22px] rounded-full bg-red-500 px-1.5 py-0.5 text-center text-[10px] font-black text-white shadow-lg shadow-red-500/20">
+                    <span className="absolute -right-1.5 -top-1.5 min-w-[20px] rounded-full bg-red-500 px-1.5 py-0.5 text-center text-[10px] font-black text-white shadow-lg shadow-red-500/20">
                       {unreadCount > 99 ? "99+" : unreadCount}
                     </span>
                   )}
@@ -867,14 +869,14 @@ function AgencyChatPageContent({ openNotifications }) {
               </div>
             </div>
 
-            <div className="relative p-3 sm:p-4 lg:p-5">
+            <div className="relative flex min-h-0 flex-1 flex-col p-2.5 sm:p-3 lg:p-4">
               <motion.div
                 initial={{ opacity: 0, y: 18 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.45, delay: 0.12 }}
-                className="grid min-h-[68vh] grid-cols-1 gap-4 xl:grid-cols-[360px_minmax(0,1fr)]"
+                className="grid min-h-0 flex-1 grid-cols-1 gap-3 xl:grid-cols-[320px_minmax(0,1fr)]"
               >
-                <div className="rounded-[24px] border border-white/70 bg-white/80 p-2 shadow-[0_10px_35px_rgba(15,23,42,0.06)] backdrop-blur-xl">
+                <div className="min-h-0 rounded-[20px] border border-white/70 bg-white/80 p-1.5 shadow-[0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl">
                   <AgencyChatSidebar
                     search={search}
                     onSearch={setSearch}
@@ -885,7 +887,7 @@ function AgencyChatPageContent({ openNotifications }) {
                   />
                 </div>
 
-                <div className="rounded-[24px] border border-white/70 bg-white/85 p-2 shadow-[0_10px_35px_rgba(15,23,42,0.06)] backdrop-blur-xl">
+                <div className="min-h-0 rounded-[20px] border border-white/70 bg-white/85 p-1.5 shadow-[0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl">
                   <AgencyChatWindow
                     selected={selected}
                     messages={messages}
@@ -903,14 +905,14 @@ function AgencyChatPageContent({ openNotifications }) {
               </motion.div>
 
               {loadingConvos && (
-                <div className="mt-4 flex items-center gap-2 rounded-2xl border border-emerald-100 bg-white/80 px-4 py-3 text-sm font-medium text-slate-500 shadow-sm">
+                <div className="mt-3 flex items-center gap-2 rounded-2xl border border-emerald-100 bg-white/80 px-4 py-2.5 text-sm font-medium text-slate-500 shadow-sm">
                   <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-500" />
                   Loading chats...
                 </div>
               )}
             </div>
           </div>
-        </motion.div>
+        </div>
       </div>
 
       <NewAgencyChatModal

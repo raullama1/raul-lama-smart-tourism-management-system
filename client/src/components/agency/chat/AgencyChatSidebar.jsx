@@ -54,13 +54,13 @@ function Avatar({ name, image }) {
       <img
         src={src}
         alt={name || "Tourist"}
-        className="h-11 w-11 rounded-full object-cover border border-emerald-200 bg-white"
+        className="h-10 w-10 rounded-full border border-emerald-200 bg-white object-cover"
       />
     );
   }
 
   return (
-    <div className="h-11 w-11 rounded-full bg-emerald-200 flex items-center justify-center font-semibold text-emerald-900 border border-emerald-200">
+    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-emerald-200 bg-emerald-200 font-semibold text-emerald-900">
       {initial}
     </div>
   );
@@ -86,23 +86,23 @@ export default function AgencyChatSidebar({
   }, [conversations, search]);
 
   return (
-    <aside className="w-full md:w-[340px] bg-emerald-900 rounded-2xl p-4 text-white h-[570px] flex flex-col">
-      <div className="text-sm font-semibold mb-2 opacity-90">Tourists</div>
+    <aside className="flex h-full min-h-0 w-full flex-col rounded-2xl bg-emerald-900 p-3 text-white md:p-4">
+      <div className="mb-2 text-sm font-semibold opacity-90">Tourists</div>
 
       <div className="mb-3">
         <input
           value={search}
           onChange={(e) => onSearch?.(e.target.value)}
           placeholder="Search Tourist"
-          className="w-full rounded-lg px-3 py-2 text-sm text-gray-800 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400"
+          className="w-full rounded-lg bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-400"
         />
       </div>
 
-      <div className="text-xs font-semibold opacity-80 mb-2">Recent chats</div>
+      <div className="mb-2 text-xs font-semibold opacity-80">Recent chats</div>
 
       <div className="flex-1 overflow-y-auto pr-1 space-y-2">
         {filtered.length === 0 ? (
-          <div className="bg-emerald-950/40 rounded-xl p-3 text-xs text-emerald-50/80">
+          <div className="rounded-xl bg-emerald-950/40 p-3 text-xs text-emerald-50/80">
             No chats yet. Start a new chat to message a tourist.
           </div>
         ) : (
@@ -122,10 +122,10 @@ export default function AgencyChatSidebar({
                 key={convoId || `${name}-${when}`}
                 onClick={() => onSelect?.(c)}
                 type="button"
-                className={`w-full text-left rounded-xl p-3 border transition outline-none ${
+                className={`w-full rounded-xl border p-3 text-left outline-none transition ${
                   active
-                    ? "bg-emerald-700 border-emerald-500"
-                    : "bg-emerald-950/30 border-emerald-900 hover:bg-emerald-950/50"
+                    ? "border-emerald-500 bg-emerald-700"
+                    : "border-emerald-900 bg-emerald-950/30 hover:bg-emerald-950/50"
                 }`}
               >
                 <div className="flex items-start gap-3">
@@ -133,11 +133,11 @@ export default function AgencyChatSidebar({
 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <div className="font-semibold text-sm line-clamp-1">{name}</div>
+                      <div className="line-clamp-1 text-sm font-semibold">{name}</div>
 
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex shrink-0 items-center gap-2">
                         {unread > 0 && (
-                          <span className="min-w-[22px] h-[22px] px-2 rounded-full bg-white text-emerald-900 text-[11px] flex items-center justify-center font-semibold">
+                          <span className="flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-white px-2 text-[11px] font-semibold text-emerald-900">
                             {unread}
                           </span>
                         )}
@@ -146,7 +146,7 @@ export default function AgencyChatSidebar({
                     </div>
 
                     {preview ? (
-                      <div className="mt-1 text-[11px] opacity-90 line-clamp-1">
+                      <div className="mt-1 line-clamp-1 text-[11px] opacity-90">
                         <span className="font-semibold">{direction}</span> {preview}
                       </div>
                     ) : null}
@@ -161,7 +161,7 @@ export default function AgencyChatSidebar({
       <button
         onClick={onStartNew}
         type="button"
-        className="mt-3 w-full rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white py-2.5 text-sm font-semibold flex items-center justify-center gap-2"
+        className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 py-2.5 text-sm font-semibold text-white hover:bg-emerald-600"
       >
         <span className="text-lg leading-none">+</span> Start New Chat
       </button>

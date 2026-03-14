@@ -12,7 +12,7 @@ function ConfirmModal({ open, title, message, dangerText = "Delete", onCancel, o
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-black/50" onClick={onCancel} />
-      <div className="relative w-full max-w-sm rounded-2xl bg-white shadow-2xl border border-gray-100 p-5">
+      <div className="relative w-full max-w-sm rounded-2xl border border-gray-100 bg-white p-5 shadow-2xl">
         <div className="text-base font-semibold text-gray-900">{title}</div>
         <div className="mt-1 text-sm text-gray-600">{message}</div>
 
@@ -37,59 +37,13 @@ function ConfirmModal({ open, title, message, dangerText = "Delete", onCancel, o
   );
 }
 
-function ActionMenu({ open, onClose, onDelete }) {
-  if (!open) return null;
-
-  return (
-    <>
-      <div className="fixed inset-0 z-[115]" onClick={onClose} />
-
-      <div className="absolute right-0 top-full mt-2 z-[116]">
-        <div className="flex justify-end pr-3">
-          <div className="h-3 w-3 bg-white border-l border-t border-gray-100 rotate-45 translate-y-[6px]" />
-        </div>
-
-        <div className="w-56 rounded-2xl bg-white shadow-xl border border-gray-100 overflow-hidden origin-top-right animate-[menuIn_120ms_ease-out]">
-          <div className="px-4 py-3 border-b border-gray-100">
-            <div className="text-xs font-semibold text-gray-900">Chat options</div>
-            <div className="text-[11px] text-gray-500 mt-0.5">Manage this conversation</div>
-          </div>
-
-          <button
-            type="button"
-            onClick={onDelete}
-            className="w-full text-left px-4 py-3 text-sm font-semibold text-red-600 hover:bg-red-50"
-          >
-            Delete chat
-          </button>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-full text-left px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-
-      <style>{`
-        @keyframes menuIn {
-          from { opacity: 0; transform: translateY(-6px) scale(0.98); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-      `}</style>
-    </>
-  );
-}
-
 function LoadingOverlay({ show }) {
   if (!show) return null;
 
   return (
     <div className="absolute inset-0 z-[5] flex items-center justify-center">
       <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px]" />
-      <div className="relative z-[6] rounded-2xl bg-white border border-gray-100 shadow-md px-4 py-2 text-xs font-semibold text-gray-700">
+      <div className="relative z-[6] rounded-2xl border border-gray-100 bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-md">
         Start a new chat…
       </div>
     </div>
@@ -105,14 +59,14 @@ function Avatar({ name, image, size = "h-9 w-9", rounded = "rounded-full" }) {
       <img
         src={src}
         alt={name || "Tourist"}
-        className={`${size} ${rounded} object-cover border border-emerald-200 bg-white shrink-0`}
+        className={`${size} ${rounded} shrink-0 border border-emerald-200 bg-white object-cover`}
       />
     );
   }
 
   return (
     <div
-      className={`${size} ${rounded} bg-emerald-200 flex items-center justify-center font-semibold text-emerald-900 border border-emerald-200 shrink-0`}
+      className={`${size} ${rounded} flex shrink-0 items-center justify-center border border-emerald-200 bg-emerald-200 font-semibold text-emerald-900`}
     >
       {initial}
     </div>
@@ -133,27 +87,14 @@ export default function AgencyChatWindow({
   onDeleteConversation,
 }) {
   const [text, setText] = useState("");
-
   const [openMenuId, setOpenMenuId] = useState(null);
   const [confirmUnsend, setConfirmUnsend] = useState({ open: false, messageId: null });
-
-  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
   const [confirmDeleteChat, setConfirmDeleteChat] = useState(false);
 
   const listRef = useRef(null);
-
   const typingTimerRef = useRef(null);
   const typingActiveRef = useRef(false);
-
   const msgMenuCloseTimerRef = useRef(null);
-  const scheduleCloseMsgMenu = (delayMs = 300) => {
-    if (msgMenuCloseTimerRef.current) clearTimeout(msgMenuCloseTimerRef.current);
-    msgMenuCloseTimerRef.current = setTimeout(() => setOpenMenuId(null), delayMs);
-  };
-  const cancelCloseMsgMenu = () => {
-    if (msgMenuCloseTimerRef.current) clearTimeout(msgMenuCloseTimerRef.current);
-    msgMenuCloseTimerRef.current = null;
-  };
 
   const prevCountRef = useRef(0);
   const prevFirstIdRef = useRef(null);
@@ -171,6 +112,16 @@ export default function AgencyChatWindow({
   const [showOverlay, setShowOverlay] = useState(false);
   const overlayTimerRef = useRef(null);
 
+  const scheduleCloseMsgMenu = (delayMs = 300) => {
+    if (msgMenuCloseTimerRef.current) clearTimeout(msgMenuCloseTimerRef.current);
+    msgMenuCloseTimerRef.current = setTimeout(() => setOpenMenuId(null), delayMs);
+  };
+
+  const cancelCloseMsgMenu = () => {
+    if (msgMenuCloseTimerRef.current) clearTimeout(msgMenuCloseTimerRef.current);
+    msgMenuCloseTimerRef.current = null;
+  };
+
   useEffect(() => {
     if (overlayTimerRef.current) clearTimeout(overlayTimerRef.current);
 
@@ -185,20 +136,19 @@ export default function AgencyChatWindow({
   useEffect(() => {
     const onDoc = (e) => {
       if (!e.target.closest?.("[data-msgmenu]")) setOpenMenuId(null);
-      if (!e.target.closest?.("[data-headmenu]")) setHeaderMenuOpen(false);
     };
 
     const onKey = (e) => {
       if (e.key === "Escape") {
         setOpenMenuId(null);
         setConfirmUnsend({ open: false, messageId: null });
-        setHeaderMenuOpen(false);
         setConfirmDeleteChat(false);
       }
     };
 
     document.addEventListener("mousedown", onDoc);
     window.addEventListener("keydown", onKey);
+
     return () => {
       document.removeEventListener("mousedown", onDoc);
       window.removeEventListener("keydown", onKey);
@@ -250,7 +200,6 @@ export default function AgencyChatWindow({
     typingActiveRef.current = false;
     setOpenMenuId(null);
     setConfirmUnsend({ open: false, messageId: null });
-    setHeaderMenuOpen(false);
     setConfirmDeleteChat(false);
 
     cancelCloseMsgMenu();
@@ -261,7 +210,6 @@ export default function AgencyChatWindow({
       if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
       cancelCloseMsgMenu();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [convoId]);
 
   const emitTyping = () => {
@@ -293,8 +241,8 @@ export default function AgencyChatWindow({
 
   if (!selected) {
     return (
-      <section className="flex-1 bg-white rounded-2xl border border-gray-100 h-[570px] flex items-center justify-center">
-        <div className="text-center max-w-md px-6">
+      <section className="flex h-full min-h-0 flex-1 items-center justify-center rounded-2xl border border-gray-100 bg-white">
+        <div className="max-w-md px-6 text-center">
           <div className="text-lg font-semibold text-gray-900">Select a chat</div>
           <div className="mt-1 text-sm text-gray-500">
             Choose a tourist from the left to view messages.
@@ -307,45 +255,23 @@ export default function AgencyChatWindow({
   const showEmpty = !loading && (messages?.length || 0) === 0;
 
   return (
-    <section className="flex-1 min-h-0 bg-white rounded-2xl border border-gray-100 h-[570px] flex flex-col overflow-hidden">
-      <div className="px-4 md:px-5 py-3 border-b border-gray-100 bg-emerald-50 flex items-center justify-between">
-        <div className="flex items-center gap-3 min-w-0">
+    <section className="flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-gray-100 bg-white">
+      <div className="flex items-center justify-between border-b border-gray-100 bg-emerald-50 px-4 py-3 md:px-5">
+        <div className="flex min-w-0 items-center gap-3">
           <Avatar name={title} image={profileImage} size="h-10 w-10" />
           <div className="min-w-0">
-            <div className="font-semibold text-gray-900 text-sm md:text-base truncate">{title}</div>
-            <div className="text-[11px] text-gray-500 truncate">{subtitle}</div>
+            <div className="truncate text-sm font-semibold text-gray-900 md:text-base">{title}</div>
+            <div className="truncate text-[11px] text-gray-500">{subtitle}</div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="text-[11px] text-emerald-900/70 hidden md:block">
-            {new Date().toLocaleDateString("en-GB", {
-              weekday: "short",
-              day: "2-digit",
-              month: "short",
-              year: "numeric",
-            })}
-          </div>
-
-          {/* <div className="relative" data-headmenu>
-            <button
-              type="button"
-              onClick={() => setHeaderMenuOpen((v) => !v)}
-              className="h-9 w-9 rounded-full border border-emerald-200 bg-white text-emerald-900 hover:bg-emerald-50 flex items-center justify-center"
-              title="Menu"
-            >
-              ⋯
-            </button>
-
-            <ActionMenu
-              open={headerMenuOpen}
-              onClose={() => setHeaderMenuOpen(false)}
-              onDelete={() => {
-                setHeaderMenuOpen(false);
-                setConfirmDeleteChat(true);
-              }}
-            />
-          </div> */}
+        <div className="hidden text-[11px] text-emerald-900/70 md:block">
+          {new Date().toLocaleDateString("en-GB", {
+            weekday: "short",
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          })}
         </div>
       </div>
 
@@ -354,14 +280,14 @@ export default function AgencyChatWindow({
 
         <div
           ref={listRef}
-          className="h-full min-h-0 overflow-y-auto overscroll-contain scroll-smooth px-4 md:px-5 py-4 space-y-3"
+          className="h-full min-h-0 overflow-y-auto overscroll-contain scroll-smooth space-y-3 px-4 py-4 md:px-5"
         >
           {hasMore && !loading && (
             <div className="flex justify-center">
               <button
                 onClick={onLoadMore}
                 type="button"
-                className="px-4 py-2 rounded-full border border-gray-100 text-xs text-gray-700 hover:bg-gray-50"
+                className="rounded-full border border-gray-100 px-4 py-2 text-xs text-gray-700 hover:bg-gray-50"
               >
                 Load older messages
               </button>
@@ -377,14 +303,14 @@ export default function AgencyChatWindow({
 
               return (
                 <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-                  <div className={`flex items-end gap-2 max-w-[85%] ${mine ? "flex-row-reverse" : ""}`}>
+                  <div className={`flex max-w-[85%] items-end gap-2 ${mine ? "flex-row-reverse" : ""}`}>
                     {!mine && <Avatar name={title} image={profileImage} size="h-8 w-8" />}
 
-                    <div className="relative group max-w-[80%]">
+                    <div className="group relative max-w-[80%]">
                       <div
                         className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                           isDeleted
-                            ? "bg-gray-50 text-gray-500 italic border border-gray-100"
+                            ? "border border-gray-100 bg-gray-50 italic text-gray-500"
                             : mine
                             ? "bg-emerald-700 text-white"
                             : "bg-emerald-100 text-emerald-900"
@@ -414,7 +340,7 @@ export default function AgencyChatWindow({
 
                       {mine && !isDeleted && !String(m.id).startsWith("tmp-") && (
                         <div
-                          className="absolute -left-10 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition"
+                          className="absolute -left-10 top-1/2 -translate-y-1/2 opacity-0 transition group-hover:opacity-100"
                           data-msgmenu
                           onMouseEnter={cancelCloseMsgMenu}
                           onMouseLeave={() => scheduleCloseMsgMenu(320)}
@@ -425,7 +351,7 @@ export default function AgencyChatWindow({
                               cancelCloseMsgMenu();
                               setOpenMenuId((prev) => (prev === m.id ? null : m.id));
                             }}
-                            className="h-8 w-8 rounded-full border border-gray-100 bg-white text-gray-700 hover:bg-gray-50 flex items-center justify-center shadow-sm"
+                            className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-100 bg-white text-gray-700 shadow-sm hover:bg-gray-50"
                             title="More"
                           >
                             ⋯
@@ -433,7 +359,7 @@ export default function AgencyChatWindow({
 
                           {openMenuId === m.id && (
                             <div
-                              className="absolute bottom-full mb-2 right-0 w-36 rounded-xl border border-gray-100 bg-white shadow-lg overflow-hidden"
+                              className="absolute bottom-full right-0 mb-2 w-36 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-lg"
                               onMouseEnter={cancelCloseMsgMenu}
                               onMouseLeave={() => scheduleCloseMsgMenu(320)}
                             >
@@ -443,7 +369,7 @@ export default function AgencyChatWindow({
                                   setOpenMenuId(null);
                                   setConfirmUnsend({ open: true, messageId: m.id });
                                 }}
-                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
                               >
                                 Unsend
                               </button>
@@ -458,11 +384,11 @@ export default function AgencyChatWindow({
             })
           )}
 
-          {typingText ? <div className="text-xs text-gray-500 italic">{typingText}</div> : null}
+          {typingText ? <div className="text-xs italic text-gray-500">{typingText}</div> : null}
         </div>
       </div>
 
-      <div className="p-3 md:p-4 border-t border-gray-100 bg-white">
+      <div className="border-t border-gray-100 bg-white p-3 md:p-4">
         <div className="flex gap-2">
           <input
             value={text}
@@ -488,7 +414,7 @@ export default function AgencyChatWindow({
           <button
             onClick={handleSend}
             type="button"
-            className="rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white px-5 py-3 text-sm font-semibold"
+            className="rounded-xl bg-emerald-700 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-800"
           >
             Send
           </button>
