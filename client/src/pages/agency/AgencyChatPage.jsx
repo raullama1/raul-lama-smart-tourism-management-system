@@ -62,6 +62,9 @@ function AgencyChatPageContent({ openNotifications }) {
 
   const [showNewChat, setShowNewChat] = useState(false);
   const [typingText, setTypingText] = useState("");
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth < 1280 : false
+  );
 
   const socketRef = useRef(null);
   const activeConvoReqRef = useRef(0);
@@ -77,6 +80,18 @@ function AgencyChatPageContent({ openNotifications }) {
   const pendingEmptyConvosRef = useRef(new Set());
 
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const onResize = () => {
+      setIsMobile(window.innerWidth < 1280);
+    };
+
+    onResize();
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   useEffect(() => {
     selectedIdRef.current = selectedId ? Number(selectedId) : null;
@@ -786,7 +801,6 @@ function AgencyChatPageContent({ openNotifications }) {
     try {
       await refresh?.();
     } catch {}
-
     openNotifications?.();
   };
 
@@ -804,16 +818,20 @@ function AgencyChatPageContent({ openNotifications }) {
     setTilt({ x: 0, y: 0 });
   };
 
+  const showSidebarMobile = isMobile && !selected;
+  const showWindowMobile = isMobile && !!selected;
+  const showDesktopLayout = !isMobile;
+
   return (
     <>
-      <div className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-[28px] border border-white/60 bg-gradient-to-br from-emerald-50 via-white to-teal-100/70 p-2.5 sm:p-3 lg:p-4 shadow-[0_18px_70px_rgba(16,185,129,0.10)]">
+      <div className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-[28px] border border-white/60 bg-gradient-to-br from-emerald-50 via-white to-teal-100/70 p-2.5 shadow-[0_18px_70px_rgba(16,185,129,0.10)] sm:p-3 lg:p-4">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -left-16 top-10 h-36 w-36 rounded-full bg-emerald-300/20 blur-3xl" />
           <div className="absolute right-0 top-0 h-48 w-48 rounded-full bg-cyan-300/20 blur-3xl" />
           <div className="absolute bottom-0 left-1/3 h-40 w-40 rounded-full bg-teal-300/20 blur-3xl" />
         </div>
 
-        <div className="relative flex h-full min-h-0 flex-col rounded-[24px] border border-white/70 bg-white/75 backdrop-blur-2xl shadow-[0_16px_50px_rgba(15,23,42,0.08)]">
+        <div className="relative flex h-full min-h-0 flex-col rounded-[24px] border border-white/70 bg-white/75 shadow-[0_16px_50px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
           <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-[24px]">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.10),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(45,212,191,0.10),transparent_30%)]" />
 
@@ -874,34 +892,70 @@ function AgencyChatPageContent({ openNotifications }) {
                 initial={{ opacity: 0, y: 18 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.45, delay: 0.12 }}
-                className="grid min-h-0 flex-1 grid-cols-1 gap-3 xl:grid-cols-[320px_minmax(0,1fr)]"
+                className="min-h-0 flex-1"
               >
-                <div className="min-h-0 rounded-[20px] border border-white/70 bg-white/80 p-1.5 shadow-[0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl">
-                  <AgencyChatSidebar
-                    search={search}
-                    onSearch={setSearch}
-                    conversations={filteredConvos}
-                    selectedId={selectedId}
-                    onSelect={handleSelect}
-                    onStartNew={() => setShowNewChat(true)}
-                  />
-                </div>
+                {showDesktopLayout ? (
+                  <div className="grid min-h-0 h-full grid-cols-1 gap-3 xl:grid-cols-[320px_minmax(0,1fr)]">
+                    <div className="min-h-0 rounded-[20px] border border-white/70 bg-white/80 p-1.5 shadow-[0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl">
+                      <AgencyChatSidebar
+                        search={search}
+                        onSearch={setSearch}
+                        conversations={filteredConvos}
+                        selectedId={selectedId}
+                        onSelect={handleSelect}
+                        onStartNew={() => setShowNewChat(true)}
+                      />
+                    </div>
 
-                <div className="min-h-0 rounded-[20px] border border-white/70 bg-white/85 p-1.5 shadow-[0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl">
-                  <AgencyChatWindow
-                    selected={selected}
-                    messages={messages}
-                    loading={msgLoading}
-                    hasMore={!!pagination?.hasMore}
-                    onLoadMore={loadOlder}
-                    onSend={handleSend}
-                    typingText={typingText}
-                    onTyping={handleTyping}
-                    onStopTyping={handleStopTyping}
-                    onDeleteMessage={handleDeleteMessage}
-                    onDeleteConversation={handleDeleteConversation}
-                  />
-                </div>
+                    <div className="min-h-0 rounded-[20px] border border-white/70 bg-white/85 p-1.5 shadow-[0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl">
+                      <AgencyChatWindow
+                        selected={selected}
+                        messages={messages}
+                        loading={msgLoading}
+                        hasMore={!!pagination?.hasMore}
+                        onLoadMore={loadOlder}
+                        onSend={handleSend}
+                        typingText={typingText}
+                        onTyping={handleTyping}
+                        onStopTyping={handleStopTyping}
+                        onDeleteMessage={handleDeleteMessage}
+                        onDeleteConversation={handleDeleteConversation}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="min-h-0 h-full">
+                    {showSidebarMobile ? (
+                      <AgencyChatSidebar
+                        search={search}
+                        onSearch={setSearch}
+                        conversations={filteredConvos}
+                        selectedId={selectedId}
+                        onSelect={handleSelect}
+                        onStartNew={() => setShowNewChat(true)}
+                        isMobile
+                      />
+                    ) : null}
+
+                    {showWindowMobile ? (
+                      <AgencyChatWindow
+                        selected={selected}
+                        messages={messages}
+                        loading={msgLoading}
+                        hasMore={!!pagination?.hasMore}
+                        onLoadMore={loadOlder}
+                        onSend={handleSend}
+                        typingText={typingText}
+                        onTyping={handleTyping}
+                        onStopTyping={handleStopTyping}
+                        onDeleteMessage={handleDeleteMessage}
+                        onDeleteConversation={handleDeleteConversation}
+                        isMobile
+                        onBack={() => setSelectedId(null)}
+                      />
+                    ) : null}
+                  </div>
+                )}
               </motion.div>
 
               {loadingConvos && (

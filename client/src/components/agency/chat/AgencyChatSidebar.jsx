@@ -1,5 +1,6 @@
 // client/src/components/agency/chat/AgencyChatSidebar.jsx
 import { useMemo } from "react";
+import { FiMessageSquare, FiSearch } from "react-icons/fi";
 import { toPublicImageUrl } from "../../../utils/publicImageUrl";
 
 function getConvoId(c) {
@@ -54,13 +55,13 @@ function Avatar({ name, image }) {
       <img
         src={src}
         alt={name || "Tourist"}
-        className="h-10 w-10 rounded-full border border-emerald-200 bg-white object-cover"
+        className="h-12 w-12 rounded-2xl border border-emerald-200 bg-white object-cover"
       />
     );
   }
 
   return (
-    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-emerald-200 bg-emerald-200 font-semibold text-emerald-900">
+    <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-200 bg-emerald-200 font-semibold text-emerald-900">
       {initial}
     </div>
   );
@@ -73,6 +74,7 @@ export default function AgencyChatSidebar({
   selectedId,
   onSelect,
   onStartNew,
+  isMobile = false,
 }) {
   const filtered = useMemo(() => {
     const q = String(search || "").trim().toLowerCase();
@@ -86,23 +88,41 @@ export default function AgencyChatSidebar({
   }, [conversations, search]);
 
   return (
-    <aside className="flex h-full min-h-0 w-full flex-col rounded-2xl bg-emerald-900 p-3 text-white md:p-4">
-      <div className="mb-2 text-sm font-semibold opacity-90">Tourists</div>
+    <aside
+      className={`flex min-h-0 w-full flex-col overflow-hidden rounded-2xl bg-emerald-900 p-3 text-white md:p-4 ${
+        isMobile ? "min-h-[68dvh]" : "h-full"
+      }`}
+    >
+      <div className="border-b border-white/10 pb-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-100/75">
+              Tourists
+            </div>
+            <div className="mt-1 text-lg font-black tracking-tight text-white">Your Chats</div>
+          </div>
 
-      <div className="mb-3">
-        <input
-          value={search}
-          onChange={(e) => onSearch?.(e.target.value)}
-          placeholder="Search Tourist"
-          className="w-full rounded-lg bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-emerald-400"
-        />
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/10">
+            <FiMessageSquare size={18} />
+          </div>
+        </div>
+
+        <div className="relative mt-4">
+          <FiSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-emerald-900/60" />
+          <input
+            value={search}
+            onChange={(e) => onSearch?.(e.target.value)}
+            placeholder="Search tourist or message"
+            className="w-full rounded-2xl bg-white px-10 py-3 text-sm text-gray-800 outline-none transition focus:ring-2 focus:ring-emerald-400"
+          />
+        </div>
+
+        <div className="mt-4 text-xs font-semibold text-emerald-100/75">Recent chats</div>
       </div>
 
-      <div className="mb-2 text-xs font-semibold opacity-80">Recent chats</div>
-
-      <div className="flex-1 overflow-y-auto pr-1 space-y-2">
+      <div className="flex-1 space-y-2 overflow-y-auto py-3 pr-1">
         {filtered.length === 0 ? (
-          <div className="rounded-xl bg-emerald-950/40 p-3 text-xs text-emerald-50/80">
+          <div className="rounded-2xl bg-emerald-950/40 p-4 text-sm text-emerald-50/80">
             No chats yet. Start a new chat to message a tourist.
           </div>
         ) : (
@@ -122,7 +142,7 @@ export default function AgencyChatSidebar({
                 key={convoId || `${name}-${when}`}
                 onClick={() => onSelect?.(c)}
                 type="button"
-                className={`w-full rounded-xl border p-3 text-left outline-none transition ${
+                className={`w-full rounded-2xl border p-3 text-left outline-none transition ${
                   active
                     ? "border-emerald-500 bg-emerald-700"
                     : "border-emerald-900 bg-emerald-950/30 hover:bg-emerald-950/50"
@@ -132,7 +152,7 @@ export default function AgencyChatSidebar({
                   <Avatar name={name} image={image} />
 
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-start justify-between gap-2">
                       <div className="line-clamp-1 text-sm font-semibold">{name}</div>
 
                       <div className="flex shrink-0 items-center gap-2">
@@ -149,7 +169,11 @@ export default function AgencyChatSidebar({
                       <div className="mt-1 line-clamp-1 text-[11px] opacity-90">
                         <span className="font-semibold">{direction}</span> {preview}
                       </div>
-                    ) : null}
+                    ) : (
+                      <div className="mt-1 text-[11px] italic text-emerald-100/70">
+                        No messages yet
+                      </div>
+                    )}
                   </div>
                 </div>
               </button>
@@ -158,13 +182,15 @@ export default function AgencyChatSidebar({
         )}
       </div>
 
-      <button
-        onClick={onStartNew}
-        type="button"
-        className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-700 py-2.5 text-sm font-semibold text-white hover:bg-emerald-600"
-      >
-        <span className="text-lg leading-none">+</span> Start New Chat
-      </button>
+      <div className="border-t border-white/10 pt-3">
+        <button
+          onClick={onStartNew}
+          type="button"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-700 py-3 text-sm font-semibold text-white transition hover:bg-emerald-600"
+        >
+          <span className="text-lg leading-none">+</span> Start New Chat
+        </button>
+      </div>
     </aside>
   );
 }

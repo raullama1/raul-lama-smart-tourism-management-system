@@ -1,6 +1,8 @@
 // client/src/pages/tourist/TouristChatPage.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { FiMessageSquare, FiZap } from "react-icons/fi";
+import { motion } from "framer-motion";
 import NavbarTourist from "../../components/tourist/NavbarTourist";
 import FooterTourist from "../../components/tourist/FooterTourist";
 import ChatSidebar from "../../components/tourist/chat/ChatSidebar";
@@ -61,6 +63,7 @@ export default function TouristChatPage() {
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth < 768 : false
   );
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
 
   const socketRef = useRef(null);
   const activeConvoReqRef = useRef(0);
@@ -705,6 +708,20 @@ export default function TouristChatPage() {
     socketRef.current.emit("chat:stopTyping", { conversationId });
   };
 
+  const handleMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const px = (e.clientX - rect.left) / rect.width;
+    const py = (e.clientY - rect.top) / rect.height;
+    setTilt({
+      x: (px - 0.5) * 10,
+      y: (py - 0.5) * -10,
+    });
+  };
+
+  const handleMouseLeave = () => {
+    setTilt({ x: 0, y: 0 });
+  };
+
   const showSidebarMobile = isMobile && !selected;
   const showWindowMobile = isMobile && !!selected;
   const showDesktopLayout = !isMobile;
@@ -715,16 +732,43 @@ export default function TouristChatPage() {
 
       <main className="bg-[#f3faf6] pb-6 pt-4 md:pb-8 md:pt-6">
         <div className="mx-auto max-w-6xl px-4 md:px-6">
-          <div className="mb-4">
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white/80 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-700">
-              Tourist Chat
+          <div className="relative mb-4 overflow-hidden rounded-[28px] border border-white/60 bg-gradient-to-br from-emerald-50 via-white to-teal-100/70 p-3 shadow-[0_18px_70px_rgba(16,185,129,0.10)] sm:p-4">
+            <div className="pointer-events-none absolute inset-0">
+              <div className="absolute -left-10 top-6 h-24 w-24 rounded-full bg-emerald-300/20 blur-3xl" />
+              <div className="absolute right-0 top-0 h-28 w-28 rounded-full bg-cyan-300/20 blur-3xl" />
             </div>
-            <h1 className="mt-3 text-2xl font-black tracking-tight text-slate-900 md:text-3xl">
-              Message Agencies
-            </h1>
-            <p className="mt-1 text-sm font-medium text-slate-500">
-              Chat with travel agencies and manage your conversations easily.
-            </p>
+
+            <div className="relative flex items-center justify-between gap-4 rounded-[24px] border border-white/70 bg-white/75 px-4 py-3 shadow-[0_16px_50px_rgba(15,23,42,0.08)] backdrop-blur-2xl sm:px-5">
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+                className="flex items-center gap-3"
+              >
+                <motion.div
+                  onMouseMove={handleMouseMove}
+                  onMouseLeave={handleMouseLeave}
+                  animate={{ rotateX: tilt.y, rotateY: tilt.x }}
+                  transition={{ type: "spring", stiffness: 120, damping: 14, mass: 0.7 }}
+                  style={{ transformStyle: "preserve-3d" }}
+                  className="shrink-0"
+                >
+                  <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/20">
+                    <FiMessageSquare className="text-[20px]" />
+                  </div>
+                </motion.div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-lg font-black tracking-tight text-slate-900 sm:text-xl">
+                    Chat
+                  </h1>
+                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-700">
+                    <FiZap className="text-[11px]" />
+                    Live
+                  </span>
+                </div>
+              </motion.div>
+            </div>
           </div>
 
           <div className="min-h-[70dvh]">

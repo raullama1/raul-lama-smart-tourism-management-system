@@ -1,5 +1,6 @@
 // client/src/components/agency/chat/NewAgencyChatModal.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
+import { FiX } from "react-icons/fi";
 import { fetchChatTourists } from "../../../api/chatApi";
 import { useAgencyAuth } from "../../../context/AgencyAuthContext";
 import { toPublicImageUrl } from "../../../utils/publicImageUrl";
@@ -13,13 +14,13 @@ function Avatar({ name, image }) {
       <img
         src={src}
         alt={name || "Tourist"}
-        className="h-11 w-11 rounded-xl object-cover border border-emerald-200 bg-white"
+        className="h-11 w-11 rounded-xl border border-emerald-200 bg-white object-cover"
       />
     );
   }
 
   return (
-    <div className="h-11 w-11 rounded-xl bg-emerald-100 text-emerald-700 border border-emerald-200 flex items-center justify-center font-extrabold">
+    <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-200 bg-emerald-100 font-extrabold text-emerald-700">
       {letter}
     </div>
   );
@@ -98,6 +99,15 @@ export default function NewAgencyChatModal({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
+  useEffect(() => {
+    if (!open || typeof document === "undefined") return;
+
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
   if (!open) return null;
 
   const showEmpty = !loading && (shown?.length || 0) === 0;
@@ -106,78 +116,83 @@ export default function NewAgencyChatModal({
     <div className="fixed inset-0 z-[90]">
       <div className="absolute inset-0 bg-black/45" onClick={onClose} />
 
-      <div className="absolute right-0 top-0 h-full w-full max-w-[520px] bg-white shadow-2xl border-l border-gray-200 flex flex-col">
-        <div className="px-5 py-4 flex items-center justify-between border-b border-gray-200">
+      <div className="absolute inset-x-0 bottom-0 top-auto flex max-h-[88dvh] flex-col rounded-t-[28px] border border-gray-200 bg-white shadow-2xl md:inset-y-0 md:right-0 md:left-auto md:h-full md:max-h-none md:w-full md:max-w-[520px] md:rounded-none md:rounded-l-[28px] md:border-l">
+        <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
           <div className="flex items-center gap-3">
-            <div className="text-lg font-extrabold text-gray-900">Start New Chat</div>
-            {loading && <div className="text-xs text-gray-500">Searching...</div>}
+            <div>
+              <div className="text-lg font-extrabold text-gray-900">Start New Chat</div>
+              {loading ? <div className="text-xs text-gray-500">Searching...</div> : null}
+            </div>
           </div>
 
           <button
             onClick={onClose}
-            className="inline-flex items-center gap-2 rounded-2xl border border-gray-200 px-4 py-2 text-sm font-bold text-gray-800 hover:bg-gray-50"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-gray-200 text-gray-800 transition hover:bg-gray-50"
             type="button"
+            aria-label="Close"
           >
-            ✕ Close
+            <FiX size={18} />
           </button>
         </div>
 
-        <div className="px-5 py-4 border-b border-gray-100">
+        <div className="border-b border-gray-100 px-5 py-4">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search tourists..."
-            className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-200"
+            className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold outline-none transition focus:ring-2 focus:ring-emerald-200"
           />
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+        <div className="flex-1 overflow-y-auto px-5 py-4">
           {showEmpty ? (
             <div className="text-sm text-gray-500">
               No tourists found (or you already have chats with them).
             </div>
           ) : (
-            shown.map((t) => {
-              const id = Number(t.id);
-              const name = t.name || "Tourist";
-              const email = t.email || "";
-              const phone = t.phone || "";
-              const image = t.profile_image || t.tourist_profile_image || "";
+            <div className="space-y-3">
+              {shown.map((t) => {
+                const id = Number(t.id);
+                const name = t.name || "Tourist";
+                const email = t.email || "";
+                const phone = t.phone || "";
+                const image = t.profile_image || t.tourist_profile_image || "";
 
-              return (
-                <div
-                  key={id}
-                  className="rounded-2xl border border-gray-200 bg-[#f3faf6] p-3 flex items-center justify-between gap-3"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Avatar name={name} image={image} />
-                    <div className="min-w-0">
-                      <div className="text-sm font-extrabold text-gray-900 truncate">{name}</div>
-                      <div className="text-xs text-gray-600 truncate mt-0.5">
-                        {email}
-                        {phone ? ` • ${phone}` : ""}
+                return (
+                  <div
+                    key={id}
+                    className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-[#f3faf6] p-3 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <Avatar name={name} image={image} />
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-extrabold text-gray-900">{name}</div>
+                        <div className="mt-0.5 truncate text-xs text-gray-600">
+                          {email}
+                          {phone ? ` • ${phone}` : ""}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <button
-                    disabled={startingId === id}
-                    onClick={async () => {
-                      try {
-                        setStartingId(id);
-                        await onPickTourist?.(t);
-                      } finally {
-                        setStartingId(null);
-                      }
-                    }}
-                    className="shrink-0 inline-flex items-center gap-2 rounded-2xl bg-emerald-800 px-4 py-2 text-sm font-black text-white hover:bg-emerald-900 disabled:opacity-70"
-                    type="button"
-                  >
-                    {startingId === id ? "Starting..." : "Start Chat"}
-                  </button>
-                </div>
-              );
-            })
+                    <button
+                      disabled={startingId === id}
+                      onClick={async () => {
+                        try {
+                          setStartingId(id);
+                          await onPickTourist?.(t);
+                        } finally {
+                          setStartingId(null);
+                        }
+                      }}
+                      className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-emerald-800 px-4 py-2.5 text-sm font-black text-white transition hover:bg-emerald-900 disabled:opacity-70"
+                      type="button"
+                    >
+                      {startingId === id ? "Starting..." : "Start Chat"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       </div>
