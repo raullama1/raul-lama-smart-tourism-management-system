@@ -4,12 +4,16 @@ import { db } from "../db.js";
 export async function canUserReview(userId, bookingId) {
   const [rows] = await db.query(
     `
-    SELECT b.*
+    SELECT
+      b.*,
+      at.listing_status AS agency_tour_listing_status
     FROM bookings b
+    INNER JOIN agency_tours at ON at.id = b.agency_tour_id
     WHERE b.id = ?
       AND b.user_id = ?
       AND b.payment_status = 'Paid'
       AND b.booking_status = 'Completed'
+      AND at.listing_status = 'completed'
     `,
     [bookingId, userId]
   );

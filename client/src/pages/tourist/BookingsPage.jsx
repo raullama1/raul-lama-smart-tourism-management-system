@@ -619,9 +619,13 @@ export default function BookingsPage() {
                               const approved = statusText === "Approved";
                               const paid = String(b.payment_status || "") === "Paid";
                               const unpaid = String(b.payment_status || "") === "Unpaid";
+                              const listingCompleted =
+                                String(b.agency_tour_listing_status || "").toLowerCase() ===
+                                "completed";
                               const rowBusy = busyId === b.id;
 
                               const canPay = unpaid && !cancelled && approved;
+                              const canWriteReview = paid && !cancelled && completed && listingCompleted;
 
                               return (
                                 <motion.tr
@@ -694,8 +698,10 @@ export default function BookingsPage() {
                                           whileHover={{ y: -1 }}
                                           whileTap={{ scale: 0.98 }}
                                           onClick={() => {
-                                            if (!completed) {
-                                              openInfoModal("You can write a review only after the tour is completed.");
+                                            if (!canWriteReview) {
+                                              openInfoModal(
+                                                "You can write a review only when your paid booking is completed and the agency tour is still marked as completed."
+                                              );
                                               return;
                                             }
                                             navigate(`/review?booking=${b.id}`);
@@ -703,7 +709,7 @@ export default function BookingsPage() {
                                           className={[
                                             "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200",
                                             "hover:shadow-md active:shadow-sm",
-                                            completed
+                                            canWriteReview
                                               ? "bg-emerald-700 text-white hover:bg-emerald-800"
                                               : "bg-white text-emerald-800 border border-emerald-200 hover:bg-emerald-50",
                                           ].join(" ")}

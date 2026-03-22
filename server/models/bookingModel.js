@@ -110,16 +110,20 @@ export async function getUserBookings(userId, filters = {}) {
       b.total_price,
       b.travelers,
       b.selected_date_label,
+      b.agency_tour_id,
 
       t.id AS tour_id,
       t.title AS tour_title,
       t.image_url AS tour_image_url,
 
       a.id AS agency_id,
-      a.name AS agency_name
+      a.name AS agency_name,
+
+      at.listing_status AS agency_tour_listing_status
     FROM bookings b
     INNER JOIN tours t ON t.id = b.tour_id
     INNER JOIN agencies a ON a.id = b.agency_id
+    INNER JOIN agency_tours at ON at.id = b.agency_tour_id
     ${whereClause}
     ORDER BY b.created_at DESC
     `,

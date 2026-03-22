@@ -167,10 +167,12 @@ export default function WriteReviewPage() {
           return;
         }
 
-        if (
-          String(found.payment_status) !== "Paid" ||
-          String(found.booking_status) !== "Completed"
-        ) {
+        const canReviewNow =
+          String(found.payment_status) === "Paid" &&
+          String(found.booking_status) === "Completed" &&
+          String(found.agency_tour_listing_status || "").toLowerCase() === "completed";
+
+        if (!canReviewNow) {
           navigate("/bookings", { replace: true });
           return;
         }
@@ -536,7 +538,7 @@ export default function WriteReviewPage() {
                       onClick={handleSubmit}
                       disabled={
                         submitting ||
-                        !!ownReviewForThisBooking && !editingReviewId
+                        (!!ownReviewForThisBooking && !editingReviewId)
                       }
                       className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
                     >
@@ -587,9 +589,7 @@ export default function WriteReviewPage() {
                             <div className="font-semibold text-gray-900">
                               {item.user_name || "Traveller"}
                               {item.is_owner ? (
-                                <span className="ml-2 text-xs font-medium text-emerald-700">
-                                  
-                                </span>
+                                <span className="ml-2 text-xs font-medium text-emerald-700"></span>
                               ) : null}
                             </div>
                             <div className="mt-1 text-xs text-gray-500">

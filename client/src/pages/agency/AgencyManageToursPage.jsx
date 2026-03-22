@@ -936,6 +936,17 @@ function AgencyManageToursPageContent({ openNotifications }) {
     setPreviewUrl(url);
   };
 
+  const canChangeCompletedBack = useMemo(() => {
+    if (!editInitial) return true;
+    if (String(editInitial.status || "").toLowerCase() !== "completed") return true;
+    if (!isValidDateString(editInitial.end)) return false;
+
+    const originalEnd = new Date(`${editInitial.end}T00:00:00`);
+    const today = new Date(`${todayYMD}T00:00:00`);
+
+    return originalEnd >= today;
+  }, [editInitial, todayYMD]);
+
   const validateEdit = () => {
     if (!editRow?.agency_tour_id) return "Invalid tour.";
     if (!editTitle.trim()) return "Tour title is required.";
@@ -965,6 +976,17 @@ function AgencyManageToursPageContent({ openNotifications }) {
     const today = new Date(`${todayYMD}T00:00:00`);
     const maxStart = new Date(`${startMaxYMD}T00:00:00`);
     const maxEnd = new Date(`${endMaxYMD}T00:00:00`);
+
+    const initialStatus = String(editInitial?.status || "").toLowerCase();
+    const nextStatus = String(editStatus || "").toLowerCase();
+
+    if (
+      initialStatus === "completed" &&
+      nextStatus !== "completed" &&
+      !canChangeCompletedBack
+    ) {
+      return "Completed tours can only be changed back if the original end date has not passed.";
+    }
 
     if (start < today) return "Start date cannot be in the past.";
     if (start > maxStart) return "Start date must be within 6 months from today.";
@@ -1519,10 +1541,33 @@ function AgencyManageToursPageContent({ openNotifications }) {
                 onChange={(e) => setEditStatus(e.target.value)}
                 className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm shadow-sm outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
               >
-                <option value="active">Active</option>
-                <option value="paused">Paused</option>
+                <option
+                  value="active"
+                  disabled={
+                    String(editInitial?.status || "").toLowerCase() === "completed" &&
+                    !canChangeCompletedBack
+                  }
+                >
+                  Active
+                </option>
+                <option
+                  value="paused"
+                  disabled={
+                    String(editInitial?.status || "").toLowerCase() === "completed" &&
+                    !canChangeCompletedBack
+                  }
+                >
+                  Paused
+                </option>
                 <option value="completed">Completed</option>
               </select>
+
+              {String(editInitial?.status || "").toLowerCase() === "completed" &&
+              !canChangeCompletedBack ? (
+                <div className="mt-2 text-xs font-medium text-red-600">
+                  This completed tour cannot be changed back because its original end date has already passed.
+                </div>
+              ) : null}
 
               <div className="mt-5 rounded-[24px] border border-emerald-100 bg-emerald-50/60 p-4">
                 <div className="text-sm font-semibold text-emerald-900">

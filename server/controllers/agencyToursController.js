@@ -62,6 +62,13 @@ function toYMD(date) {
   return `${d.getFullYear()}-${mm}-${dd}`;
 }
 
+function isDateBeforeToday(ymd) {
+  if (!isValidDateStr(ymd)) return false;
+  const value = new Date(`${String(ymd).slice(0, 10)}T00:00:00`);
+  const today = new Date(`${toYMD(new Date())}T00:00:00`);
+  return value < today;
+}
+
 function buildAvailableDatesCsv(startYmd, endYmd) {
   const start = new Date(`${String(startYmd).slice(0, 10)}T00:00:00`);
   const end = new Date(`${String(endYmd).slice(0, 10)}T00:00:00`);
@@ -394,7 +401,12 @@ export async function updateAgencyTourStatusController(req, res) {
     await conn.beginTransaction();
 
     const [[row]] = await conn.query(
-      `SELECT listing_status FROM agency_tours WHERE id = ? AND agency_id = ? LIMIT 1`,
+      `
+      SELECT listing_status, end_date
+      FROM agency_tours
+      WHERE id = ? AND agency_id = ?
+      LIMIT 1
+      `,
       [agencyTourId, agencyId]
     );
 
@@ -404,10 +416,18 @@ export async function updateAgencyTourStatusController(req, res) {
     }
 
     const current = String(row.listing_status || "").toLowerCase();
+    const currentEndDate = row.end_date ? String(row.end_date).slice(0, 10) : "";
 
-    if (current === "completed" && next !== "completed") {
+    if (
+      current === "completed" &&
+      next !== "completed" &&
+      isDateBeforeToday(currentEndDate)
+    ) {
       await conn.rollback();
-      return res.status(400).json({ message: "Completed tours cannot be toggled." });
+      return res.status(400).json({
+        message:
+          "Completed tours can only be changed back if the end date has not passed.",
+      });
     }
 
     await conn.query(
@@ -547,7 +567,7 @@ export async function updateAgencyTourController(req, res) {
 
     const [[row]] = await conn.query(
       `
-      SELECT tour_id, listing_status
+      SELECT tour_id, listing_status, end_date
       FROM agency_tours
       WHERE id = ? AND agency_id = ?
       LIMIT 1
@@ -561,11 +581,19 @@ export async function updateAgencyTourController(req, res) {
     }
 
     const previousStatus = String(row.listing_status || "").toLowerCase();
+    const currentSavedEndDate = row.end_date ? String(row.end_date).slice(0, 10) : "";
     const tourId = Number(row.tour_id);
 
-    if (previousStatus === "completed" && st !== "completed") {
+    if (
+      previousStatus === "completed" &&
+      st !== "completed" &&
+      isDateBeforeToday(currentSavedEndDate)
+    ) {
       await conn.rollback();
-      return res.status(400).json({ message: "Completed tours cannot be changed back." });
+      return res.status(400).json({
+        message:
+          "Completed tours can only be changed back if the end date has not passed.",
+      });
     }
 
     const [[countRow]] = await conn.query(
