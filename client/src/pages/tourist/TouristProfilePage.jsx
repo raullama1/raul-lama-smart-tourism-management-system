@@ -19,12 +19,12 @@ function Toast({ open, type = "success", message, onClose }) {
       : "border-red-200 bg-red-50 text-red-900";
 
   return (
-    <div className="fixed top-5 right-5 z-[200] pointer-events-none">
+    <div className="pointer-events-none fixed right-5 top-5 z-[200]">
       <div
         className={[
           "pointer-events-auto w-[320px] rounded-2xl border px-4 py-3 shadow-lg",
           "transition-all duration-300 ease-out",
-          open ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2",
+          open ? "translate-y-0 opacity-100" : "-translate-y-2 opacity-0",
           boxClass,
         ].join(" ")}
         role="status"
@@ -33,7 +33,7 @@ function Toast({ open, type = "success", message, onClose }) {
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-2 right-2 inline-flex h-7 w-7 items-center justify-center rounded-lg text-gray-700/70 hover:text-gray-900 hover:bg-black/5"
+          className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-lg text-gray-700/70 hover:bg-black/5 hover:text-gray-900"
           aria-label="Close notification"
         >
           ✕
@@ -51,7 +51,7 @@ function ConfirmModal({ open, title, message, onCancel, onConfirm }) {
   return (
     <div className="fixed inset-0 z-[180] flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-black/50" onClick={onCancel} />
-      <div className="relative w-full max-w-sm rounded-2xl bg-white shadow-2xl border border-gray-100 p-5">
+      <div className="relative w-full max-w-sm rounded-2xl border border-gray-100 bg-white p-5 shadow-2xl">
         <div className="text-base font-semibold text-gray-900">{title}</div>
         <div className="mt-1 text-sm text-gray-600">{message}</div>
 
@@ -187,6 +187,7 @@ export default function TouristProfilePage() {
 
   const load = async () => {
     if (!token) return;
+
     try {
       setLoading(true);
       const res = await fetchMyProfile(token);
@@ -329,208 +330,214 @@ export default function TouristProfilePage() {
   }, [phoneNumber]);
 
   return (
-    <>
-      <NavbarTourist />
+    <div className="relative bg-[#071510]">
+      <div className="relative">
+        <div className="fixed bottom-0 left-0 right-0 z-0">
+          <FooterTourist />
+        </div>
 
-      <main className="bg-[#f3faf6] pt-6 pb-10">
-        <div className="max-w-6xl mx-auto px-4 md:px-6">
-          <div className="bg-white rounded-2xl border border-gray-100 p-6 md:p-7">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div className="text-2xl font-bold text-gray-900">Profile</div>
-                <div className="text-sm text-emerald-700/80 font-semibold">
-                  {user?.created_at ? `Account created on ${createdLabel}` : ""}
-                </div>
-              </div>
+        <div className="relative z-10 bg-[#f3faf6]">
+          <NavbarTourist />
 
-              <div className="flex items-center gap-2">
-                <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-semibold">
-                  {user?.role
-                    ? user.role[0].toUpperCase() + user.role.slice(1)
-                    : "Tourist"}
-                </span>
-              </div>
-            </div>
-
-            <div className="mt-6 flex items-start gap-4">
-              <div className="w-20 h-20 rounded-full bg-emerald-100 border border-gray-100 overflow-hidden flex items-center justify-center">
-                {avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt="Profile"
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      e.currentTarget.style.display = "none";
-                    }}
-                  />
-                ) : (
-                  <span className="text-2xl font-bold text-emerald-900">
-                    {(user?.name || "T")[0]?.toUpperCase()}
-                  </span>
-                )}
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <div className="text-sm font-semibold text-gray-900">
-                  Profile photo
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <input
-                    ref={fileRef}
-                    type="file"
-                    accept="image/png,image/jpeg,image/jpg,image/webp"
-                    className="hidden"
-                    onChange={(e) => onPickFile(e.target.files?.[0])}
-                  />
-
-                  <button
-                    type="button"
-                    disabled={imgLoading}
-                    onClick={() => fileRef.current?.click()}
-                    className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-60"
-                  >
-                    {avatarUrl ? "Change photo" : "Upload photo"}
-                  </button>
-
-                  {avatarUrl && (
-                    <button
-                      type="button"
-                      disabled={imgLoading}
-                      onClick={() => setConfirmRemove(true)}
-                      className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
-                    >
-                      Remove
-                    </button>
-                  )}
-
-                  {imgLoading && (
-                    <div className="text-sm text-gray-500 flex items-center">
-                      Uploading...
+          <main className="min-h-screen px-4 py-6 md:px-6 md:py-8">
+            <div className="mx-auto max-w-6xl">
+              <div className="rounded-2xl border border-gray-100 bg-white p-6 md:p-7 lg:p-8">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-2xl font-bold text-gray-900">Profile</div>
+                    <div className="text-sm font-semibold text-emerald-700/80">
+                      {user?.created_at ? `Account created on ${createdLabel}` : ""}
                     </div>
-                  )}
-                </div>
-
-                <div className="text-xs text-gray-500">
-                  PNG/JPG/WEBP • max 2MB
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6 space-y-4">
-              <div>
-                <div className="text-sm font-semibold text-emerald-900/70">
-                  Name
-                </div>
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  placeholder="Your name"
-                  disabled={loading}
-                  maxLength={40}
-                  autoComplete="name"
-                />
-                {nameHint && (
-                  <div className="mt-1 text-xs font-semibold text-red-600">
-                    {nameHint}
-                  </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <div className="text-sm font-semibold text-emerald-900/70">
-                    Email
-                  </div>
-                  <input
-                    value={user?.email || ""}
-                    readOnly
-                    className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm bg-gray-50 text-gray-700"
-                    placeholder="Email"
-                  />
-                </div>
-
-                <div>
-                  <div className="text-sm font-semibold text-emerald-900/70">
-                    Phone
                   </div>
 
-                  <div className="mt-2 flex gap-2">
-                    <select
-                      value={countryCode}
-                      onChange={(e) => setCountryCode(e.target.value)}
-                      disabled={loading}
-                      className="rounded-xl border border-gray-200 px-3 py-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    >
-                      <option value="+977">+977 (Nepal)</option>
-                      <option value="+91">+91 (India)</option>
-                      <option value="+1">+1 (USA/Canada)</option>
-                      <option value="+44">+44 (UK)</option>
-                      <option value="+61">+61 (Australia)</option>
-                      <option value="+81">+81 (Japan)</option>
-                      <option value="+971">+971 (UAE)</option>
-                      <option value="+49">+49 (Germany)</option>
-                      <option value="+33">+33 (France)</option>
-                    </select>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800">
+                      {user?.role
+                        ? user.role[0].toUpperCase() + user.role.slice(1)
+                        : "Tourist"}
+                    </span>
+                  </div>
+                </div>
 
+                <div className="mt-6 flex items-start gap-4">
+                  <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border border-gray-100 bg-emerald-100">
+                    {avatarUrl ? (
+                      <img
+                        src={avatarUrl}
+                        alt="Profile"
+                        className="h-full w-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <span className="text-2xl font-bold text-emerald-900">
+                        {(user?.name || "T")[0]?.toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <div className="text-sm font-semibold text-gray-900">
+                      Profile photo
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <input
+                        ref={fileRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/jpg,image/webp"
+                        className="hidden"
+                        onChange={(e) => onPickFile(e.target.files?.[0])}
+                      />
+
+                      <button
+                        type="button"
+                        disabled={imgLoading}
+                        onClick={() => fileRef.current?.click()}
+                        className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-60"
+                      >
+                        {avatarUrl ? "Change photo" : "Upload photo"}
+                      </button>
+
+                      {avatarUrl && (
+                        <button
+                          type="button"
+                          disabled={imgLoading}
+                          onClick={() => setConfirmRemove(true)}
+                          className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-60"
+                        >
+                          Remove
+                        </button>
+                      )}
+
+                      {imgLoading && (
+                        <div className="flex items-center text-sm text-gray-500">
+                          Uploading...
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="text-xs text-gray-500">PNG/JPG/WEBP • max 2MB</div>
+                  </div>
+                </div>
+
+                <div className="mt-6 space-y-4">
+                  <div>
+                    <div className="text-sm font-semibold text-emerald-900/70">
+                      Name
+                    </div>
                     <input
-                      value={phoneNumber}
-                      onChange={(e) =>
-                        setPhoneNumber(sanitizePhoneDigits(e.target.value))
-                      }
-                      onPaste={(e) => {
-                        e.preventDefault();
-                        const text = e.clipboardData.getData("text");
-                        setPhoneNumber(sanitizePhoneDigits(text));
-                      }}
-                      className="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      placeholder="10 digit phone number"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      placeholder="Your name"
                       disabled={loading}
-                      inputMode="numeric"
-                      autoComplete="tel"
-                      maxLength={PHONE_MAX_DIGITS}
+                      maxLength={40}
+                      autoComplete="name"
                     />
-                  </div>
-
-                  <div className="mt-1 flex items-center justify-between">
-                    {phoneHint && (
-                      <div className="text-xs font-semibold text-red-600">
-                        {phoneHint}
+                    {nameHint && (
+                      <div className="mt-1 text-xs font-semibold text-red-600">
+                        {nameHint}
                       </div>
                     )}
                   </div>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                      <div className="text-sm font-semibold text-emerald-900/70">
+                        Email
+                      </div>
+                      <input
+                        value={user?.email || ""}
+                        readOnly
+                        className="mt-2 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700"
+                        placeholder="Email"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="text-sm font-semibold text-emerald-900/70">
+                        Phone
+                      </div>
+
+                      <div className="mt-2 flex gap-2">
+                        <select
+                          value={countryCode}
+                          onChange={(e) => setCountryCode(e.target.value)}
+                          disabled={loading}
+                          className="rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        >
+                          <option value="+977">+977 (Nepal)</option>
+                          <option value="+91">+91 (India)</option>
+                          <option value="+1">+1 (USA/Canada)</option>
+                          <option value="+44">+44 (UK)</option>
+                          <option value="+61">+61 (Australia)</option>
+                          <option value="+81">+81 (Japan)</option>
+                          <option value="+971">+971 (UAE)</option>
+                          <option value="+49">+49 (Germany)</option>
+                          <option value="+33">+33 (France)</option>
+                        </select>
+
+                        <input
+                          value={phoneNumber}
+                          onChange={(e) =>
+                            setPhoneNumber(sanitizePhoneDigits(e.target.value))
+                          }
+                          onPaste={(e) => {
+                            e.preventDefault();
+                            const text = e.clipboardData.getData("text");
+                            setPhoneNumber(sanitizePhoneDigits(text));
+                          }}
+                          className="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          placeholder="10 digit phone number"
+                          disabled={loading}
+                          inputMode="numeric"
+                          autoComplete="tel"
+                          maxLength={PHONE_MAX_DIGITS}
+                        />
+                      </div>
+
+                      <div className="mt-1 flex items-center justify-between">
+                        {phoneHint && (
+                          <div className="text-xs font-semibold text-red-600">
+                            {phoneHint}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={onSave}
+                      disabled={saving || loading || !isDirty}
+                      className="rounded-xl bg-emerald-700 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {saving ? "Updating..." : "Update Profile"}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setChangePwdOpen(true)}
+                      className="rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-900 hover:bg-gray-50"
+                    >
+                      Change Password
+                    </button>
+                  </div>
+
+                  <div className="text-xs text-gray-500">
+                    By updating, you agree to our latest terms.
+                  </div>
                 </div>
               </div>
-
-              <div className="flex flex-wrap gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={onSave}
-                  disabled={saving || loading || !isDirty}
-                  className="rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white px-5 py-3 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {saving ? "Updating..." : "Update Profile"}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setChangePwdOpen(true)}
-                  className="rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm font-semibold text-gray-900 hover:bg-gray-50"
-                >
-                  Change Password
-                </button>
-              </div>
-
-              <div className="text-xs text-gray-500">
-                By updating, you agree to our latest terms.
-              </div>
             </div>
-          </div>
+          </main>
         </div>
-      </main>
 
-      <FooterTourist />
+        <div className="pointer-events-none relative z-10 h-[calc(100vh-68px)] md:h-[calc(100vh-80px)]" />
+      </div>
 
       <Toast
         open={toast.open}
@@ -555,6 +562,6 @@ export default function TouristProfilePage() {
         onClose={() => setChangePwdOpen(false)}
         onSuccess={() => showToast("success", "Password updated")}
       />
-    </>
+    </div>
   );
 }

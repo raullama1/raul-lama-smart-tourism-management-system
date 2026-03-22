@@ -29,6 +29,7 @@ export default function PublicBlogsPage() {
 
   const Navbar = isAuthenticated ? NavbarTourist : NavbarPublic;
   const Footer = isAuthenticated ? FooterTourist : FooterPublic;
+  const pageBg = isAuthenticated ? "#eef8f2" : "#edf7f1";
 
   const [filters, setFilters] = useState({
     search: "",
@@ -203,95 +204,110 @@ export default function PublicBlogsPage() {
   }, [blogs, commentsByBlog]);
 
   return (
-    <>
-      <Navbar />
-
-      <main className="min-h-screen bg-[#edf7f1] pb-12 pt-6 md:pt-8">
-        <div className="mx-auto max-w-7xl px-4 md:px-6">
-          <div className="flex flex-col gap-5 lg:flex-row lg:gap-6">
-            <aside className="lg:w-[18rem] lg:flex-shrink-0">
-              <div className="lg:sticky lg:top-28">
-                <BlogSidebarFilters
-                  filters={filters}
-                  onChange={handleSidebarChange}
-                  onReset={handleReset}
-                />
-              </div>
-            </aside>
-
-            <section className="min-w-0 flex-1">
-              <div className="mb-4 flex flex-col gap-2 rounded-[1.6rem] border border-white/70 bg-white/75 px-4 py-4 shadow-[0_16px_45px_rgba(15,23,42,0.05)] md:mb-5 md:flex-row md:items-center md:justify-between md:px-5">
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-950 md:text-xl">
-                    Blogs
-                  </h2>
-                  <p className="text-xs text-slate-500 md:text-sm">
-                    {pagination.total || mappedBlogs.length} result
-                    {(pagination.total || mappedBlogs.length) === 1 ? "" : "s"}
-                  </p>
-                </div>
-
-                {loadingComments ? (
-                  <div className="text-xs text-slate-500">Updating comments...</div>
-                ) : null}
-              </div>
-
-              {loading && blogs.length === 0 ? (
-                <div className="rounded-[1.75rem] border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-[0_14px_40px_rgba(15,23,42,0.05)]">
-                  Loading blogs...
-                </div>
-              ) : mappedBlogs.length === 0 ? (
-                <div className="rounded-[1.75rem] border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-[0_14px_40px_rgba(15,23,42,0.05)]">
-                  No blogs found. Try different keywords or type.
-                </div>
-              ) : (
-                <>
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={swapKey}
-                      initial={{ opacity: 0, y: 16 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      transition={{ duration: 0.35 }}
-                      className="space-y-4"
-                    >
-                      {mappedBlogs.map((blog, index) => (
-                        <motion.div
-                          key={blog.id}
-                          initial={{ opacity: 0, y: 22 }}
-                          whileInView={{ opacity: 1, y: 0 }}
-                          viewport={{ once: true, amount: 0.15 }}
-                          transition={{ duration: 0.42, delay: index * 0.04 }}
-                        >
-                          <BlogListItem blog={blog} />
-                        </motion.div>
-                      ))}
-                    </motion.div>
-                  </AnimatePresence>
-
-                  {pagination.hasMore && (
-                    <div className="mt-5 flex justify-center">
-                      <button
-                        onClick={handleLoadMore}
-                        disabled={loading}
-                        className={[
-                          "inline-flex min-h-[46px] items-center justify-center rounded-full border border-slate-200 bg-white px-6 py-2.5 text-sm font-medium text-slate-800 shadow-[0_12px_28px_rgba(15,23,42,0.06)] transition-all hover:-translate-y-0.5 hover:bg-slate-50",
-                          loading ? "cursor-not-allowed opacity-60" : "",
-                        ].join(" ")}
-                        type="button"
-                      >
-                        {loading ? "Loading..." : "Load More"}
-                      </button>
-                    </div>
-                  )}
-                </>
-              )}
-            </section>
-          </div>
+    <div className="relative bg-[#071510]">
+      <div className="relative">
+        <div className="fixed bottom-0 left-0 right-0 z-0">
+          <Footer />
         </div>
-      </main>
 
-      <Footer />
-    </>
+        <div className="relative z-10" style={{ backgroundColor: pageBg }}>
+          <Navbar />
+
+          <main className="min-h-screen pb-12 pt-6 md:pt-8">
+            <div className="mx-auto max-w-7xl px-4 md:px-6">
+              <div className="flex flex-col gap-5 lg:flex-row lg:gap-6">
+                <aside className="lg:w-[18rem] lg:flex-shrink-0">
+                  <div className="lg:sticky lg:top-28">
+                    <BlogSidebarFilters
+                      filters={filters}
+                      onChange={handleSidebarChange}
+                      onReset={handleReset}
+                    />
+                  </div>
+                </aside>
+
+                <section className="min-w-0 flex-1">
+                  <div className="mb-4 flex flex-col gap-2 rounded-[1.6rem] border border-white/70 bg-white/75 px-4 py-4 shadow-[0_16px_45px_rgba(15,23,42,0.05)] md:mb-5 md:flex-row md:items-center md:justify-between md:px-5">
+                    <div>
+                      <h2 className="text-lg font-semibold text-slate-950 md:text-xl">
+                        Blogs
+                      </h2>
+                      <p className="text-xs text-slate-500 md:text-sm">
+                        {pagination.total || mappedBlogs.length} result
+                        {(pagination.total || mappedBlogs.length) === 1
+                          ? ""
+                          : "s"}
+                      </p>
+                    </div>
+
+                    {loadingComments ? (
+                      <div className="text-xs text-slate-500">
+                        Updating comments...
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {loading && blogs.length === 0 ? (
+                    <div className="rounded-[1.75rem] border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-[0_14px_40px_rgba(15,23,42,0.05)]">
+                      Loading blogs...
+                    </div>
+                  ) : mappedBlogs.length === 0 ? (
+                    <div className="rounded-[1.75rem] border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-[0_14px_40px_rgba(15,23,42,0.05)]">
+                      No blogs found. Try different keywords or type.
+                    </div>
+                  ) : (
+                    <>
+                      <AnimatePresence mode="wait">
+                        <motion.div
+                          key={swapKey}
+                          initial={{ opacity: 0, y: 16 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 10 }}
+                          transition={{ duration: 0.35 }}
+                          className="space-y-4"
+                        >
+                          {mappedBlogs.map((blog, index) => (
+                            <motion.div
+                              key={blog.id}
+                              initial={{ opacity: 0, y: 22 }}
+                              whileInView={{ opacity: 1, y: 0 }}
+                              viewport={{ once: true, amount: 0.15 }}
+                              transition={{
+                                duration: 0.42,
+                                delay: index * 0.04,
+                              }}
+                            >
+                              <BlogListItem blog={blog} />
+                            </motion.div>
+                          ))}
+                        </motion.div>
+                      </AnimatePresence>
+
+                      {pagination.hasMore && (
+                        <div className="mt-5 flex justify-center">
+                          <button
+                            onClick={handleLoadMore}
+                            disabled={loading}
+                            className={[
+                              "inline-flex min-h-[46px] items-center justify-center rounded-full border border-slate-200 bg-white px-6 py-2.5 text-sm font-medium text-slate-800 shadow-[0_12px_28px_rgba(15,23,42,0.06)] transition-all hover:-translate-y-0.5 hover:bg-slate-50",
+                              loading ? "cursor-not-allowed opacity-60" : "",
+                            ].join(" ")}
+                            type="button"
+                          >
+                            {loading ? "Loading..." : "Load More"}
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </section>
+              </div>
+            </div>
+          </main>
+        </div>
+
+        <div className="pointer-events-none relative z-10 h-[calc(100vh-68px)] md:h-[calc(100vh-80px)]" />
+      </div>
+    </div>
   );
 }

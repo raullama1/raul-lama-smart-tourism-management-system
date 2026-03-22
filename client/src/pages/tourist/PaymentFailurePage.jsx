@@ -9,49 +9,57 @@ export default function PaymentFailurePage() {
   const { bookingId } = useParams();
 
   return (
-    <>
-      <NavbarTourist />
-
-      <main className="bg-[#e6f4ec] min-h-screen pt-10 pb-10">
-        <div className="max-w-3xl mx-auto px-4 md:px-6">
-          <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
-            <div className="flex items-start gap-3">
-              <div className="h-12 w-12 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center text-red-600">
-                <FaTimesCircle className="text-xl" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-gray-900">
-                  Payment Failed
-                </h1>
-                <p className="text-sm text-gray-600 mt-1">
-                  Payment was cancelled or not completed. No confirmation was made.
-                </p>
-                <p className="text-xs text-gray-500 mt-2">
-                  Booking ID: <span className="font-semibold">#{bookingId}</span>
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-6 flex flex-wrap gap-2 justify-end">
-              <button
-                onClick={() => navigate(`/payment/${bookingId}`)}
-                className="px-4 py-2 rounded-xl bg-emerald-700 text-white text-sm font-semibold hover:bg-emerald-800"
-              >
-                Try Again
-              </button>
-
-              <button
-                onClick={() => navigate("/bookings")}
-                className="px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold hover:bg-gray-50"
-              >
-                Back to Bookings
-              </button>
-            </div>
-          </div>
+    <div className="relative bg-[#071510]">
+      <div className="relative">
+        <div className="fixed bottom-0 left-0 right-0 z-0">
+          <FooterTourist />
         </div>
-      </main>
 
-      <FooterTourist />
-    </>
+        <div className="relative z-10 bg-[#e6f4ec]">
+          <NavbarTourist />
+
+          <main className="flex min-h-[calc(100vh-80px)] items-center justify-center">
+            <div className="mx-auto w-full max-w-3xl px-4 md:px-6">
+              <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-red-100 bg-red-50 text-red-600">
+                    <FaTimesCircle className="text-xl" />
+                  </div>
+                  <div>
+                    <h1 className="text-xl font-bold text-gray-900">
+                      Payment Failed
+                    </h1>
+                    <p className="mt-1 text-sm text-gray-600">
+                      Payment was cancelled or not completed. No confirmation was made.
+                    </p>
+                    <p className="mt-2 text-xs text-gray-500">
+                      Booking ID: <span className="font-semibold">#{bookingId}</span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-6 flex flex-wrap justify-end gap-2">
+                  <button
+                    onClick={() => navigate(`/payment/${bookingId}`)}
+                    className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800"
+                  >
+                    Try Again
+                  </button>
+
+                  <button
+                    onClick={() => navigate("/bookings")}
+                    className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold hover:bg-gray-50"
+                  >
+                    Back to Bookings
+                  </button>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+
+        <div className="pointer-events-none relative z-10 h-[calc(100vh-68px)] md:h-[calc(100vh-80px)]" />
+      </div>
+    </div>
   );
 }

@@ -1,3 +1,4 @@
+// client/src/components/public/NavbarPublic.jsx
 import { NavLink, useNavigate, Link, useLocation } from "react-router-dom";
 import { useRef, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";

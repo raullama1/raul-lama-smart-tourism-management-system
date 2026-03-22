@@ -158,229 +158,237 @@ export default function WishlistPage() {
     "transition-opacity duration-500 ease-[cubic-bezier(.22,1,.36,1)]";
 
   return (
-    <>
-      <NavbarTourist />
+    <div className="relative bg-[#071510]">
+      <div className="relative">
+        <div className="fixed bottom-0 left-0 right-0 z-0">
+          <FooterTourist />
+        </div>
 
-      <main className="bg-[#e6f4ec] min-h-screen pt-6 pb-10">
-        <div className="max-w-6xl mx-auto px-4 md:px-6">
-          <motion.div
-            variants={fadeUp}
-            initial="hidden"
-            animate="show"
-            className="bg-white border border-gray-100 rounded-2xl p-4 md:p-5 shadow-sm"
-          >
-            <h1 className="text-lg md:text-xl font-semibold text-gray-900">
-              Wishlist
-            </h1>
-            <p className="text-xs md:text-sm text-emerald-700 mt-1">
-              Saved experiences across Nepal: mountains, jungles, heritage cities.
-            </p>
-          </motion.div>
+        <div className="relative z-10 bg-[#e6f4ec]">
+          <NavbarTourist />
 
-          <div className="mt-5">
-            {!token ? (
+          <main className="min-h-screen pt-6 pb-10">
+            <div className="max-w-6xl mx-auto px-4 md:px-6">
               <motion.div
                 variants={fadeUp}
                 initial="hidden"
                 animate="show"
-                className="bg-white rounded-2xl border border-gray-100 p-10 text-center"
+                className="bg-white border border-gray-100 rounded-2xl p-4 md:p-5 shadow-sm"
               >
-                <div className="text-gray-900 font-semibold">
-                  Please login to view your wishlist
-                </div>
-                <div className="text-sm text-gray-500 mt-1">
-                  Your wishlist is saved in your account.
-                </div>
-                <motion.button
-                  whileHover={{ y: -2, scale: 1.02 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => navigate("/login")}
-                  className="mt-4 px-5 py-2 rounded-xl bg-emerald-600 text-white text-sm hover:bg-emerald-700 transition-all duration-300 shadow-sm hover:shadow-md"
-                >
-                  Go to Login
-                </motion.button>
+                <h1 className="text-lg md:text-xl font-semibold text-gray-900">
+                  Wishlist
+                </h1>
+                <p className="text-xs md:text-sm text-emerald-700 mt-1">
+                  Saved experiences across Nepal: mountains, jungles, heritage cities.
+                </p>
               </motion.div>
-            ) : (
-              <>
-                <div className={`${transitionClass} ${fadeWrapClass}`}>
-                  {loading && items.length === 0 ? (
-                    <motion.div
-                      variants={fadeUp}
-                      initial="hidden"
-                      animate="show"
-                      className="bg-white rounded-2xl border border-gray-100 p-8 text-center text-sm text-gray-500"
-                    >
-                      Loading wishlist...
-                    </motion.div>
-                  ) : items.length === 0 ? (
-                    <motion.div
-                      variants={fadeUp}
-                      initial="hidden"
-                      animate="show"
-                      className="bg-white rounded-2xl border border-gray-100 p-10 text-center"
-                    >
-                      <div className="text-gray-900 font-semibold">
-                        No wishlist yet
-                      </div>
-                      <div className="text-sm text-gray-500 mt-1">
-                        Add tours from the Tours page and they will appear here.
-                      </div>
-                      <motion.button
-                        whileHover={{ y: -2, scale: 1.02 }}
-                        whileTap={{ scale: 0.97 }}
-                        onClick={() => navigate("/tours")}
-                        className="mt-4 px-5 py-2 rounded-xl bg-emerald-600 text-white text-sm hover:bg-emerald-700 transition-all duration-300 shadow-sm hover:shadow-md"
-                      >
-                        Browse Tours
-                      </motion.button>
-                    </motion.div>
-                  ) : (
-                    <AnimatePresence mode="wait">
-                      <motion.div
-                        key={page}
-                        initial={{ opacity: 0, y: 18 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -18 }}
-                        transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-                        className="grid gap-4 md:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-                      >
-                        {pageItems.map((tour, index) => {
-                          const agencyCount = Number(tour.agency_count || 0);
-                          const hasMultipleAgencies = agencyCount > 1;
 
-                          return (
-                            <motion.article
-                              key={tour.id}
-                              initial={{ opacity: 0, y: 22 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{
-                                duration: 0.35,
-                                delay: index * 0.05,
-                                ease: [0.22, 1, 0.36, 1],
-                              }}
-                              className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
-                            >
-                              <div className="h-44 w-full overflow-hidden">
-                                <img
-                                  src={toPublicImageUrl(tour.image_url) || FALLBACK_TOUR_IMG}
-                                  alt={tour.title}
-                                  className="w-full h-full object-cover transition-transform duration-500 hover:scale-[1.04]"
-                                  onError={(e) => {
-                                    e.currentTarget.src = FALLBACK_TOUR_IMG;
-                                  }}
-                                />
-                              </div>
-
-                              <div className="p-4">
-                                <div className="flex items-start justify-between gap-3">
-                                  <h3 className="text-sm md:text-base font-semibold text-gray-900 line-clamp-2">
-                                    {tour.title}
-                                  </h3>
-                                  <div className="text-sm font-semibold text-gray-900 whitespace-nowrap">
-                                    NPR {Number(tour.starting_price).toLocaleString()}
-                                  </div>
-                                </div>
-
-                                <div className="mt-2 flex items-center gap-2 flex-wrap text-xs">
-                                  <span className="px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100 transition-colors duration-300">
-                                    {agencyCount} {agencyCount === 1 ? "agency" : "agencies"}
-                                  </span>
-
-                                  {hasMultipleAgencies ? (
-                                    <span className="px-2 py-1 rounded-lg bg-amber-100 text-amber-900 border border-amber-200 font-medium transition-colors duration-300">
-                                      Multiple
-                                    </span>
-                                  ) : (
-                                    <span className="px-2 py-1 rounded-lg bg-slate-50 text-slate-700 border border-slate-200 font-medium transition-colors duration-300">
-                                      Single
-                                    </span>
-                                  )}
-                                </div>
-
-                                <div className="mt-4 grid grid-cols-2 gap-2">
-                                  <button
-                                    onClick={() => navigate(`/tours/${tour.id}`)}
-                                    className={`${btnBase} bg-emerald-700 text-white hover:bg-emerald-800`}
-                                  >
-                                    <FaEye /> View Details
-                                  </button>
-
-                                  <button
-                                    onClick={() => handleRemove(tour.id)}
-                                    className={`${btnBase} border border-gray-200 bg-white text-gray-800 hover:bg-gray-50`}
-                                  >
-                                    <FaTrash /> Remove
-                                  </button>
-
-                                  <button
-                                    onClick={() => navigate(`/tours/${tour.id}#agencies`)}
-                                    className={`${btnBase} bg-emerald-50 text-emerald-800 border border-emerald-100 hover:bg-emerald-100`}
-                                  >
-                                    <FaUsers /> Agencies
-                                  </button>
-
-                                  <button
-                                    onClick={() => navigate(`/map?tour=${tour.id}`)}
-                                    className={`${btnBase} bg-emerald-50 text-emerald-800 border border-emerald-100 hover:bg-emerald-100`}
-                                  >
-                                    <FaMapMarkerAlt /> View on Map
-                                  </button>
-                                </div>
-                              </div>
-                            </motion.article>
-                          );
-                        })}
-                      </motion.div>
-                    </AnimatePresence>
-                  )}
-                </div>
-
-                {items.length > PAGE_SIZE && !loading && (
+              <div className="mt-5">
+                {!token ? (
                   <motion.div
                     variants={fadeUp}
                     initial="hidden"
-                    whileInView="show"
-                    viewport={{ once: true, amount: 0.4 }}
-                    className="mt-7 flex items-center justify-center gap-3"
+                    animate="show"
+                    className="bg-white rounded-2xl border border-gray-100 p-10 text-center"
                   >
-                    <button
-                      onClick={() => setSafePage(page - 1)}
-                      disabled={page === 1}
-                      className={`${pagerBtn} ${page === 1 ? pagerBtnDisabled : pagerBtnEnabled}`}
-                      aria-label="Previous page"
+                    <div className="text-gray-900 font-semibold">
+                      Please login to view your wishlist
+                    </div>
+                    <div className="text-sm text-gray-500 mt-1">
+                      Your wishlist is saved in your account.
+                    </div>
+                    <motion.button
+                      whileHover={{ y: -2, scale: 1.02 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => navigate("/login")}
+                      className="mt-4 px-5 py-2 rounded-xl bg-emerald-600 text-white text-sm hover:bg-emerald-700 transition-all duration-300 shadow-sm hover:shadow-md"
                     >
-                      Prev
-                    </button>
-
-                    <motion.div
-                      key={page}
-                      initial={{ scale: 0.96, opacity: 0.7 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ duration: 0.25 }}
-                      className="px-4 py-2.5 rounded-2xl text-sm font-semibold bg-emerald-50 text-emerald-900 border border-emerald-100 shadow-sm"
-                    >
-                      Page {page} / {totalPages}
-                    </motion.div>
-
-                    <button
-                      onClick={() => setSafePage(page + 1)}
-                      disabled={page === totalPages}
-                      className={`${pagerBtn} ${
-                        page === totalPages ? pagerBtnDisabled : pagerBtnEnabled
-                      }`}
-                      aria-label="Next page"
-                    >
-                      Next
-                    </button>
+                      Go to Login
+                    </motion.button>
                   </motion.div>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-      </main>
+                ) : (
+                  <>
+                    <div className={`${transitionClass} ${fadeWrapClass}`}>
+                      {loading && items.length === 0 ? (
+                        <motion.div
+                          variants={fadeUp}
+                          initial="hidden"
+                          animate="show"
+                          className="bg-white rounded-2xl border border-gray-100 p-8 text-center text-sm text-gray-500"
+                        >
+                          Loading wishlist...
+                        </motion.div>
+                      ) : items.length === 0 ? (
+                        <motion.div
+                          variants={fadeUp}
+                          initial="hidden"
+                          animate="show"
+                          className="bg-white rounded-2xl border border-gray-100 p-10 text-center"
+                        >
+                          <div className="text-gray-900 font-semibold">
+                            No wishlist yet
+                          </div>
+                          <div className="text-sm text-gray-500 mt-1">
+                            Add tours from the Tours page and they will appear here.
+                          </div>
+                          <motion.button
+                            whileHover={{ y: -2, scale: 1.02 }}
+                            whileTap={{ scale: 0.97 }}
+                            onClick={() => navigate("/tours")}
+                            className="mt-4 px-5 py-2 rounded-xl bg-emerald-600 text-white text-sm hover:bg-emerald-700 transition-all duration-300 shadow-sm hover:shadow-md"
+                          >
+                            Browse Tours
+                          </motion.button>
+                        </motion.div>
+                      ) : (
+                        <AnimatePresence mode="wait">
+                          <motion.div
+                            key={page}
+                            initial={{ opacity: 0, y: 18 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -18 }}
+                            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+                            className="grid gap-4 md:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+                          >
+                            {pageItems.map((tour, index) => {
+                              const agencyCount = Number(tour.agency_count || 0);
+                              const hasMultipleAgencies = agencyCount > 1;
 
-      <FooterTourist />
-    </>
+                              return (
+                                <motion.article
+                                  key={tour.id}
+                                  initial={{ opacity: 0, y: 22 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  transition={{
+                                    duration: 0.35,
+                                    delay: index * 0.05,
+                                    ease: [0.22, 1, 0.36, 1],
+                                  }}
+                                  className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
+                                >
+                                  <div className="h-44 w-full overflow-hidden">
+                                    <img
+                                      src={toPublicImageUrl(tour.image_url) || FALLBACK_TOUR_IMG}
+                                      alt={tour.title}
+                                      className="w-full h-full object-cover transition-transform duration-500 hover:scale-[1.04]"
+                                      onError={(e) => {
+                                        e.currentTarget.src = FALLBACK_TOUR_IMG;
+                                      }}
+                                    />
+                                  </div>
+
+                                  <div className="p-4">
+                                    <div className="flex items-start justify-between gap-3">
+                                      <h3 className="text-sm md:text-base font-semibold text-gray-900 line-clamp-2">
+                                        {tour.title}
+                                      </h3>
+                                      <div className="text-sm font-semibold text-gray-900 whitespace-nowrap">
+                                        NPR {Number(tour.starting_price).toLocaleString()}
+                                      </div>
+                                    </div>
+
+                                    <div className="mt-2 flex items-center gap-2 flex-wrap text-xs">
+                                      <span className="px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-100 transition-colors duration-300">
+                                        {agencyCount} {agencyCount === 1 ? "agency" : "agencies"}
+                                      </span>
+
+                                      {hasMultipleAgencies ? (
+                                        <span className="px-2 py-1 rounded-lg bg-amber-100 text-amber-900 border border-amber-200 font-medium transition-colors duration-300">
+                                          Multiple
+                                        </span>
+                                      ) : (
+                                        <span className="px-2 py-1 rounded-lg bg-slate-50 text-slate-700 border border-slate-200 font-medium transition-colors duration-300">
+                                          Single
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <div className="mt-4 grid grid-cols-2 gap-2">
+                                      <button
+                                        onClick={() => navigate(`/tours/${tour.id}`)}
+                                        className={`${btnBase} bg-emerald-700 text-white hover:bg-emerald-800`}
+                                      >
+                                        <FaEye /> View Details
+                                      </button>
+
+                                      <button
+                                        onClick={() => handleRemove(tour.id)}
+                                        className={`${btnBase} border border-gray-200 bg-white text-gray-800 hover:bg-gray-50`}
+                                      >
+                                        <FaTrash /> Remove
+                                      </button>
+
+                                      <button
+                                        onClick={() => navigate(`/tours/${tour.id}#agencies`)}
+                                        className={`${btnBase} bg-emerald-50 text-emerald-800 border border-emerald-100 hover:bg-emerald-100`}
+                                      >
+                                        <FaUsers /> Agencies
+                                      </button>
+
+                                      <button
+                                        onClick={() => navigate(`/map?tour=${tour.id}`)}
+                                        className={`${btnBase} bg-emerald-50 text-emerald-800 border border-emerald-100 hover:bg-emerald-100`}
+                                      >
+                                        <FaMapMarkerAlt /> View on Map
+                                      </button>
+                                    </div>
+                                  </div>
+                                </motion.article>
+                              );
+                            })}
+                          </motion.div>
+                        </AnimatePresence>
+                      )}
+                    </div>
+
+                    {items.length > PAGE_SIZE && !loading && (
+                      <motion.div
+                        variants={fadeUp}
+                        initial="hidden"
+                        whileInView="show"
+                        viewport={{ once: true, amount: 0.4 }}
+                        className="mt-7 flex items-center justify-center gap-3"
+                      >
+                        <button
+                          onClick={() => setSafePage(page - 1)}
+                          disabled={page === 1}
+                          className={`${pagerBtn} ${page === 1 ? pagerBtnDisabled : pagerBtnEnabled}`}
+                          aria-label="Previous page"
+                        >
+                          Prev
+                        </button>
+
+                        <motion.div
+                          key={page}
+                          initial={{ scale: 0.96, opacity: 0.7 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ duration: 0.25 }}
+                          className="px-4 py-2.5 rounded-2xl text-sm font-semibold bg-emerald-50 text-emerald-900 border border-emerald-100 shadow-sm"
+                        >
+                          Page {page} / {totalPages}
+                        </motion.div>
+
+                        <button
+                          onClick={() => setSafePage(page + 1)}
+                          disabled={page === totalPages}
+                          className={`${pagerBtn} ${
+                            page === totalPages ? pagerBtnDisabled : pagerBtnEnabled
+                          }`}
+                          aria-label="Next page"
+                        >
+                          Next
+                        </button>
+                      </motion.div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          </main>
+        </div>
+
+        <div className="pointer-events-none relative z-10 h-[calc(100vh-68px)] md:h-[calc(100vh-80px)]" />
+      </div>
+    </div>
   );
 }

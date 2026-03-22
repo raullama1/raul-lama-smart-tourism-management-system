@@ -727,116 +727,124 @@ export default function TouristChatPage() {
   const showDesktopLayout = !isMobile;
 
   return (
-    <>
-      <NavbarTourist />
-
-      <main className="bg-[#f3faf6] pb-6 pt-4 md:pb-8 md:pt-6">
-        <div className="mx-auto max-w-6xl px-4 md:px-6">
-          <div className="relative mb-4 overflow-hidden rounded-[28px] border border-white/60 bg-gradient-to-br from-emerald-50 via-white to-teal-100/70 p-3 shadow-[0_18px_70px_rgba(16,185,129,0.10)] sm:p-4">
-            <div className="pointer-events-none absolute inset-0">
-              <div className="absolute -left-10 top-6 h-24 w-24 rounded-full bg-emerald-300/20 blur-3xl" />
-              <div className="absolute right-0 top-0 h-28 w-28 rounded-full bg-cyan-300/20 blur-3xl" />
-            </div>
-
-            <div className="relative flex items-center justify-between gap-4 rounded-[24px] border border-white/70 bg-white/75 px-4 py-3 shadow-[0_16px_50px_rgba(15,23,42,0.08)] backdrop-blur-2xl sm:px-5">
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4 }}
-                className="flex items-center gap-3"
-              >
-                <motion.div
-                  onMouseMove={handleMouseMove}
-                  onMouseLeave={handleMouseLeave}
-                  animate={{ rotateX: tilt.y, rotateY: tilt.x }}
-                  transition={{ type: "spring", stiffness: 120, damping: 14, mass: 0.7 }}
-                  style={{ transformStyle: "preserve-3d" }}
-                  className="shrink-0"
-                >
-                  <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/20">
-                    <FiMessageSquare className="text-[20px]" />
-                  </div>
-                </motion.div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-lg font-black tracking-tight text-slate-900 sm:text-xl">
-                    Chat
-                  </h1>
-                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-700">
-                    <FiZap className="text-[11px]" />
-                    Live
-                  </span>
-                </div>
-              </motion.div>
-            </div>
-          </div>
-
-          <div className="min-h-[70dvh]">
-            {showDesktopLayout ? (
-              <div className="grid min-h-[72dvh] grid-cols-1 gap-4 md:grid-cols-[340px_minmax(0,1fr)]">
-                <ChatSidebar
-                  search={search}
-                  onSearch={setSearch}
-                  conversations={filteredConvos}
-                  selectedId={selectedId}
-                  onSelect={handleSelect}
-                  onStartNew={() => setShowNewChat(true)}
-                />
-
-                <ChatWindow
-                  selected={selected}
-                  messages={messages}
-                  loading={msgLoading}
-                  hasMore={!!pagination?.hasMore}
-                  onLoadMore={loadOlder}
-                  onSend={handleSend}
-                  typingText={typingText}
-                  onTyping={handleTyping}
-                  onStopTyping={handleStopTyping}
-                  onDeleteMessage={handleDeleteMessage}
-                  onDeleteConversation={handleDeleteConversation}
-                />
-              </div>
-            ) : (
-              <div className="min-h-[72dvh]">
-                {showSidebarMobile ? (
-                  <ChatSidebar
-                    search={search}
-                    onSearch={setSearch}
-                    conversations={filteredConvos}
-                    selectedId={selectedId}
-                    onSelect={handleSelect}
-                    onStartNew={() => setShowNewChat(true)}
-                    isMobile
-                  />
-                ) : null}
-
-                {showWindowMobile ? (
-                  <ChatWindow
-                    selected={selected}
-                    messages={messages}
-                    loading={msgLoading}
-                    hasMore={!!pagination?.hasMore}
-                    onLoadMore={loadOlder}
-                    onSend={handleSend}
-                    typingText={typingText}
-                    onTyping={handleTyping}
-                    onStopTyping={handleStopTyping}
-                    onDeleteMessage={handleDeleteMessage}
-                    onDeleteConversation={handleDeleteConversation}
-                    isMobile
-                    onBack={() => setSelectedId(null)}
-                  />
-                ) : null}
-              </div>
-            )}
-          </div>
-
-          {loadingConvos && <div className="mt-3 text-xs text-gray-500">Loading chats...</div>}
+    <div className="relative bg-[#071510]">
+      <div className="relative">
+        <div className="fixed bottom-0 left-0 right-0 z-0">
+          <FooterTourist />
         </div>
-      </main>
 
-      <FooterTourist />
+        <div className="relative z-10 bg-[#f3faf6]">
+          <NavbarTourist />
+
+          <main className="pb-6 pt-4 md:pb-8 md:pt-6">
+            <div className="mx-auto max-w-6xl px-4 md:px-6">
+              <div className="relative mb-4 overflow-hidden rounded-[28px] border border-white/60 bg-gradient-to-br from-emerald-50 via-white to-teal-100/70 p-3 shadow-[0_18px_70px_rgba(16,185,129,0.10)] sm:p-4">
+                <div className="pointer-events-none absolute inset-0">
+                  <div className="absolute -left-10 top-6 h-24 w-24 rounded-full bg-emerald-300/20 blur-3xl" />
+                  <div className="absolute right-0 top-0 h-28 w-28 rounded-full bg-cyan-300/20 blur-3xl" />
+                </div>
+
+                <div className="relative flex items-center justify-between gap-4 rounded-[24px] border border-white/70 bg-white/75 px-4 py-3 shadow-[0_16px_50px_rgba(15,23,42,0.08)] backdrop-blur-2xl sm:px-5">
+                  <motion.div
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4 }}
+                    className="flex items-center gap-3"
+                  >
+                    <motion.div
+                      onMouseMove={handleMouseMove}
+                      onMouseLeave={handleMouseLeave}
+                      animate={{ rotateX: tilt.y, rotateY: tilt.x }}
+                      transition={{ type: "spring", stiffness: 120, damping: 14, mass: 0.7 }}
+                      style={{ transformStyle: "preserve-3d" }}
+                      className="shrink-0"
+                    >
+                      <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/20">
+                        <FiMessageSquare className="text-[20px]" />
+                      </div>
+                    </motion.div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h1 className="text-lg font-black tracking-tight text-slate-900 sm:text-xl">
+                        Chat
+                      </h1>
+                      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-700">
+                        <FiZap className="text-[11px]" />
+                        Live
+                      </span>
+                    </div>
+                  </motion.div>
+                </div>
+              </div>
+
+              <div className="min-h-[70dvh]">
+                {showDesktopLayout ? (
+                  <div className="grid min-h-[72dvh] grid-cols-1 gap-4 md:grid-cols-[340px_minmax(0,1fr)]">
+                    <ChatSidebar
+                      search={search}
+                      onSearch={setSearch}
+                      conversations={filteredConvos}
+                      selectedId={selectedId}
+                      onSelect={handleSelect}
+                      onStartNew={() => setShowNewChat(true)}
+                    />
+
+                    <ChatWindow
+                      selected={selected}
+                      messages={messages}
+                      loading={msgLoading}
+                      hasMore={!!pagination?.hasMore}
+                      onLoadMore={loadOlder}
+                      onSend={handleSend}
+                      typingText={typingText}
+                      onTyping={handleTyping}
+                      onStopTyping={handleStopTyping}
+                      onDeleteMessage={handleDeleteMessage}
+                      onDeleteConversation={handleDeleteConversation}
+                    />
+                  </div>
+                ) : (
+                  <div className="min-h-[72dvh]">
+                    {showSidebarMobile ? (
+                      <ChatSidebar
+                        search={search}
+                        onSearch={setSearch}
+                        conversations={filteredConvos}
+                        selectedId={selectedId}
+                        onSelect={handleSelect}
+                        onStartNew={() => setShowNewChat(true)}
+                        isMobile
+                      />
+                    ) : null}
+
+                    {showWindowMobile ? (
+                      <ChatWindow
+                        selected={selected}
+                        messages={messages}
+                        loading={msgLoading}
+                        hasMore={!!pagination?.hasMore}
+                        onLoadMore={loadOlder}
+                        onSend={handleSend}
+                        typingText={typingText}
+                        onTyping={handleTyping}
+                        onStopTyping={handleStopTyping}
+                        onDeleteMessage={handleDeleteMessage}
+                        onDeleteConversation={handleDeleteConversation}
+                        isMobile
+                        onBack={() => setSelectedId(null)}
+                      />
+                    ) : null}
+                  </div>
+                )}
+              </div>
+
+              {loadingConvos && <div className="mt-3 text-xs text-gray-500">Loading chats...</div>}
+            </div>
+          </main>
+        </div>
+
+        <div className="pointer-events-none relative z-10 h-[calc(100vh-68px)] md:h-[calc(100vh-80px)]" />
+      </div>
 
       <NewChatModal
         open={showNewChat}
@@ -844,6 +852,6 @@ export default function TouristChatPage() {
         onPickAgency={handlePickAgency}
         excludeAgencyIds={excludeAgencyIds}
       />
-    </>
+    </div>
   );
 }
