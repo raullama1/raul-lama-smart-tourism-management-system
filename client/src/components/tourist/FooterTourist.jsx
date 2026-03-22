@@ -1,9 +1,12 @@
 // client/src/components/tourist/FooterTourist.jsx
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { FaMapMarkerAlt } from "react-icons/fa";
 import logo from "../../assets/logo.png";
 
 export default function FooterTourist() {
+  const navigate = useNavigate();
+
   const quickLinks = [
     { to: "/home", label: "Home" },
     { to: "/tours", label: "Tours" },
@@ -40,28 +43,22 @@ export default function FooterTourist() {
               </div>
 
               <h2 className="mt-4 bg-gradient-to-r from-white via-emerald-100 to-cyan-200 bg-clip-text text-[clamp(1.9rem,7vw,4.2rem)] font-semibold leading-[1.05] tracking-tight text-transparent">
-                Continue exploring Nepal with smarter travel tools
+                Explore Nepal with trusted tours and real experiences
               </h2>
 
               <p className="mx-auto mt-3 max-w-2xl text-[13px] leading-6 text-white/70 xs:text-sm sm:mt-4 sm:text-[15px] sm:leading-7 lg:mx-0 lg:max-w-xl xl:max-w-2xl">
-                Manage wishlist, bookings, blogs, chat and your travel profile
-                in one seamless tourism experience.
+                Discover destinations, read travel stories, compare agencies, manage wishlist, bookings, blogs, chat with agency, manage your profile, and plan memorable journeys across Nepal in one place.
               </p>
 
               <div className="mt-5 flex w-full flex-col items-stretch gap-2.5 xs:gap-3 sm:mt-6 sm:flex-row sm:items-center sm:justify-center lg:justify-start">
-                <NavLink
-                  to="/tours"
-                  className="inline-flex min-h-[46px] w-full items-center justify-center rounded-full bg-emerald-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-400 sm:min-h-[48px] sm:w-auto sm:min-w-[150px] sm:px-6"
+                <button
+                  type="button"
+                  onClick={() => navigate("/map")}
+                  className="inline-flex min-h-[46px] w-full items-center justify-center gap-2 rounded-full bg-emerald-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-400 sm:min-h-[48px] sm:w-auto sm:min-w-[220px] sm:px-6"
                 >
-                  Explore Tours
-                </NavLink>
-
-                <NavLink
-                  to="/bookings"
-                  className="inline-flex min-h-[46px] w-full items-center justify-center rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white/90 backdrop-blur-xl transition hover:bg-white/10 sm:min-h-[48px] sm:w-auto sm:min-w-[150px] sm:px-6"
-                >
-                  My Bookings
-                </NavLink>
+                  <span>Discover on Nepal Map</span>
+                  <FaMapMarkerAlt className="text-base" />
+                </button>
               </div>
             </motion.div>
 
