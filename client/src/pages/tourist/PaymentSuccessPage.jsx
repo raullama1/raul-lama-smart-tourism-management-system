@@ -18,30 +18,30 @@ export default function PaymentSuccessPage() {
         <div className="relative z-10 bg-[#e6f4ec]">
           <NavbarTourist />
 
-          <main className="min-h-screen pt-10 pb-10">
-            <div className="max-w-3xl mx-auto px-4 md:px-6">
-              <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+          <main className="flex min-h-[calc(100vh-80px)] items-center justify-center">
+            <div className="mx-auto w-full max-w-3xl px-4 md:px-6">
+              <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
                 <div className="flex items-start gap-3">
-                  <div className="h-12 w-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-700">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-700">
                     <FaCheckCircle className="text-xl" />
                   </div>
                   <div>
                     <h1 className="text-xl font-bold text-gray-900">
                       Payment Successful
                     </h1>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <p className="mt-1 text-sm text-gray-600">
                       Your payment was received. Booking is now confirmed.
                     </p>
-                    <p className="text-xs text-gray-500 mt-2">
+                    <p className="mt-2 text-xs text-gray-500">
                       Booking ID: <span className="font-semibold">#{bookingId}</span>
                     </p>
                   </div>
                 </div>
 
-                <div className="mt-6 flex flex-wrap gap-2 justify-end">
+                <div className="mt-6 flex flex-wrap justify-end gap-2">
                   <button
                     onClick={() => navigate("/bookings")}
-                    className="px-4 py-2 rounded-xl bg-emerald-700 text-white text-sm font-semibold hover:bg-emerald-800"
+                    className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800"
                   >
                     Go to Bookings
                   </button>

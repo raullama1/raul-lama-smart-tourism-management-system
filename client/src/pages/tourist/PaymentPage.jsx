@@ -138,40 +138,38 @@ export default function PaymentPage() {
   }, [esewa]);
 
   // start payment by requesting eSewa payload from backend
-  const handlePay = async () => {
-    if (!row) return;
+const handlePay = async () => {
+  if (!row) return;
 
-    // show user-friendly message if payment is not allowed
-    if (!canPay) {
-      if (row.payment_status === "Paid") return alert("This booking is already paid.");
-      if (row.booking_status !== "Approved") {
-        return alert("Payment is locked until the agency approves your booking.");
-      }
-      return alert("Payment is not available right now.");
+  if (!canPay) {
+    if (row.payment_status === "Paid") return alert("This booking is already paid.");
+    if (row.booking_status !== "Approved") {
+      return alert("Payment is locked until the agency approves your booking.");
+    }
+    return alert("Payment is not available right now.");
+  }
+
+  if (paying) return;
+
+  try {
+    setPaying(true);
+
+    const res = await initiateEsewaPayment(Number(bookingId));
+    const payload = res?.data;
+
+    if (!payload?.esewaUrl || !payload?.formData) {
+      alert("Failed to start eSewa payment. Please try again.");
+      return;
     }
 
-    if (paying) return;
-
-    try {
-      setPaying(true);
-
-      const res = await initiateEsewaPayment(Number(bookingId));
-      const payload = res?.data;
-
-      // backend must return esewaUrl + formData to proceed
-      if (!payload?.esewaUrl || !payload?.formData) {
-        alert("Failed to start eSewa payment. Please try again.");
-        return;
-      }
-
-      setEsewa(payload);
-    } catch (e) {
-      console.error("Initiate eSewa failed:", e);
-      alert(e?.response?.data?.message || "Failed to start payment.");
-    } finally {
-      setPaying(false);
-    }
-  };
+    setEsewa(payload);
+  } catch (e) {
+    console.error("Initiate eSewa failed:", e);
+    alert(e?.response?.data?.message || "Failed to start payment.");
+  } finally {
+    setPaying(false);
+  }
+};
 
   return (
     <>
