@@ -1,10 +1,17 @@
 // client/src/pages/tourist/BookingsPage.jsx
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+  useLayoutEffect,
+} from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import NavbarTourist from "../../components/tourist/NavbarTourist";
 import FooterTourist from "../../components/tourist/FooterTourist";
 import { useAuth } from "../../context/AuthContext";
-import { fetchMyBookings, payBooking, cancelBooking } from "../../api/bookingApi";
+import { fetchMyBookings, cancelBooking } from "../../api/bookingApi";
 import {
   FaCreditCard,
   FaPen,
@@ -102,6 +109,21 @@ export default function BookingsPage() {
 
   const [refreshNonce, setRefreshNonce] = useState(0);
   const [fadeState, setFadeState] = useState("out");
+
+  const footerWrapRef = useRef(null);
+  const [footerHeight, setFooterHeight] = useState(0);
+
+  useLayoutEffect(() => {
+    const updateFooterHeight = () => {
+      if (!footerWrapRef.current) return;
+      setFooterHeight(footerWrapRef.current.offsetHeight || 0);
+    };
+
+    updateFooterHeight();
+
+    window.addEventListener("resize", updateFooterHeight);
+    return () => window.removeEventListener("resize", updateFooterHeight);
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => setFadeState("in"), 40);
@@ -464,483 +486,512 @@ export default function BookingsPage() {
 
   return (
     <div className="relative bg-[#071510]">
-      <div className="relative">
-        <div className="fixed bottom-0 left-0 right-0 z-0">
-          <FooterTourist />
-        </div>
+      <div ref={footerWrapRef} className="fixed bottom-0 left-0 right-0 z-0">
+        <FooterTourist />
+      </div>
 
-        <div className="relative z-10 bg-[#e6f4ec]">
-          <NavbarTourist />
+      <div className="relative z-10 min-h-screen bg-[#e6f4ec] flex flex-col">
+        <NavbarTourist />
 
-          <motion.main
-            initial="hidden"
-            animate="show"
-            variants={pageIntro}
-            className="pt-6 pb-6"
-          >
-            <div className="max-w-6xl mx-auto px-4 md:px-6">
-              <motion.div
-                variants={sectionReveal}
-                className="bg-white border border-gray-100 rounded-2xl p-4 md:p-5 shadow-sm"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h1 className="text-lg md:text-xl font-semibold text-gray-900">Booking History</h1>
-                    <p className="text-xs md:text-sm text-emerald-700 mt-1">
-                      Your past and current bookings with status and payment details.
-                    </p>
-                  </div>
-
-                  <motion.button
-                    whileHover={{ y: -1 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={handleRefresh}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-gray-200 bg-white text-gray-900 hover:bg-gray-50"
-                    title="Refresh bookings"
-                  >
-                    <motion.span
-                      animate={loading ? { rotate: 360 } : { rotate: 0 }}
-                      transition={loading ? { repeat: Infinity, duration: 0.9, ease: "linear" } : { duration: 0.2 }}
-                    >
-                      <FaRedo />
-                    </motion.span>
-                    Refresh
-                  </motion.button>
+        <motion.main
+          initial="hidden"
+          animate="show"
+          variants={pageIntro}
+          className="flex-1 pt-6 pb-8"
+        >
+          <div className="max-w-6xl mx-auto px-4 md:px-6">
+            <motion.div
+              variants={sectionReveal}
+              className="bg-white border border-gray-100 rounded-2xl p-4 md:p-5 shadow-sm"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h1 className="text-lg md:text-xl font-semibold text-gray-900">
+                    Booking History
+                  </h1>
+                  <p className="text-xs md:text-sm text-emerald-700 mt-1">
+                    Your past and current bookings with status and payment details.
+                  </p>
                 </div>
 
-                <div className="mt-4 flex flex-col md:flex-row gap-2 md:items-center">
-                  <motion.input
-                    whileFocus={{ y: -1 }}
-                    value={draft.q}
-                    onChange={(e) => setDraft((p) => ({ ...p, q: e.target.value }))}
-                    placeholder="Filter: Tour or Agency"
-                    className="w-full md:w-[320px] px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200"
-                  />
-
-                  <motion.select
-                    whileFocus={{ y: -1 }}
-                    value={draft.date}
-                    onChange={(e) => setDraft((p) => ({ ...p, date: e.target.value }))}
-                    className="w-full md:w-[170px] px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm"
+                <motion.button
+                  whileHover={{ y: -1 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleRefresh}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border border-gray-200 bg-white text-gray-900 hover:bg-gray-50"
+                  title="Refresh bookings"
+                >
+                  <motion.span
+                    animate={loading ? { rotate: 360 } : { rotate: 0 }}
+                    transition={
+                      loading
+                        ? { repeat: Infinity, duration: 0.9, ease: "linear" }
+                        : { duration: 0.2 }
+                    }
                   >
-                    <option value="All">Date: All</option>
-                    <option value="Last30">Last 30 days</option>
-                    <option value="Last90">Last 90 days</option>
-                  </motion.select>
+                    <FaRedo />
+                  </motion.span>
+                  Refresh
+                </motion.button>
+              </div>
 
-                  <motion.select
-                    whileFocus={{ y: -1 }}
-                    value={draft.status}
-                    onChange={(e) => setDraft((p) => ({ ...p, status: e.target.value }))}
-                    className="w-full md:w-[200px] px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm"
-                  >
-                    <option value="All">Status: All</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Approved">Approved</option>
-                    <option value="Confirmed">Confirmed</option>
-                    <option value="Completed">Completed</option>
-                    <option value="Cancelled">Cancelled</option>
-                  </motion.select>
+              <div className="mt-4 flex flex-col md:flex-row gap-2 md:items-center">
+                <motion.input
+                  whileFocus={{ y: -1 }}
+                  value={draft.q}
+                  onChange={(e) => setDraft((p) => ({ ...p, q: e.target.value }))}
+                  placeholder="Filter: Tour or Agency"
+                  className="w-full md:w-[320px] px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                />
 
-                  <motion.select
-                    whileFocus={{ y: -1 }}
-                    value={draft.sort}
-                    onChange={(e) => setDraft((p) => ({ ...p, sort: e.target.value }))}
-                    className="w-full md:w-[170px] px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm"
-                  >
-                    <option value="Latest">Latest</option>
-                    <option value="Oldest">Oldest</option>
-                  </motion.select>
+                <motion.select
+                  whileFocus={{ y: -1 }}
+                  value={draft.date}
+                  onChange={(e) => setDraft((p) => ({ ...p, date: e.target.value }))}
+                  className="w-full md:w-[170px] px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm"
+                >
+                  <option value="All">Date: All</option>
+                  <option value="Last30">Last 30 days</option>
+                  <option value="Last90">Last 90 days</option>
+                </motion.select>
 
+                <motion.select
+                  whileFocus={{ y: -1 }}
+                  value={draft.status}
+                  onChange={(e) => setDraft((p) => ({ ...p, status: e.target.value }))}
+                  className="w-full md:w-[200px] px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm"
+                >
+                  <option value="All">Status: All</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Approved">Approved</option>
+                  <option value="Confirmed">Confirmed</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Cancelled">Cancelled</option>
+                </motion.select>
+
+                <motion.select
+                  whileFocus={{ y: -1 }}
+                  value={draft.sort}
+                  onChange={(e) => setDraft((p) => ({ ...p, sort: e.target.value }))}
+                  className="w-full md:w-[170px] px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm"
+                >
+                  <option value="Latest">Latest</option>
+                  <option value="Oldest">Oldest</option>
+                </motion.select>
+
+                <motion.button
+                  whileHover={{ y: -1 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleReset}
+                  className={[
+                    "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200",
+                    "hover:shadow-md active:shadow-sm",
+                    "w-full md:w-auto justify-center border border-gray-200 bg-white text-gray-900 hover:bg-gray-50",
+                  ].join(" ")}
+                >
+                  <FaRedo /> Reset
+                </motion.button>
+              </div>
+            </motion.div>
+
+            <motion.div
+              variants={sectionReveal}
+              className="mt-5 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
+            >
+              {!token ? (
+                <div className="p-10 text-center">
+                  <div className="font-semibold text-gray-900">
+                    Please login to view bookings
+                  </div>
                   <motion.button
                     whileHover={{ y: -1 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={handleReset}
+                    onClick={() => navigate("/login")}
                     className={[
                       "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200",
                       "hover:shadow-md active:shadow-sm",
-                      "w-full md:w-auto justify-center border border-gray-200 bg-white text-gray-900 hover:bg-gray-50",
+                      "mt-4 bg-emerald-700 text-white hover:bg-emerald-800",
                     ].join(" ")}
                   >
-                    <FaRedo /> Reset
+                    Go to Login
                   </motion.button>
                 </div>
-              </motion.div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-[1050px] w-full">
+                    <thead className="bg-emerald-50 text-gray-800">
+                      <tr className="text-left text-xs uppercase tracking-wide">
+                        <th className="px-4 py-3 font-bold">Tour</th>
+                        <th className="px-4 py-3 font-bold">Agency</th>
+                        <th className="px-4 py-3 font-bold whitespace-nowrap">
+                          Booking Date
+                        </th>
+                        <th className="px-4 py-3 font-bold">Status</th>
+                        <th className="px-4 py-3 font-bold">Payment</th>
+                        <th className="px-4 py-3 font-bold text-right">Actions</th>
+                      </tr>
+                    </thead>
 
+                    <tbody className={`divide-y divide-gray-100 ${transitionClass} ${fadeWrapClass}`}>
+                      {loading ? (
+                        Array.from({ length: PAGE_SIZE }).map((_, i) => (
+                          <SkeletonRow key={i} i={i} />
+                        ))
+                      ) : sortedRows.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="p-10 text-center text-sm text-gray-500">
+                            No bookings found.
+                          </td>
+                        </tr>
+                      ) : (
+                        <AnimatePresence mode="popLayout" initial={false}>
+                          {pageRows.map((b, index) => {
+                            const statusText = displayStatus(b);
+                            const cancelled = statusText === "Cancelled";
+                            const completed = statusText === "Completed";
+                            const approved = statusText === "Approved";
+                            const paid = String(b.payment_status || "") === "Paid";
+                            const unpaid = String(b.payment_status || "") === "Unpaid";
+                            const listingCompleted =
+                              String(b.agency_tour_listing_status || "").toLowerCase() ===
+                              "completed";
+                            const rowBusy = busyId === b.id;
+
+                            const canPay = unpaid && !cancelled && approved;
+                            const canWriteReview =
+                              paid && !cancelled && completed && listingCompleted;
+
+                            return (
+                              <motion.tr
+                                key={b.id}
+                                layout
+                                initial={{ opacity: 0, y: 14 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -8 }}
+                                transition={{ duration: 0.22, delay: index * 0.03 }}
+                                className="hover:bg-gray-50/60 transition-colors"
+                              >
+                                <td className="px-4 py-5">
+                                  <div className="flex gap-3 items-center">
+                                    <motion.img
+                                      whileHover={{ scale: 1.03 }}
+                                      src={toPublicImageUrl(b.tour_image_url) || FALLBACK_TOUR_IMG}
+                                      alt={b.tour_title}
+                                      className="h-12 w-16 rounded-xl object-cover border"
+                                      onError={(e) => {
+                                        e.currentTarget.src = FALLBACK_TOUR_IMG;
+                                      }}
+                                    />
+                                    <div className="min-w-0">
+                                      <div className="font-semibold text-gray-900 leading-tight line-clamp-2">
+                                        {b.tour_title}
+                                      </div>
+                                      <div className="text-xs text-gray-500 mt-1.5">
+                                        Ref. #{b.ref_code}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+
+                                <td className="px-4 py-5 font-semibold text-gray-900">
+                                  {b.agency_name}
+                                </td>
+
+                                <td className="px-4 py-5 whitespace-nowrap font-semibold text-gray-900">
+                                  {new Date(b.booking_date).toLocaleDateString()}
+                                </td>
+
+                                <td className="px-4 py-5">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[11px] text-gray-500 font-semibold">
+                                      Current:
+                                    </span>
+                                    <StatusBadge status={statusText} />
+                                  </div>
+                                </td>
+
+                                <td className="px-4 py-5">
+                                  <PaymentChip paid={paid} />
+                                </td>
+
+                                <td className="px-4 py-5">
+                                  <div className="flex gap-2 justify-end flex-nowrap">
+                                    {canPay && (
+                                      <motion.button
+                                        whileHover={{ y: -1 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        disabled={rowBusy}
+                                        onClick={() => handlePayNow(b.id)}
+                                        className={[
+                                          "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200",
+                                          "hover:shadow-md active:shadow-sm",
+                                          rowBusy
+                                            ? "bg-emerald-300 text-white cursor-not-allowed animate-pulse"
+                                            : "bg-emerald-700 text-white hover:bg-emerald-800",
+                                        ].join(" ")}
+                                      >
+                                        <FaCreditCard />
+                                        {rowBusy ? "Processing..." : "Pay Now"}
+                                      </motion.button>
+                                    )}
+
+                                    {paid && !cancelled && (
+                                      <motion.button
+                                        whileHover={{ y: -1 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={() => {
+                                          if (!canWriteReview) {
+                                            openInfoModal(
+                                              "You can write a review only when your paid booking is completed and the agency tour is still marked as completed."
+                                            );
+                                            return;
+                                          }
+                                          navigate(`/review?booking=${b.id}`);
+                                        }}
+                                        className={[
+                                          "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200",
+                                          "hover:shadow-md active:shadow-sm",
+                                          canWriteReview
+                                            ? "bg-emerald-700 text-white hover:bg-emerald-800"
+                                            : "bg-white text-emerald-800 border border-emerald-200 hover:bg-emerald-50",
+                                        ].join(" ")}
+                                      >
+                                        <FaPen /> Write Review
+                                      </motion.button>
+                                    )}
+
+                                    {!paid && !cancelled && (
+                                      <motion.button
+                                        whileHover={{ y: -1 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        disabled={rowBusy}
+                                        onClick={() => openCancelModal(b)}
+                                        className={[
+                                          "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200",
+                                          "hover:shadow-md active:shadow-sm",
+                                          rowBusy
+                                            ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
+                                            : "bg-white text-red-600 border border-red-200 hover:bg-red-50 hover:border-red-300",
+                                        ].join(" ")}
+                                      >
+                                        <FaTimes />
+                                        {rowBusy ? "Cancelling..." : "Cancel"}
+                                      </motion.button>
+                                    )}
+                                  </div>
+                                </td>
+                              </motion.tr>
+                            );
+                          })}
+                        </AnimatePresence>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </motion.div>
+
+            {!loading && token && sortedRows.length > PAGE_SIZE && (
               <motion.div
                 variants={sectionReveal}
-                className="mt-5 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
+                className="mt-7 flex items-center justify-center gap-3"
               >
-                {!token ? (
-                  <div className="p-10 text-center">
-                    <div className="font-semibold text-gray-900">Please login to view bookings</div>
+                <motion.button
+                  whileHover={page === 1 ? {} : { y: -1 }}
+                  whileTap={page === 1 ? {} : { scale: 0.98 }}
+                  onClick={() => setSafePage(page - 1, totalPages)}
+                  disabled={page === 1}
+                  className={`${pagerBtn} ${
+                    page === 1
+                      ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed shadow-none"
+                      : "bg-white text-gray-900 border-gray-200 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-800 hover:-translate-y-0.5"
+                  }`}
+                >
+                  Prev
+                </motion.button>
+
+                <motion.div
+                  whileHover={{ y: -1 }}
+                  className="px-4 py-2.5 rounded-2xl text-sm font-semibold bg-emerald-50 text-emerald-900 border border-emerald-100 shadow-sm"
+                >
+                  Page {page} / {totalPages}
+                </motion.div>
+
+                <motion.button
+                  whileHover={page === totalPages ? {} : { y: -1 }}
+                  whileTap={page === totalPages ? {} : { scale: 0.98 }}
+                  onClick={() => setSafePage(page + 1, totalPages)}
+                  disabled={page === totalPages}
+                  className={`${pagerBtn} ${
+                    page === totalPages
+                      ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed shadow-none"
+                      : "bg-white text-gray-900 border-gray-200 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-800 hover:-translate-y-0.5"
+                  }`}
+                >
+                  Next
+                </motion.button>
+              </motion.div>
+            )}
+          </div>
+
+          <AnimatePresence>
+            {cancelModal.open && (
+              <motion.div
+                variants={modalBackdrop}
+                initial="hidden"
+                animate="show"
+                exit="exit"
+                className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 px-4"
+                onMouseDown={(e) => {
+                  if (e.target === e.currentTarget) closeCancelModal();
+                }}
+              >
+                <motion.div
+                  variants={modalPanel}
+                  initial="hidden"
+                  animate="show"
+                  exit="exit"
+                  className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
+                >
+                  <div className="p-5 border-b border-gray-100 flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <motion.div
+                        initial={{ scale: 0.92 }}
+                        animate={{ scale: 1 }}
+                        className="h-10 w-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center border border-red-100"
+                      >
+                        <FaExclamationTriangle />
+                      </motion.div>
+                      <div>
+                        <div className="text-base font-bold text-gray-900">
+                          Cancel Booking?
+                        </div>
+                        <div className="text-xs text-gray-500 mt-0.5">
+                          This action cannot be undone.
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={closeCancelModal}
+                      className="text-gray-400 hover:text-gray-700 transition"
+                      title="Close"
+                    >
+                      <FaTimesCircle size={20} />
+                    </button>
+                  </div>
+
+                  <div className="p-5 space-y-2">
+                    <div className="text-sm text-gray-800">
+                      <span className="font-semibold">{cancelModal.tourTitle}</span>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      Ref: <span className="font-semibold">#{cancelModal.refCode}</span>
+                    </div>
+                  </div>
+
+                  <div className="p-5 pt-0 flex gap-2 justify-end">
                     <motion.button
                       whileHover={{ y: -1 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => navigate("/login")}
+                      onClick={closeCancelModal}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200 border border-gray-200 bg-white text-gray-900 hover:bg-gray-50 hover:shadow-md active:shadow-sm"
+                    >
+                      Keep Booking
+                    </motion.button>
+
+                    <motion.button
+                      whileHover={busyId === cancelModal.bookingId ? {} : { y: -1 }}
+                      whileTap={busyId === cancelModal.bookingId ? {} : { scale: 0.98 }}
+                      disabled={busyId === cancelModal.bookingId}
+                      onClick={confirmCancel}
                       className={[
                         "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200",
                         "hover:shadow-md active:shadow-sm",
-                        "mt-4 bg-emerald-700 text-white hover:bg-emerald-800",
+                        busyId === cancelModal.bookingId
+                          ? "bg-red-300 text-white cursor-not-allowed animate-pulse"
+                          : "bg-red-600 text-white hover:bg-red-700",
                       ].join(" ")}
                     >
-                      Go to Login
+                      {busyId === cancelModal.bookingId ? "Cancelling..." : "Yes, Cancel"}
                     </motion.button>
                   </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-[1050px] w-full">
-                      <thead className="bg-emerald-50 text-gray-800">
-                        <tr className="text-left text-xs uppercase tracking-wide">
-                          <th className="px-4 py-3 font-bold">Tour</th>
-                          <th className="px-4 py-3 font-bold">Agency</th>
-                          <th className="px-4 py-3 font-bold whitespace-nowrap">Booking Date</th>
-                          <th className="px-4 py-3 font-bold">Status</th>
-                          <th className="px-4 py-3 font-bold">Payment</th>
-                          <th className="px-4 py-3 font-bold text-right">Actions</th>
-                        </tr>
-                      </thead>
-
-                      <tbody className={`divide-y divide-gray-100 ${transitionClass} ${fadeWrapClass}`}>
-                        {loading ? (
-                          Array.from({ length: PAGE_SIZE }).map((_, i) => <SkeletonRow key={i} i={i} />)
-                        ) : sortedRows.length === 0 ? (
-                          <tr>
-                            <td colSpan={6} className="p-10 text-center text-sm text-gray-500">
-                              No bookings found.
-                            </td>
-                          </tr>
-                        ) : (
-                          <AnimatePresence mode="popLayout" initial={false}>
-                            {pageRows.map((b, index) => {
-                              const statusText = displayStatus(b);
-                              const cancelled = statusText === "Cancelled";
-                              const completed = statusText === "Completed";
-                              const approved = statusText === "Approved";
-                              const paid = String(b.payment_status || "") === "Paid";
-                              const unpaid = String(b.payment_status || "") === "Unpaid";
-                              const listingCompleted =
-                                String(b.agency_tour_listing_status || "").toLowerCase() ===
-                                "completed";
-                              const rowBusy = busyId === b.id;
-
-                              const canPay = unpaid && !cancelled && approved;
-                              const canWriteReview = paid && !cancelled && completed && listingCompleted;
-
-                              return (
-                                <motion.tr
-                                  key={b.id}
-                                  layout
-                                  initial={{ opacity: 0, y: 14 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  exit={{ opacity: 0, y: -8 }}
-                                  transition={{ duration: 0.22, delay: index * 0.03 }}
-                                  className="hover:bg-gray-50/60 transition-colors"
-                                >
-                                  <td className="px-4 py-5">
-                                    <div className="flex gap-3 items-center">
-                                      <motion.img
-                                        whileHover={{ scale: 1.03 }}
-                                        src={toPublicImageUrl(b.tour_image_url) || FALLBACK_TOUR_IMG}
-                                        alt={b.tour_title}
-                                        className="h-12 w-16 rounded-xl object-cover border"
-                                        onError={(e) => (e.currentTarget.src = FALLBACK_TOUR_IMG)}
-                                      />
-                                      <div className="min-w-0">
-                                        <div className="font-semibold text-gray-900 leading-tight line-clamp-2">
-                                          {b.tour_title}
-                                        </div>
-                                        <div className="text-xs text-gray-500 mt-1.5">Ref. #{b.ref_code}</div>
-                                      </div>
-                                    </div>
-                                  </td>
-
-                                  <td className="px-4 py-5 font-semibold text-gray-900">{b.agency_name}</td>
-
-                                  <td className="px-4 py-5 whitespace-nowrap font-semibold text-gray-900">
-                                    {new Date(b.booking_date).toLocaleDateString()}
-                                  </td>
-
-                                  <td className="px-4 py-5">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-[11px] text-gray-500 font-semibold">Current:</span>
-                                      <StatusBadge status={statusText} />
-                                    </div>
-                                  </td>
-
-                                  <td className="px-4 py-5">
-                                    <PaymentChip paid={paid} />
-                                  </td>
-
-                                  <td className="px-4 py-5">
-                                    <div className="flex gap-2 justify-end flex-nowrap">
-                                      {canPay && (
-                                        <motion.button
-                                          whileHover={{ y: -1 }}
-                                          whileTap={{ scale: 0.98 }}
-                                          disabled={rowBusy}
-                                          onClick={() => handlePayNow(b.id)}
-                                          className={[
-                                            "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200",
-                                            "hover:shadow-md active:shadow-sm",
-                                            rowBusy
-                                              ? "bg-emerald-300 text-white cursor-not-allowed animate-pulse"
-                                              : "bg-emerald-700 text-white hover:bg-emerald-800",
-                                          ].join(" ")}
-                                        >
-                                          <FaCreditCard />
-                                          {rowBusy ? "Processing..." : "Pay Now"}
-                                        </motion.button>
-                                      )}
-
-                                      {paid && !cancelled && (
-                                        <motion.button
-                                          whileHover={{ y: -1 }}
-                                          whileTap={{ scale: 0.98 }}
-                                          onClick={() => {
-                                            if (!canWriteReview) {
-                                              openInfoModal(
-                                                "You can write a review only when your paid booking is completed and the agency tour is still marked as completed."
-                                              );
-                                              return;
-                                            }
-                                            navigate(`/review?booking=${b.id}`);
-                                          }}
-                                          className={[
-                                            "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200",
-                                            "hover:shadow-md active:shadow-sm",
-                                            canWriteReview
-                                              ? "bg-emerald-700 text-white hover:bg-emerald-800"
-                                              : "bg-white text-emerald-800 border border-emerald-200 hover:bg-emerald-50",
-                                          ].join(" ")}
-                                        >
-                                          <FaPen /> Write Review
-                                        </motion.button>
-                                      )}
-
-                                      {!paid && !cancelled && (
-                                        <motion.button
-                                          whileHover={{ y: -1 }}
-                                          whileTap={{ scale: 0.98 }}
-                                          disabled={rowBusy}
-                                          onClick={() => openCancelModal(b)}
-                                          className={[
-                                            "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200",
-                                            "hover:shadow-md active:shadow-sm",
-                                            rowBusy
-                                              ? "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
-                                              : "bg-white text-red-600 border border-red-200 hover:bg-red-50 hover:border-red-300",
-                                          ].join(" ")}
-                                        >
-                                          <FaTimes />
-                                          {rowBusy ? "Cancelling..." : "Cancel"}
-                                        </motion.button>
-                                      )}
-                                    </div>
-                                  </td>
-                                </motion.tr>
-                              );
-                            })}
-                          </AnimatePresence>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                </motion.div>
               </motion.div>
+            )}
+          </AnimatePresence>
 
-              {!loading && token && sortedRows.length > PAGE_SIZE && (
+          <AnimatePresence>
+            {infoModal.open && (
+              <motion.div
+                variants={modalBackdrop}
+                initial="hidden"
+                animate="show"
+                exit="exit"
+                className="fixed inset-0 z-[85] flex items-center justify-center bg-black/40 px-4"
+                onMouseDown={(e) => {
+                  if (e.target === e.currentTarget) closeInfoModal();
+                }}
+              >
                 <motion.div
-                  variants={sectionReveal}
-                  className="mt-7 flex items-center justify-center gap-3"
-                >
-                  <motion.button
-                    whileHover={page === 1 ? {} : { y: -1 }}
-                    whileTap={page === 1 ? {} : { scale: 0.98 }}
-                    onClick={() => setSafePage(page - 1, totalPages)}
-                    disabled={page === 1}
-                    className={`${pagerBtn} ${
-                      page === 1
-                        ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed shadow-none"
-                        : "bg-white text-gray-900 border-gray-200 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-800 hover:-translate-y-0.5"
-                    }`}
-                  >
-                    Prev
-                  </motion.button>
-
-                  <motion.div
-                    whileHover={{ y: -1 }}
-                    className="px-4 py-2.5 rounded-2xl text-sm font-semibold bg-emerald-50 text-emerald-900 border border-emerald-100 shadow-sm"
-                  >
-                    Page {page} / {totalPages}
-                  </motion.div>
-
-                  <motion.button
-                    whileHover={page === totalPages ? {} : { y: -1 }}
-                    whileTap={page === totalPages ? {} : { scale: 0.98 }}
-                    onClick={() => setSafePage(page + 1, totalPages)}
-                    disabled={page === totalPages}
-                    className={`${pagerBtn} ${
-                      page === totalPages
-                        ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed shadow-none"
-                        : "bg-white text-gray-900 border-gray-200 hover:bg-emerald-50 hover:border-emerald-200 hover:text-emerald-800 hover:-translate-y-0.5"
-                    }`}
-                  >
-                    Next
-                  </motion.button>
-                </motion.div>
-              )}
-            </div>
-
-            <AnimatePresence>
-              {cancelModal.open && (
-                <motion.div
-                  variants={modalBackdrop}
+                  variants={modalPanel}
                   initial="hidden"
                   animate="show"
                   exit="exit"
-                  className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 px-4"
-                  onMouseDown={(e) => {
-                    if (e.target === e.currentTarget) closeCancelModal();
-                  }}
+                  className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
                 >
-                  <motion.div
-                    variants={modalPanel}
-                    initial="hidden"
-                    animate="show"
-                    exit="exit"
-                    className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
-                  >
-                    <div className="p-5 border-b border-gray-100 flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <motion.div
-                          initial={{ scale: 0.92 }}
-                          animate={{ scale: 1 }}
-                          className="h-10 w-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center border border-red-100"
-                        >
-                          <FaExclamationTriangle />
-                        </motion.div>
-                        <div>
-                          <div className="text-base font-bold text-gray-900">Cancel Booking?</div>
-                          <div className="text-xs text-gray-500 mt-0.5">This action cannot be undone.</div>
+                  <div className="p-5 border-b border-gray-100 flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <motion.div
+                        initial={{ scale: 0.92 }}
+                        animate={{ scale: 1 }}
+                        className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-100"
+                      >
+                        <FaInfoCircle />
+                      </motion.div>
+                      <div>
+                        <div className="text-base font-bold text-gray-900">
+                          {infoModal.title}
                         </div>
-                      </div>
-
-                      <button
-                        onClick={closeCancelModal}
-                        className="text-gray-400 hover:text-gray-700 transition"
-                        title="Close"
-                      >
-                        <FaTimesCircle size={20} />
-                      </button>
-                    </div>
-
-                    <div className="p-5 space-y-2">
-                      <div className="text-sm text-gray-800">
-                        <span className="font-semibold">{cancelModal.tourTitle}</span>
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        Ref: <span className="font-semibold">#{cancelModal.refCode}</span>
+                        <div className="text-xs text-gray-500 mt-0.5">Quick info</div>
                       </div>
                     </div>
 
-                    <div className="p-5 pt-0 flex gap-2 justify-end">
-                      <motion.button
-                        whileHover={{ y: -1 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={closeCancelModal}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200 border border-gray-200 bg-white text-gray-900 hover:bg-gray-50 hover:shadow-md active:shadow-sm"
-                      >
-                        Keep Booking
-                      </motion.button>
+                    <button
+                      onClick={closeInfoModal}
+                      className="text-gray-400 hover:text-gray-700 transition"
+                      title="Close"
+                    >
+                      <FaTimesCircle size={20} />
+                    </button>
+                  </div>
 
-                      <motion.button
-                        whileHover={busyId === cancelModal.bookingId ? {} : { y: -1 }}
-                        whileTap={busyId === cancelModal.bookingId ? {} : { scale: 0.98 }}
-                        disabled={busyId === cancelModal.bookingId}
-                        onClick={confirmCancel}
-                        className={[
-                          "inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200",
-                          "hover:shadow-md active:shadow-sm",
-                          busyId === cancelModal.bookingId
-                            ? "bg-red-300 text-white cursor-not-allowed animate-pulse"
-                            : "bg-red-600 text-white hover:bg-red-700",
-                        ].join(" ")}
-                      >
-                        {busyId === cancelModal.bookingId ? "Cancelling..." : "Yes, Cancel"}
-                      </motion.button>
-                    </div>
-                  </motion.div>
+                  <div className="p-5">
+                    <div className="text-sm text-gray-700">{infoModal.message}</div>
+                  </div>
+
+                  <div className="p-5 pt-0 flex justify-end">
+                    <motion.button
+                      whileHover={{ y: -1 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={closeInfoModal}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200 bg-emerald-700 text-white hover:bg-emerald-800 hover:shadow-md active:shadow-sm"
+                    >
+                      Okay
+                    </motion.button>
+                  </div>
                 </motion.div>
-              )}
-            </AnimatePresence>
-
-            <AnimatePresence>
-              {infoModal.open && (
-                <motion.div
-                  variants={modalBackdrop}
-                  initial="hidden"
-                  animate="show"
-                  exit="exit"
-                  className="fixed inset-0 z-[85] flex items-center justify-center bg-black/40 px-4"
-                  onMouseDown={(e) => {
-                    if (e.target === e.currentTarget) closeInfoModal();
-                  }}
-                >
-                  <motion.div
-                    variants={modalPanel}
-                    initial="hidden"
-                    animate="show"
-                    exit="exit"
-                    className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
-                  >
-                    <div className="p-5 border-b border-gray-100 flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <motion.div
-                          initial={{ scale: 0.92 }}
-                          animate={{ scale: 1 }}
-                          className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-100"
-                        >
-                          <FaInfoCircle />
-                        </motion.div>
-                        <div>
-                          <div className="text-base font-bold text-gray-900">{infoModal.title}</div>
-                          <div className="text-xs text-gray-500 mt-0.5">Quick info</div>
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={closeInfoModal}
-                        className="text-gray-400 hover:text-gray-700 transition"
-                        title="Close"
-                      >
-                        <FaTimesCircle size={20} />
-                      </button>
-                    </div>
-
-                    <div className="p-5">
-                      <div className="text-sm text-gray-700">{infoModal.message}</div>
-                    </div>
-
-                    <div className="p-5 pt-0 flex justify-end">
-                      <motion.button
-                        whileHover={{ y: -1 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={closeInfoModal}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200 bg-emerald-700 text-white hover:bg-emerald-800 hover:shadow-md active:shadow-sm"
-                      >
-                        Okay
-                      </motion.button>
-                    </div>
-                  </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.main>
-        </div>
-
-        <div className="pointer-events-none relative z-10 h-[calc(100vh-68px)] md:h-[calc(100vh-80px)]" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.main>
       </div>
+
+      <div
+        aria-hidden="true"
+        className="relative z-10"
+        style={{ height: footerHeight ? `${footerHeight}px` : "380px" }}
+      />
     </div>
   );
 }

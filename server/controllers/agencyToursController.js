@@ -101,6 +101,32 @@ function slugifyTour(title, location, type) {
     .slice(0, 240);
 }
 
+async function ensureUniqueSlug(conn, baseSlug, excludeTourId = null) {
+  let slug = String(baseSlug || "").trim();
+  if (!slug) slug = `tour-${Date.now()}`;
+
+  let candidate = slug;
+  let i = 2;
+
+  while (true) {
+    const sql =
+      excludeTourId && Number.isFinite(Number(excludeTourId))
+        ? `SELECT id FROM tours WHERE slug = ? AND id <> ? LIMIT 1`
+        : `SELECT id FROM tours WHERE slug = ? LIMIT 1`;
+
+    const params =
+      excludeTourId && Number.isFinite(Number(excludeTourId))
+        ? [candidate, Number(excludeTourId)]
+        : [candidate];
+
+    const [[row]] = await conn.query(sql, params);
+    if (!row) return candidate;
+
+    candidate = `${slug}-${i}`;
+    i += 1;
+  }
+}
+
 async function agencyHasActiveOrPausedListing(agencyId, tourId) {
   const [[row]] = await db.query(
     `
@@ -450,7 +476,12 @@ export async function updateAgencyTourStatusController(req, res) {
       await conn.rollback();
     } catch {}
     console.error("updateAgencyTourStatusController error", err);
-    return res.status(500).json({ message: "Failed to update status." });
+    return res.status(500).json({
+      message:
+        err?.code === "ER_TRUNCATED_WRONG_VALUE_FOR_FIELD"
+          ? "Invalid status value for database. Please update your agency_tours enum."
+          : "Failed to update status.",
+    });
   } finally {
     conn.release();
   }
@@ -596,88 +627,96 @@ export async function updateAgencyTourController(req, res) {
       });
     }
 
-    const [[countRow]] = await conn.query(
-      `SELECT COUNT(*) AS c FROM agency_tours WHERE tour_id = ?`,
-      [tourId]
+    const baseSlug = slugifyTour(title, location, type);
+    if (!baseSlug) {
+      await conn.rollback();
+      return res.status(400).json({ message: "Invalid tour details." });
+    }
+
+    const uniqueSlug = await ensureUniqueSlug(conn, baseSlug, tourId);
+
+    await conn.query(
+      `
+      UPDATE tours
+      SET
+        title = ?,
+        slug = ?,
+        long_description = ?,
+        location = ?,
+        type = ?,
+        latitude = ?,
+        longitude = ?,
+        starting_price = ?
+        ${newImage ? ", image_url = ?" : ""}
+      WHERE id = ?
+      `,
+      newImage
+        ? [
+            String(title).trim(),
+            uniqueSlug,
+            String(description).trim(),
+            String(location).trim(),
+            String(type).trim(),
+            la,
+            lo,
+            p,
+            newImage,
+            tourId,
+          ]
+        : [
+            String(title).trim(),
+            uniqueSlug,
+            String(description).trim(),
+            String(location).trim(),
+            String(type).trim(),
+            la,
+            lo,
+            p,
+            tourId,
+          ]
     );
 
-    const isShared = Number(countRow?.c || 0) > 1;
-
-    if (!isShared) {
-      const slug = slugifyTour(title, location, type);
-
-      await conn.query(
-        `
-        UPDATE tours
-        SET title = ?, slug = ?, long_description = ?, location = ?, type = ?, latitude = ?, longitude = ?
-        ${newImage ? ", image_url = ?" : ""}
-        WHERE id = ?
-        `,
-        newImage
-          ? [
-              String(title).trim(),
-              slug,
-              String(description).trim(),
-              String(location).trim(),
-              String(type).trim(),
-              la,
-              lo,
-              newImage,
-              tourId,
-            ]
-          : [
-              String(title).trim(),
-              slug,
-              String(description).trim(),
-              String(location).trim(),
-              String(type).trim(),
-              la,
-              lo,
-              tourId,
-            ]
-      );
-    }
-
-    try {
-      await conn.query(
-        `
-        UPDATE agency_tours
-        SET price = ?, start_date = ?, end_date = ?, available_dates = ?, listing_status = ?, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ? AND agency_id = ?
-        `,
-        [p, start_date, end_date, available_dates, st, agencyTourId, agencyId]
-      );
-    } catch (e) {
-      if (e?.code === "ER_DUP_ENTRY") {
-        await conn.rollback();
-        return res.status(400).json({
-          message: "You already have a listing for these same dates. Change the dates and try again.",
-        });
-      }
-      throw e;
-    }
+    await conn.query(
+      `
+      UPDATE agency_tours
+      SET
+        price = ?,
+        start_date = ?,
+        end_date = ?,
+        available_dates = ?,
+        listing_status = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND agency_id = ?
+      `,
+      [p, start_date, end_date, available_dates, st, agencyTourId, agencyId]
+    );
 
     if (st === "completed") {
       await syncCompletedListingBookings(conn, agencyTourId);
     }
 
     await conn.commit();
+
     return res.json({
-      message: isShared
-        ? "Listing updated. (Master tour details are shared and cannot be changed.)"
-        : "Tour updated.",
+      message: "Tour updated successfully.",
     });
   } catch (err) {
     try {
       await conn.rollback();
     } catch {}
     console.error("updateAgencyTourController error", err);
-    return res.status(500).json({ message: "Failed to update tour." });
+    return res.status(500).json({
+      message:
+        err?.code === "ER_TRUNCATED_WRONG_VALUE_FOR_FIELD"
+          ? "Invalid status value for database."
+          : err?.code === "ER_DUP_ENTRY"
+          ? "A tour with similar details already exists."
+          : "Failed to update tour.",
+    });
   } finally {
     conn.release();
   }
 }
-
 export async function deleteAgencyTourController(req, res) {
   const conn = await db.getConnection();
   try {
@@ -985,7 +1024,7 @@ export async function addExistingTourListingController(req, res) {
     } catch (e) {
       if (e?.code === "ER_DUP_ENTRY") {
         return res.status(400).json({
-          message: "You already created a listing with these same dates for this tour.",
+          message: "You already created a listing for this tour.",
         });
       }
       throw e;

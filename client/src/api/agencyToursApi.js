@@ -31,9 +31,13 @@ export async function deleteAgencyTour(agencyTourId) {
 }
 
 export async function updateAgencyTour(agencyTourId, formData) {
-  const res = await apiClient.put(`/agency/tours/manage/${agencyTourId}`, formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  const res = await apiClient.put(
+    `/agency/tours/manage/${agencyTourId}`,
+    formData,
+    {
+      headers: { "Content-Type": "multipart/form-data" },
+    }
+  );
   return res.data;
 }
 
@@ -43,12 +47,12 @@ export async function fetchExistingToursLibrary(params = {}) {
   const query = sp.toString();
   const url = query ? `/agency/tours/library?${query}` : `/agency/tours/library`;
   const res = await apiClient.get(url);
-  return res.data; // { data: [...], meta: {...} }
+  return res.data;
 }
 
 export async function fetchExistingToursLocations() {
   const res = await apiClient.get("/agency/tours/library/locations");
-  return res.data; // { data: [...] }
+  return res.data;
 }
 
 export async function addExistingTourListing(tourId, payload) {

@@ -27,12 +27,17 @@ const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 const JWT_EXPIRES_IN = "7d";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
-const RESET_PASSWORD_TOKEN_EXP_MINUTES = 5;
+const RESET_PASSWORD_TOKEN_EXP_SECONDS = 60;
+const SIGNUP_CODE_EXP_SECONDS = 60;
 
 function signToken(user) {
   return jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, {
     expiresIn: JWT_EXPIRES_IN,
   });
+}
+
+function normalizeEmail(email) {
+  return String(email || "").trim().toLowerCase();
 }
 
 function validatePasswordStrength(password) {
@@ -59,7 +64,7 @@ function validatePasswordStrength(password) {
 
 export async function sendSignupVerificationCodeController(req, res) {
   try {
-    const { email } = req.body || {};
+    const email = normalizeEmail(req.body?.email);
 
     if (!email) {
       return res
@@ -83,7 +88,9 @@ export async function sendSignupVerificationCodeController(req, res) {
     }
 
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 60 * 1000);
+    const expiresAt = new Date(
+      Date.now() + SIGNUP_CODE_EXP_SECONDS * 1000
+    );
 
     await createEmailVerification(email, code, expiresAt);
 
@@ -107,7 +114,10 @@ export async function sendSignupVerificationCodeController(req, res) {
 
 export async function signupController(req, res) {
   try {
-    const { name, email, password, verificationCode } = req.body || {};
+    const name = String(req.body?.name || "").trim();
+    const email = normalizeEmail(req.body?.email);
+    const password = String(req.body?.password || "");
+    const verificationCode = String(req.body?.verificationCode || "").trim();
 
     if (!name || !email || !password || !verificationCode) {
       return res.status(400).json({
@@ -140,8 +150,9 @@ export async function signupController(req, res) {
 
     const verification = await findValidEmailVerification(
       email,
-      verificationCode,
+      verificationCode
     );
+
     if (!verification) {
       return res
         .status(400)
@@ -183,7 +194,8 @@ export async function signupController(req, res) {
 
 export async function loginController(req, res) {
   try {
-    const { email, password } = req.body || {};
+    const email = normalizeEmail(req.body?.email);
+    const password = String(req.body?.password || "");
 
     if (!email || !password) {
       return res
@@ -232,7 +244,8 @@ export async function loginController(req, res) {
 
 export async function forgotPasswordController(req, res) {
   try {
-    const { email } = req.body || {};
+    const email = normalizeEmail(req.body?.email);
+
     if (!email) {
       return res.status(400).json({ message: "Email is required." });
     }
@@ -246,24 +259,19 @@ export async function forgotPasswordController(req, res) {
     ) {
       return res.json({
         message:
-          "Password reset link sent successfully. It is valid for 5 minutes. Please check your inbox.",
+          "Password reset link sent successfully. It is valid for 60 seconds. Please check your inbox.",
       });
     }
 
     const plainToken = crypto.randomBytes(32).toString("hex");
-    const tokenHash = crypto
-      .createHash("sha256")
-      .update(plainToken)
-      .digest("hex");
-
     const expiresAt = new Date(
-      Date.now() + RESET_PASSWORD_TOKEN_EXP_MINUTES * 60 * 1000,
+      Date.now() + RESET_PASSWORD_TOKEN_EXP_SECONDS * 1000
     );
 
     await db.query(
-      `INSERT INTO password_reset_tokens (user_id, account_type, token_hash, expires_at)
-       VALUES (?, 'user', ?, ?)`,
-      [user.id, tokenHash, expiresAt],
+      `INSERT INTO password_reset_tokens (user_id, token, expires_at)
+       VALUES (?, ?, ?)`,
+      [user.id, plainToken, expiresAt]
     );
 
     const resetLink = `${FRONTEND_URL}/reset-password?token=${plainToken}`;
@@ -276,7 +284,7 @@ export async function forgotPasswordController(req, res) {
 
     return res.json({
       message:
-        "If an account with that email exists, a reset link (valid for 5 minutes and one-time use) has been sent.",
+        "If an account with that email exists, a reset link (valid for 60 seconds and one-time use) has been sent.",
     });
   } catch (err) {
     console.error("forgotPasswordController error", err);
@@ -286,7 +294,8 @@ export async function forgotPasswordController(req, res) {
 
 export async function resetPasswordController(req, res) {
   try {
-    const { token, password } = req.body || {};
+    const token = String(req.body?.token || "").trim();
+    const password = String(req.body?.password || "");
 
     if (!token || !password) {
       return res
@@ -302,15 +311,12 @@ export async function resetPasswordController(req, res) {
       });
     }
 
-    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
-
     const [rows] = await db.query(
-      `SELECT id, user_id, expires_at, used_at
+      `SELECT id, user_id, token, expires_at, used_at
        FROM password_reset_tokens
-       WHERE token_hash = ?
-         AND account_type = 'user'
+       WHERE token = ?
        LIMIT 1`,
-      [tokenHash],
+      [token]
     );
 
     const record = rows[0];
@@ -355,7 +361,7 @@ export async function resetPasswordController(req, res) {
       `UPDATE password_reset_tokens
        SET used_at = NOW()
        WHERE id = ?`,
-      [record.id],
+      [record.id]
     );
 
     return res.json({ message: "Password has been reset successfully." });
@@ -435,7 +441,7 @@ export async function meController(req, res) {
 
     const [rows] = await db.query(
       "SELECT id, name, email, role, COALESCE(is_blocked, 0) AS is_blocked FROM users WHERE id = ? LIMIT 1",
-      [userId],
+      [userId]
     );
 
     const user = rows[0];

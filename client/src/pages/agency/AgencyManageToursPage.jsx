@@ -29,6 +29,33 @@ import {
 } from "../../api/agencyToursApi";
 import { toPublicImageUrl, FALLBACK_TOUR_IMG } from "../../utils/publicImageUrl";
 
+const NEPAL_PLACES = [
+  "Kathmandu, Nepal",
+  "Pokhara, Nepal",
+  "Lalitpur, Nepal",
+  "Bhaktapur, Nepal",
+  "Chitwan, Nepal",
+  "Lumbini, Nepal",
+  "Janakpur, Nepal",
+  "Biratnagar, Nepal",
+  "Birgunj, Nepal",
+  "Butwal, Nepal",
+  "Bhairahawa, Nepal",
+  "Dharan, Nepal",
+  "Itahari, Nepal",
+  "Hetauda, Nepal",
+  "Nepalgunj, Nepal",
+  "Dhangadhi, Nepal",
+  "Bharatpur, Nepal",
+  "Gorkha, Nepal",
+  "Mustang, Nepal",
+  "Solukhumbu, Nepal",
+  "Annapurna Region, Nepal",
+  "Manang, Nepal",
+  "Ilam, Nepal",
+  "Bandipur, Nepal",
+];
+
 function Toast({ open, type = "success", message, onClose }) {
   const boxClass =
     type === "success"
@@ -45,7 +72,7 @@ function Toast({ open, type = "success", message, onClose }) {
             exit={{ opacity: 0, y: -12, scale: 0.98 }}
             transition={{ duration: 0.22 }}
             className={[
-              "pointer-events-auto relative w-[calc(100vw-2rem)] max-w-[360px] overflow-hidden rounded-[24px] border px-4 py-4 shadow-[0_20px_50px_rgba(16,24,40,0.18)] backdrop-blur-xl",
+              "pointer-events-auto relative w-[calc(100vw-2rem)] max-w-[420px] overflow-hidden rounded-[24px] border px-4 py-4 shadow-[0_20px_50px_rgba(16,24,40,0.18)] backdrop-blur-xl",
               boxClass,
             ].join(" ")}
             role="status"
@@ -612,7 +639,7 @@ function AgencyManageToursPageContent({ openNotifications }) {
     window.clearTimeout(showToast._t);
     showToast._t = window.setTimeout(() => {
       setToast((p) => ({ ...p, open: false }));
-    }, 2200);
+    }, 2600);
   };
 
   const params = useMemo(() => ({ q, status, sort }), [q, status, sort]);
@@ -1104,11 +1131,11 @@ function AgencyManageToursPageContent({ openNotifications }) {
         fd.append("image", imageFile);
       }
 
-      await updateAgencyTour(agencyTourId, fd);
+      const res = await updateAgencyTour(agencyTourId, fd);
 
       closeEdit();
       await load();
-      showToast("success", "Tour updated");
+      showToast("success", res?.message || "Tour updated");
     } catch (e) {
       const m = e?.response?.data?.message || "Failed to update tour.";
       setErr(m);
@@ -1504,13 +1531,18 @@ function AgencyManageToursPageContent({ openNotifications }) {
               <div className="text-sm font-semibold text-emerald-900/70">
                 Location
               </div>
-              <input
+              <select
                 value={editLocation}
                 onChange={(e) => setEditLocation(e.target.value)}
-                className="mt-2 h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm shadow-sm outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
-                placeholder="e.g., Pokhara, Nepal"
-                maxLength={80}
-              />
+                className="mt-2 h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm shadow-sm outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+              >
+                <option value="">Select a place</option>
+                {NEPAL_PLACES.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>

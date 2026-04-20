@@ -1,3 +1,4 @@
+// server/models/blogCommentsModel.js
 import { db } from "../db.js";
 
 export async function getBlogCommentsPaged(blogId, { page = 1, limit = 6 } = {}) {

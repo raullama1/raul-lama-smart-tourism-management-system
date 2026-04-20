@@ -33,7 +33,8 @@ const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 const JWT_EXPIRES_IN = "7d";
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
-const RESET_PASSWORD_TOKEN_EXP_MINUTES = 5;
+const RESET_PASSWORD_TOKEN_EXP_SECONDS = 60;
+const SIGNUP_CODE_EXP_SECONDS = 60;
 
 function signAgencyToken(agency) {
   return jwt.sign({ id: agency.id, role: "agency" }, JWT_SECRET, {
@@ -45,8 +46,10 @@ function validatePasswordStrength(password) {
   const errors = [];
 
   if (!password || password.length < 8) errors.push("At least 8 characters");
-  if (!/[A-Z]/.test(password || "")) errors.push("At least one uppercase letter (A-Z)");
-  if (!/[a-z]/.test(password || "")) errors.push("At least one lowercase letter (a-z)");
+  if (!/[A-Z]/.test(password || ""))
+    errors.push("At least one uppercase letter (A-Z)");
+  if (!/[a-z]/.test(password || ""))
+    errors.push("At least one lowercase letter (a-z)");
   if (!/[0-9]/.test(password || "")) errors.push("At least one number (0-9)");
   if (!/[^A-Za-z0-9]/.test(password || "")) {
     errors.push("At least one special character (!@#$, etc.)");
@@ -82,7 +85,8 @@ async function buildDuplicateErrors({ name, email, phone, pan_vat }) {
   if (byEmail) pushUnique(dup, "An agency with this email already exists.");
 
   const byPhone = await findAgencyByPhone(phone);
-  if (byPhone) pushUnique(dup, "An agency with this contact number already exists.");
+  if (byPhone)
+    pushUnique(dup, "An agency with this contact number already exists.");
 
   const byPanVat = await findAgencyByPanVat(pan_vat);
   if (byPanVat) pushUnique(dup, "An agency with this PAN/VAT already exists.");
@@ -98,7 +102,9 @@ export async function agencyCheckAvailabilityController(req, res) {
     const name = String(req.body?.name || "").trim();
     const email = normalizeEmail(req.body?.email);
     const phoneNormalized = normalizePhoneNp(req.body?.phone);
-    const panVatNormalized = req.body?.pan_vat ? normalizePanVat(req.body?.pan_vat) : null;
+    const panVatNormalized = req.body?.pan_vat
+      ? normalizePanVat(req.body?.pan_vat)
+      : null;
 
     const taken = await checkAgencyUniqueness({
       name: name || null,
@@ -128,7 +134,9 @@ export async function sendAgencyRegisterCodeController(req, res) {
     if (userExisting) {
       return res.status(400).json({
         message: "Duplicate details found. Please use unique information.",
-        errors: ["This email is already registered as a user. Please use a different email for agency."],
+        errors: [
+          "This email is already registered as a user. Please use a different email for agency.",
+        ],
       });
     }
 
@@ -141,7 +149,9 @@ export async function sendAgencyRegisterCodeController(req, res) {
     }
 
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 60 * 1000);
+    const expiresAt = new Date(
+      Date.now() + SIGNUP_CODE_EXP_SECONDS * 1000
+    );
 
     await createAgencyEmailVerification(email, code, expiresAt);
 
@@ -157,7 +167,9 @@ export async function sendAgencyRegisterCodeController(req, res) {
     });
   } catch (err) {
     console.error("sendAgencyRegisterCodeController error", err);
-    return res.status(500).json({ message: "Failed to send verification code." });
+    return res
+      .status(500)
+      .json({ message: "Failed to send verification code." });
   }
 }
 
@@ -183,7 +195,9 @@ export async function agencyRegisterController(req, res) {
       !password ||
       !verificationCode
     ) {
-      return res.status(400).json({ message: "All required fields are required." });
+      return res
+        .status(400)
+        .json({ message: "All required fields are required." });
     }
 
     if (address.length < 5) {
@@ -191,18 +205,24 @@ export async function agencyRegisterController(req, res) {
     }
 
     if (!phoneNormalized) {
-      return res.status(400).json({ message: "Phone number must be 10 digits (Nepal)." });
+      return res
+        .status(400)
+        .json({ message: "Phone number must be 10 digits (Nepal)." });
     }
 
     if (!panVatNormalized) {
-      return res.status(400).json({ message: "PAN/VAT must be exactly 9 digits." });
+      return res
+        .status(400)
+        .json({ message: "PAN/VAT must be exactly 9 digits." });
     }
 
     const userExisting = await findUserByEmail(email);
     if (userExisting) {
       return res.status(400).json({
         message: "Duplicate details found. Please use unique information.",
-        errors: ["This email is already registered as a user. Please use a different email for agency."],
+        errors: [
+          "This email is already registered as a user. Please use a different email for agency.",
+        ],
       });
     }
 
@@ -214,9 +234,14 @@ export async function agencyRegisterController(req, res) {
       });
     }
 
-    const verification = await findValidAgencyEmailVerification(email, verificationCode);
+    const verification = await findValidAgencyEmailVerification(
+      email,
+      verificationCode
+    );
     if (!verification) {
-      return res.status(400).json({ message: "Invalid or expired verification code." });
+      return res
+        .status(400)
+        .json({ message: "Invalid or expired verification code." });
     }
 
     const duplicateErrors = await buildDuplicateErrors({
@@ -280,7 +305,9 @@ export async function agencyLoginController(req, res) {
     const password = String(req.body?.password || "");
 
     if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required." });
+      return res
+        .status(400)
+        .json({ message: "Email and password are required." });
     }
 
     const agency = await findAgencyByEmail(email);
@@ -371,18 +398,19 @@ export async function agencyForgotPasswordController(req, res) {
     if (!agency || Number(agency.is_blocked || 0) === 1) {
       return res.json({
         message:
-          "If an account with that email exists, a reset link (valid for 5 minutes and one-time use) has been sent.",
+          "If an account with that email exists, a reset link (valid for 60 seconds and one-time use) has been sent.",
       });
     }
 
     const plainToken = crypto.randomBytes(32).toString("hex");
-    const tokenHash = crypto.createHash("sha256").update(plainToken).digest("hex");
-    const expiresAt = new Date(Date.now() + RESET_PASSWORD_TOKEN_EXP_MINUTES * 60 * 1000);
+    const expiresAt = new Date(
+      Date.now() + RESET_PASSWORD_TOKEN_EXP_SECONDS * 1000
+    );
 
     await db.query(
-      `INSERT INTO password_reset_tokens (agency_id, account_type, token_hash, expires_at)
-       VALUES (?, 'agency', ?, ?)`,
-      [agency.id, tokenHash, expiresAt]
+      `INSERT INTO password_reset_tokens (user_id, token, expires_at)
+       VALUES (?, ?, ?)`,
+      [agency.id, plainToken, expiresAt]
     );
 
     const resetLink = `${FRONTEND_URL}/agency/reset-password?token=${plainToken}`;
@@ -395,7 +423,7 @@ export async function agencyForgotPasswordController(req, res) {
 
     return res.json({
       message:
-        "If an account with that email exists, a reset link (valid for 5 minutes and one-time use) has been sent.",
+        "If an account with that email exists, a reset link (valid for 60 seconds and one-time use) has been sent.",
     });
   } catch (err) {
     console.error("agencyForgotPasswordController error", err);
@@ -409,7 +437,9 @@ export async function agencyResetPasswordController(req, res) {
     const password = String(req.body?.password || "");
 
     if (!token || !password) {
-      return res.status(400).json({ message: "Token and new password are required." });
+      return res
+        .status(400)
+        .json({ message: "Token and new password are required." });
     }
 
     const pwdErrors = validatePasswordStrength(password);
@@ -420,15 +450,12 @@ export async function agencyResetPasswordController(req, res) {
       });
     }
 
-    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
-
     const [rows] = await db.query(
-      `SELECT id, agency_id, expires_at, used_at
+      `SELECT id, user_id, token, expires_at, used_at
        FROM password_reset_tokens
-       WHERE token_hash = ?
-         AND account_type = 'agency'
+       WHERE token = ?
        LIMIT 1`,
-      [tokenHash]
+      [token]
     );
 
     const record = rows[0];
@@ -440,14 +467,18 @@ export async function agencyResetPasswordController(req, res) {
     }
 
     if (record.used_at) {
-      return res.status(400).json({ message: "This password reset link has already been used." });
+      return res
+        .status(400)
+        .json({ message: "This password reset link has already been used." });
     }
 
     if (new Date(record.expires_at) < new Date()) {
-      return res.status(400).json({ message: "This password reset link has expired." });
+      return res
+        .status(400)
+        .json({ message: "This password reset link has expired." });
     }
 
-    const agency = await findAgencyById(record.agency_id);
+    const agency = await findAgencyById(record.user_id);
     if (!agency || Number(agency.is_blocked || 0) === 1) {
       return res.status(400).json({
         message: "This password reset link is invalid or has already been used.",
@@ -455,7 +486,7 @@ export async function agencyResetPasswordController(req, res) {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-    await updateAgencyPasswordHash(record.agency_id, passwordHash);
+    await updateAgencyPasswordHash(record.user_id, passwordHash);
 
     await db.query(
       `UPDATE password_reset_tokens

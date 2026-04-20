@@ -1,3 +1,4 @@
+// server/models/wishlistModel.js
 import { db } from "../db.js";
 
 export async function addToWishlist(userId, tourId) {

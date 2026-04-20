@@ -315,7 +315,7 @@ function AgencyAddTourPageContent({ openNotifications }) {
 
   const endMinYMD = useMemo(() => {
     if (!isValidDateString(startDate)) return "";
-    return toYMD(addMonths(new Date(startDate), 1));
+    return startDate;
   }, [startDate]);
 
   const endMaxYMD = useMemo(() => {
@@ -462,7 +462,7 @@ function AgencyAddTourPageContent({ openNotifications }) {
       const minEnd = new Date(endMinYMD);
       const maxEnd = new Date(endMaxYMD);
       if (end < minEnd)
-        next.endDate = "End date must be at least 1 month after start";
+        next.endDate = "End date cannot be earlier than start date";
       else if (end > maxEnd)
         next.endDate = "End date must be within 3 months after start";
     }
@@ -767,7 +767,7 @@ function AgencyAddTourPageContent({ openNotifications }) {
 
                         if (v && endDate) {
                           const end = new Date(endDate);
-                          const minEnd = new Date(toYMD(addMonths(new Date(v), 1)));
+                          const minEnd = new Date(v);
                           const maxEnd = new Date(toYMD(addMonths(new Date(v), 3)));
                           if (end < minEnd || end > maxEnd) setEndDate("");
                         }

@@ -39,12 +39,6 @@ export default function PaymentFailurePage() {
                 </div>
 
                 <div className="mt-6 flex flex-wrap justify-end gap-2">
-                  <button
-                    onClick={() => navigate(`/payment/${bookingId}`)}
-                    className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800"
-                  >
-                    Try Again
-                  </button>
 
                   <button
                     onClick={() => navigate("/bookings")}
