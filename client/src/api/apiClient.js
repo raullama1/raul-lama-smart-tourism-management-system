@@ -2,7 +2,7 @@
 import axios from "axios";
 
 const apiClient = axios.create({
-  baseURL: "http://localhost:5001/api",
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5001/api",
   timeout: 10000,
 });
 
@@ -21,7 +21,6 @@ function isAgencyEndpoint(url) {
   const u = String(url || "");
 
   if (u.startsWith("/agency/")) return true;
-
   if (u.startsWith("/chat/agency")) return true;
   if (u === "/chat/tourists" || u.startsWith("/chat/tourists/")) return true;
 
@@ -45,7 +44,6 @@ apiClient.interceptors.request.use((config) => {
   }
 
   const url = String(config?.url || "");
-
   let token = null;
 
   if (isAgencyEndpoint(url)) {
