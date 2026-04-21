@@ -1,7 +1,6 @@
 // server/models/emailVerificationModel.js
 import { db } from "../db.js";
 
-// Mark old codes as used, then insert a new one
 export async function createEmailVerification(email, code, expiresAt) {
   await db.query(
     `UPDATE email_verifications

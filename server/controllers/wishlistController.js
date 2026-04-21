@@ -1,3 +1,4 @@
+// server/controllers/wishlistController.js
 import {
   addToWishlist,
   removeFromWishlist,
