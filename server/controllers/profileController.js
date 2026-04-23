@@ -1,7 +1,9 @@
 // server/controllers/profileController.js
-import fs from "fs";
-import path from "path";
 import { db } from "../db.js";
+import {
+  uploadBufferToCloudinary,
+  deleteCloudinaryImageByUrl,
+} from "../utils/cloudinary.js";
 
 function sanitizePhone(phone) {
   return String(phone || "")
@@ -45,7 +47,9 @@ export async function updateMyProfileController(req, res) {
     if (!safeName) return res.status(400).json({ message: "Name is required." });
 
     const safePhone =
-      typeof phone === "undefined" || phone === null || String(phone).trim() === ""
+      typeof phone === "undefined" ||
+      phone === null ||
+      String(phone).trim() === ""
         ? null
         : sanitizePhone(phone);
 
@@ -70,7 +74,7 @@ export async function uploadProfileImageController(req, res) {
   try {
     const userId = req.user?.id;
 
-    if (!req.file?.filename) {
+    if (!req.file?.buffer) {
       return res.status(400).json({ message: "No image uploaded." });
     }
 
@@ -79,20 +83,13 @@ export async function uploadProfileImageController(req, res) {
       [userId]
     );
 
-    const oldValue = oldRow?.profile_image || null;
+    const uploaded = await uploadBufferToCloudinary(
+      req.file.buffer,
+      "tourism-nepal/avatars",
+      `u${userId}-${Date.now()}`
+    );
 
-    if (oldValue) {
-      const oldPath = oldValue.startsWith("uploads/")
-        ? oldValue
-        : path.join("uploads", "avatars", oldValue).replaceAll("\\", "/");
-
-      const absOld = path.join(process.cwd(), "server", oldPath);
-      if (fs.existsSync(absOld)) fs.unlinkSync(absOld);
-    }
-
-    const relative = path
-      .join("uploads", "avatars", req.file.filename)
-      .replaceAll("\\", "/");
+    const newUrl = uploaded.secure_url;
 
     await db.query(
       `
@@ -100,8 +97,12 @@ export async function uploadProfileImageController(req, res) {
       SET profile_image = ?
       WHERE id = ?
       `,
-      [relative, userId]
+      [newUrl, userId]
     );
+
+    if (oldRow?.profile_image) {
+      await deleteCloudinaryImageByUrl(oldRow.profile_image);
+    }
 
     const user = await getUserById(userId);
     res.json({ user });
@@ -120,15 +121,8 @@ export async function removeProfileImageController(req, res) {
       [userId]
     );
 
-    const current = row?.profile_image || null;
-
-    if (current) {
-      const rel = current.startsWith("uploads/")
-        ? current
-        : path.join("uploads", "avatars", current).replaceAll("\\", "/");
-
-      const abs = path.join(process.cwd(), "server", rel);
-      if (fs.existsSync(abs)) fs.unlinkSync(abs);
+    if (row?.profile_image) {
+      await deleteCloudinaryImageByUrl(row.profile_image);
     }
 
     await db.query(

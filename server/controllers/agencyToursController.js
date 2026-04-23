@@ -1,5 +1,9 @@
 // server/controllers/agencyToursController.js
 import { db } from "../db.js";
+import {
+  uploadBufferToCloudinary,
+  deleteCloudinaryImageByUrl,
+} from "../utils/cloudinary.js";
 
 function requireAgency(req, res) {
   const agencyId = req.user?.id;
@@ -275,10 +279,17 @@ export async function createAgencyTourController(req, res) {
       });
     }
 
-    const img = req.file ? `/uploads/tours/${req.file.filename}` : "";
-    if (!img) {
+    if (!req.file?.buffer) {
       return res.status(400).json({ message: "Cover image is required." });
     }
+
+    const uploaded = await uploadBufferToCloudinary(
+      req.file.buffer,
+      "tourism-nepal/tours",
+      `a${agencyId}-${Date.now()}`
+    );
+
+    const img = uploaded.secure_url;
 
     const [tourIns] = await db.query(
       `INSERT INTO tours
@@ -587,8 +598,6 @@ export async function updateAgencyTourController(req, res) {
         .json({ message: "Latitude and longitude are required." });
     }
 
-    const newImage = req.file ? `/uploads/tours/${req.file.filename}` : null;
-
     const available_dates = buildAvailableDatesCsv(start_date, end_date);
     if (!available_dates) {
       return res.status(400).json({ message: "Invalid dates." });
@@ -625,6 +634,27 @@ export async function updateAgencyTourController(req, res) {
         message:
           "Completed tours can only be changed back if the end date has not passed.",
       });
+    }
+
+    let newImage = null;
+
+    if (req.file?.buffer) {
+      const [[currentTour]] = await conn.query(
+        `SELECT image_url FROM tours WHERE id = ? LIMIT 1`,
+        [tourId]
+      );
+
+      const uploaded = await uploadBufferToCloudinary(
+        req.file.buffer,
+        "tourism-nepal/tours",
+        `a${agencyId}-${Date.now()}`
+      );
+
+      newImage = uploaded.secure_url;
+
+      if (currentTour?.image_url) {
+        await deleteCloudinaryImageByUrl(currentTour.image_url);
+      }
     }
 
     const baseSlug = slugifyTour(title, location, type);
@@ -717,6 +747,7 @@ export async function updateAgencyTourController(req, res) {
     conn.release();
   }
 }
+
 export async function deleteAgencyTourController(req, res) {
   const conn = await db.getConnection();
   try {
@@ -772,6 +803,11 @@ export async function deleteAgencyTourController(req, res) {
       });
     }
 
+    const [[tourRow]] = await conn.query(
+      `SELECT image_url FROM tours WHERE id = ? LIMIT 1`,
+      [tourId]
+    );
+
     await conn.query(`DELETE FROM agency_tours WHERE id = ? AND agency_id = ?`, [
       agencyTourId,
       agencyId,
@@ -784,6 +820,10 @@ export async function deleteAgencyTourController(req, res) {
 
     if (Number(left?.c || 0) === 0) {
       await conn.query(`DELETE FROM tours WHERE id = ?`, [tourId]);
+
+      if (tourRow?.image_url) {
+        await deleteCloudinaryImageByUrl(tourRow.image_url);
+      }
     }
 
     await conn.commit();

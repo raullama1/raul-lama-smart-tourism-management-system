@@ -5,6 +5,10 @@ import {
   updateAgencyBlog,
   deleteAgencyBlog,
 } from "../models/agencyBlogsModel.js";
+import {
+  uploadBufferToCloudinary,
+  deleteCloudinaryImageByUrl,
+} from "../utils/cloudinary.js";
 
 const ALLOWED_TYPES = [
   "Adventure",
@@ -51,7 +55,17 @@ export async function createAgencyBlogController(req, res) {
       return res.status(400).json({ message: "Blog content is required." });
     }
 
-    const imageUrl = req.file ? `/uploads/blogs/${req.file.filename}` : "";
+    let imageUrl = "";
+
+    if (req.file?.buffer) {
+      const uploaded = await uploadBufferToCloudinary(
+        req.file.buffer,
+        "tourism-nepal/blogs",
+        `b${agencyId}-${Date.now()}`
+      );
+
+      imageUrl = uploaded.secure_url;
+    }
 
     const blog = await createAgencyBlog({
       agencyId,
@@ -126,7 +140,31 @@ export async function updateAgencyBlogController(req, res) {
       return res.status(400).json({ message: "Blog content is required." });
     }
 
-    const imageUrl = req.file ? `/uploads/blogs/${req.file.filename}` : "";
+    let imageUrl = "";
+
+    if (req.file?.buffer) {
+      const current = await getAgencyBlogs({
+        agencyId,
+        search: "",
+        sort: "newest",
+        page: 1,
+        limit: 1000,
+      });
+
+      const existing = current?.data?.find((b) => Number(b.id) === blogId) || null;
+
+      const uploaded = await uploadBufferToCloudinary(
+        req.file.buffer,
+        "tourism-nepal/blogs",
+        `b${agencyId}-${Date.now()}`
+      );
+
+      imageUrl = uploaded.secure_url;
+
+      if (existing?.image_url) {
+        await deleteCloudinaryImageByUrl(existing.image_url);
+      }
+    }
 
     const blog = await updateAgencyBlog({
       agencyId,
@@ -162,10 +200,24 @@ export async function deleteAgencyBlogController(req, res) {
       return res.status(400).json({ message: "Invalid blog id." });
     }
 
+    const current = await getAgencyBlogs({
+      agencyId,
+      search: "",
+      sort: "newest",
+      page: 1,
+      limit: 1000,
+    });
+
+    const existing = current?.data?.find((b) => Number(b.id) === blogId) || null;
+
     const deleted = await deleteAgencyBlog({ agencyId, blogId });
 
     if (!deleted) {
       return res.status(404).json({ message: "Blog not found." });
+    }
+
+    if (existing?.image_url) {
+      await deleteCloudinaryImageByUrl(existing.image_url);
     }
 
     return res.json({ message: "Blog deleted successfully." });

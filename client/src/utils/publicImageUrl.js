@@ -1,8 +1,7 @@
 // client/src/utils/publicImageUrl.js
-const API_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:5001/api";
-
-const API_ORIGIN = API_URL.replace(/\/api\/?$/, "");
+const API_ORIGIN =
+  import.meta.env.VITE_API_ORIGIN ||
+  "https://raul-lama-smart-tourism-management-system-production.up.railway.app";
 
 export const FALLBACK_TOUR_IMG =
   "https://via.placeholder.com/800x500?text=Tour+Image";
