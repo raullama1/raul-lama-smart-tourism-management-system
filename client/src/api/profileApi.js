@@ -1,3 +1,4 @@
+// client/src/api/profileApi.js
 import api from "./apiClient";
 
 export function fetchMyProfile(token) {
@@ -27,29 +28,20 @@ export function removeMyAvatar(token) {
   });
 }
 
-/**
- * profile_image can be:
- * - null
- * - "u12-123.jpg" (filename only)
- * - "uploads/avatars/u12-123.jpg" (relative path)
- */
 export function buildAvatarUrl(profileImage) {
   if (!profileImage) return "";
 
-  // Use your server default port (your server.js uses 5001)
-  const base = import.meta.env.VITE_API_URL || "http://localhost:5001";
-  const cleanBase = String(base).replace(/\/$/, "");
+  const apiUrl =
+    import.meta.env.VITE_API_URL || "http://localhost:5001/api";
 
+  const base = String(apiUrl).replace(/\/api\/?$/, "");
   const p = String(profileImage).replaceAll("\\", "/").replace(/^\/+/, "");
 
-  // If it's already a full URL, return it
   if (p.startsWith("http://") || p.startsWith("https://")) return p;
 
-  // If DB stored "uploads/avatars/xxx.jpg", convert to "/uploads/avatars/xxx.jpg"
   if (p.startsWith("uploads/")) {
-    return `${cleanBase}/${p}`;
+    return `${base}/${p}`;
   }
 
-  // Otherwise treat as filename
-  return `${cleanBase}/uploads/avatars/${p}`;
+  return `${base}/uploads/avatars/${p}`;
 }
