@@ -5,13 +5,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { gsap } from "gsap";
 import { Draggable } from "gsap/all";
+import { toPublicImageUrl } from "../../utils/publicImageUrl";
 
 gsap.registerPlugin(Draggable);
-
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:5001/api";
-
-const SERVER_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, "");
 
 const FALLBACK_BLOG_IMAGE =
   "data:image/svg+xml;utf8," +
@@ -28,11 +24,7 @@ const FALLBACK_BLOG_IMAGE =
   `);
 
 function resolveImageUrl(value) {
-  const raw = String(value || "").trim();
-  if (!raw) return FALLBACK_BLOG_IMAGE;
-  if (/^https?:\/\//i.test(raw)) return raw;
-  if (raw.startsWith("/")) return `${SERVER_BASE_URL}${raw}`;
-  return `${SERVER_BASE_URL}/${raw}`;
+  return toPublicImageUrl(value) || FALLBACK_BLOG_IMAGE;
 }
 
 function plainPreview(text, max = 140) {
@@ -59,7 +51,7 @@ export function BlogCard({ blog }) {
     <div className="group flex h-full flex-col overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.06)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(15,23,42,0.1)]">
       <div className="relative h-44 w-full overflow-hidden md:h-48">
         <img
-          src={resolveImageUrl(blog.image)}
+          src={resolveImageUrl(blog.image || blog.image_url)}
           alt={blog.title}
           onError={(e) => {
             e.currentTarget.src = FALLBACK_BLOG_IMAGE;

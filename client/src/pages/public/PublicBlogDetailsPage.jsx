@@ -14,11 +14,7 @@ import {
   deleteBlogComment,
 } from "../../api/blogApi";
 import { useAuth } from "../../context/AuthContext";
-
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:5001/api";
-
-const SERVER_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, "");
+import { toPublicImageUrl } from "../../utils/publicImageUrl";
 
 const FALLBACK_BLOG_IMAGE =
   "data:image/svg+xml;utf8," +
@@ -35,11 +31,7 @@ const FALLBACK_BLOG_IMAGE =
   `);
 
 function resolveImageUrl(value) {
-  const raw = String(value || "").trim();
-  if (!raw) return FALLBACK_BLOG_IMAGE;
-  if (/^https?:\/\//i.test(raw)) return raw;
-  if (raw.startsWith("/")) return `${SERVER_BASE_URL}${raw}`;
-  return `${SERVER_BASE_URL}/${raw}`;
+  return toPublicImageUrl(value) || FALLBACK_BLOG_IMAGE;
 }
 
 function makePreviewText(text, max = 140) {
