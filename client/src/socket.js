@@ -8,7 +8,10 @@ function buildKey(scope, token) {
 }
 
 export function getScopedSocket(scope, token) {
-  const base = import.meta.env.VITE_API_BASE_URL || "http://localhost:5001";
+  const base =
+    import.meta.env.VITE_SOCKET_URL ||
+    import.meta.env.VITE_API_ORIGIN ||
+    "http://localhost:5001";
 
   if (!scope || !token) return null;
 
