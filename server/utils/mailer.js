@@ -4,10 +4,10 @@ import nodemailer from "nodemailer";
 const {
   SMTP_HOST,
   SMTP_PORT,
+  SMTP_SECURE,
   SMTP_USER,
   SMTP_PASS,
   SMTP_FROM,
-  FRONTEND_URL,
 } = process.env;
 
 let transporter = null;
@@ -15,12 +15,15 @@ let transporter = null;
 if (SMTP_USER && SMTP_PASS) {
   transporter = nodemailer.createTransport({
     host: SMTP_HOST || "smtp.gmail.com",
-    port: Number(SMTP_PORT) || 587,
-    secure: false,
+    port: Number(SMTP_PORT) || 465,
+    secure: String(SMTP_SECURE || "true") === "true",
     auth: {
       user: SMTP_USER,
       pass: SMTP_PASS,
     },
+    connectionTimeout: 20000,
+    greetingTimeout: 20000,
+    socketTimeout: 20000,
   });
 } else {
   console.warn("⚠️ No SMTP credentials found. Emails will not be sent.");
