@@ -48,6 +48,7 @@ export async function getAgencyReviews({
         r.comment,
         r.created_at,
         COALESCE(NULLIF(TRIM(u.name), ''), 'Tourist') AS tourist_name,
+        u.profile_image AS tourist_profile_image,
         t.title AS tour_name
      FROM reviews r
      INNER JOIN users u ON u.id = r.user_id
