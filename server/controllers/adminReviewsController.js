@@ -1,20 +1,30 @@
 // server/controllers/adminReviewsController.js
-import { getAgencyReviews } from "../models/agencyReviewsModel.js";
+import {
+  getAllAdminReviews,
+  deleteAdminReviewById,
+} from "../models/adminReviewsModel.js";
 
-export async function getAgencyReviewsController(req, res) {
+export async function getAdminReviewsController(req, res) {
   try {
-    const agencyId = req.user?.id;
-    const role = req.user?.role;
-
-    if (!agencyId || role !== "agency") {
-      return res.status(401).json({ message: "Agency authentication required." });
-    }
-
-    const reviews = await getAgencyReviews(agencyId, req.query);
-
+    const reviews = await getAllAdminReviews(req.query);
     return res.json({ reviews });
   } catch (err) {
-    console.error("getAgencyReviewsController error", err);
+    console.error("getAdminReviewsController error", err);
     return res.status(500).json({ message: "Failed to load reviews." });
+  }
+}
+
+export async function deleteAdminReviewController(req, res) {
+  try {
+    const ok = await deleteAdminReviewById(req.params.reviewId);
+
+    if (!ok) {
+      return res.status(404).json({ message: "Review not found." });
+    }
+
+    return res.json({ message: "Review deleted." });
+  } catch (err) {
+    console.error("deleteAdminReviewController error", err);
+    return res.status(500).json({ message: "Failed to delete review." });
   }
 }
