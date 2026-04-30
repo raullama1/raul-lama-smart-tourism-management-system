@@ -16,6 +16,53 @@ import { useAgencyAuth } from "../../context/AgencyAuthContext";
 import { useAgencyNotifications } from "../../context/AgencyNotificationContext";
 import { fetchAgencyReviews } from "../../api/agencyReviewsApi";
 
+const API_ORIGIN =
+  import.meta.env.VITE_API_ORIGIN ||
+  "https://raul-lama-smart-tourism-management-system-production.up.railway.app";
+
+function buildTouristAvatarUrl(profileImage) {
+  const raw = String(profileImage || "").trim();
+  if (!raw) return "";
+
+  if (raw.startsWith("http://") || raw.startsWith("https://")) {
+    return raw;
+  }
+
+  if (raw.startsWith("/")) {
+    return `${API_ORIGIN}${raw}`;
+  }
+
+  return `${API_ORIGIN}/${raw}`;
+}
+
+function TouristAvatar({ name, profileImage }) {
+  const [imgError, setImgError] = useState(false);
+
+  const avatarUrl = useMemo(
+    () => buildTouristAvatarUrl(profileImage),
+    [profileImage]
+  );
+
+  const initials = String(name || "U").trim().charAt(0).toUpperCase() || "U";
+
+  if (!avatarUrl || imgError) {
+    return (
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-50 text-emerald-700 shadow-inner">
+        <span className="text-sm font-bold">{initials}</span>
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={avatarUrl}
+      alt={name || "Tourist"}
+      className="h-10 w-10 shrink-0 rounded-2xl object-cover shadow-inner"
+      onError={() => setImgError(true)}
+    />
+  );
+}
+
 function RatingBadge({ rating }) {
   const value = Number(rating || 0);
 
@@ -60,19 +107,23 @@ function ReviewCard({ review }) {
   return (
     <div className="group relative overflow-hidden rounded-3xl border border-white/70 bg-white/80 p-5 shadow-[0_12px_40px_rgba(15,23,42,0.08)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_50px_rgba(15,23,42,0.12)]">
       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400 opacity-80" />
+
       <div className="mb-4 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-50 text-emerald-700 shadow-inner">
-              <FiUser size={18} />
-            </span>
+            <TouristAvatar
+              name={review.tourist_name}
+              profileImage={review.tourist_profile_image}
+            />
             <span className="truncate">{review.tourist_name || "-"}</span>
           </div>
+
           <div className="mt-2 flex items-center gap-2 text-sm text-slate-500">
             <FiMapPin size={14} />
             <span className="truncate">{review.tour_name || "-"}</span>
           </div>
         </div>
+
         <RatingBadge rating={review.rating} />
       </div>
 
@@ -183,7 +234,7 @@ export default function AgencyReviewsPage() {
   }, [mappedReviews]);
 
   const TABLE_GRID =
-    "grid grid-cols-[1.05fr_1.2fr_120px_2fr_140px] gap-4 xl:gap-6";
+    "grid grid-cols-[1.2fr_1.2fr_120px_2fr_140px] gap-4 xl:gap-6";
 
   return (
     <>
@@ -386,9 +437,10 @@ export default function AgencyReviewsPage() {
                             >
                               <div className="min-w-0">
                                 <div className="flex items-center gap-3">
-                                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-50 text-emerald-700 shadow-inner">
-                                    <FiUser size={18} />
-                                  </span>
+                                  <TouristAvatar
+                                    name={review.tourist_name}
+                                    profileImage={review.tourist_profile_image}
+                                  />
                                   <span className="truncate text-sm font-semibold text-slate-800">
                                     {review.tourist_name || "-"}
                                   </span>
