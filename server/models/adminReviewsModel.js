@@ -2,14 +2,16 @@
 import { db } from "../db.js";
 
 export async function getAllAdminReviews(filters = {}) {
-  const { q = "", rating = "All" } = filters;
+  const { q = "", rating = "All", sort = "newest" } = filters;
 
   const where = ["1=1"];
   const params = [];
 
   if (q) {
-    where.push("(u.name LIKE ? OR t.title LIKE ? OR a.name LIKE ?)");
-    params.push(`%${q}%`, `%${q}%`, `%${q}%`);
+    where.push(
+      "(u.name LIKE ? OR t.title LIKE ? OR a.name LIKE ? OR r.comment LIKE ?)"
+    );
+    params.push(`%${q}%`, `%${q}%`, `%${q}%`, `%${q}%`);
   }
 
   if (rating !== "All") {
@@ -17,13 +19,21 @@ export async function getAllAdminReviews(filters = {}) {
     params.push(Number(rating));
   }
 
+  const orderBy =
+    String(sort || "").toLowerCase() === "oldest"
+      ? "ORDER BY r.created_at ASC"
+      : "ORDER BY r.created_at DESC";
+
   const [rows] = await db.query(
     `
     SELECT
       r.id,
       r.rating,
       r.comment,
+      r.created_at,
+      u.id AS tourist_id,
       u.name AS tourist_name,
+      u.profile_image AS tourist_profile_image,
       t.title AS tour_title,
       a.name AS agency_name
     FROM reviews r
@@ -31,7 +41,7 @@ export async function getAllAdminReviews(filters = {}) {
     INNER JOIN tours t ON t.id = r.tour_id
     INNER JOIN agencies a ON a.id = r.agency_id
     WHERE ${where.join(" AND ")}
-    ORDER BY r.created_at DESC
+    ${orderBy}
     `,
     params
   );
@@ -40,10 +50,9 @@ export async function getAllAdminReviews(filters = {}) {
 }
 
 export async function deleteAdminReviewById(reviewId) {
-  const [res] = await db.query(
-    `DELETE FROM reviews WHERE id = ?`,
-    [Number(reviewId)]
-  );
+  const [res] = await db.query(`DELETE FROM reviews WHERE id = ?`, [
+    Number(reviewId),
+  ]);
 
   return res.affectedRows > 0;
 }

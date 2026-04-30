@@ -19,6 +19,25 @@ import {
   deleteAdminReview,
 } from "../../api/adminReviewsApi";
 
+const API_ORIGIN =
+  import.meta.env.VITE_API_ORIGIN ||
+  "https://raul-lama-smart-tourism-management-system-production.up.railway.app";
+
+function buildTouristAvatarUrl(profileImage) {
+  const raw = String(profileImage || "").trim();
+  if (!raw) return "";
+
+  if (raw.startsWith("http://") || raw.startsWith("https://")) {
+    return raw;
+  }
+
+  if (raw.startsWith("/")) {
+    return `${API_ORIGIN}${raw}`;
+  }
+
+  return `${API_ORIGIN}/${raw}`;
+}
+
 function RatingStars({ value, size = 15 }) {
   const count = Number(value || 0);
 
@@ -33,6 +52,75 @@ function RatingStars({ value, size = 15 }) {
           }
         />
       ))}
+    </div>
+  );
+}
+
+function TouristAvatar({ review, size = "h-11 w-11", iconSize = 18 }) {
+  const imageUrl = buildTouristAvatarUrl(review?.tourist_profile_image);
+  const name = String(review?.tourist_name || "T").trim();
+  const initial = name.charAt(0).toUpperCase() || "T";
+
+  if (imageUrl) {
+    return (
+      <img
+        src={imageUrl}
+        alt={review?.tourist_name || "Tourist"}
+        className={`${size} rounded-2xl object-cover border border-slate-200 bg-white`}
+        onError={(e) => {
+          e.currentTarget.style.display = "none";
+          const fallback = e.currentTarget.nextSibling;
+          if (fallback) fallback.style.display = "flex";
+        }}
+      />
+    );
+  }
+
+  return (
+    <div
+      className={`flex ${size} items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 font-bold`}
+    >
+      {name ? initial : <FiUser size={iconSize} />}
+    </div>
+  );
+}
+
+function TouristAvatarWithFallback({ review, size = "h-11 w-11", iconSize = 18 }) {
+  const imageUrl = buildTouristAvatarUrl(review?.tourist_profile_image);
+  const name = String(review?.tourist_name || "T").trim();
+  const initial = name.charAt(0).toUpperCase() || "T";
+
+  return (
+    <div className="relative shrink-0">
+      {imageUrl ? (
+        <>
+          <img
+            src={imageUrl}
+            alt={review?.tourist_name || "Tourist"}
+            className={`${size} rounded-2xl object-cover border border-slate-200 bg-white`}
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+              const fallback = e.currentTarget.parentElement?.querySelector(
+                "[data-avatar-fallback='true']"
+              );
+              if (fallback) fallback.style.display = "flex";
+            }}
+          />
+          <div
+            data-avatar-fallback="true"
+            style={{ display: "none" }}
+            className={`absolute inset-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 font-bold`}
+          >
+            {name ? initial : <FiUser size={iconSize} />}
+          </div>
+        </>
+      ) : (
+        <div
+          className={`flex ${size} items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 font-bold`}
+        >
+          {name ? initial : <FiUser size={iconSize} />}
+        </div>
+      )}
     </div>
   );
 }
@@ -197,9 +285,8 @@ function ReviewCard({ review, onDelete }) {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
-            <FiUser size={18} />
-          </div>
+          <TouristAvatarWithFallback review={review} size="h-10 w-10" iconSize={16} />
+
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-slate-900">
               {review.tourist_name || "-"}
@@ -443,9 +530,12 @@ export default function AdminReviewsPage() {
                             >
                               <td className="px-5 py-4">
                                 <div className="flex items-center gap-3">
-                                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
-                                    <FiUser size={18} />
-                                  </div>
+                                  <TouristAvatarWithFallback
+                                    review={r}
+                                    size="h-11 w-11"
+                                    iconSize={18}
+                                  />
+
                                   <div className="min-w-0">
                                     <p className="truncate text-sm font-bold text-slate-900">
                                       {r.tourist_name || "-"}
