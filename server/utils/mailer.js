@@ -1,52 +1,55 @@
 // server/utils/mailer.js
-import axios from "axios";
+import nodemailer from "nodemailer";
 
-const { RESEND_API_KEY, SMTP_FROM } = process.env;
+const {
+  SMTP_HOST,
+  SMTP_PORT,
+  SMTP_SECURE,
+  SMTP_USER,
+  SMTP_PASS,
+  SMTP_FROM,
+} = process.env;
 
-const fromEmail = SMTP_FROM || "Tourism Nepal <onboarding@resend.dev>";
+let transporter = null;
 
-async function sendEmail({ to, subject, html }) {
-  if (!RESEND_API_KEY) {
-    console.log("📧 [NO RESEND_API_KEY] Email not sent.");
-    console.log("To:", to);
-    console.log("Subject:", subject);
-    return;
-  }
+if (SMTP_USER && SMTP_PASS) {
+  transporter = nodemailer.createTransport({
+    host: SMTP_HOST || "smtp.gmail.com",
+    port: Number(SMTP_PORT) || 587,
+    secure: String(SMTP_SECURE || "false") === "true",
+    auth: {
+      user: SMTP_USER,
+      pass: SMTP_PASS,
+    },
+    requireTLS: true,
+    connectionTimeout: 30000,
+    greetingTimeout: 30000,
+    socketTimeout: 30000,
+  });
 
-  try {
-    const res = await axios.post(
-      "https://api.resend.com/emails",
-      {
-        from: fromEmail,
-        to: [to],
-        subject,
-        html,
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${RESEND_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        timeout: 15000,
-      }
-    );
-
-    console.log("📧 Email sent:", res.data?.id || "success");
-    return res.data;
-  } catch (err) {
-    console.error("📧 Resend email error:", {
-      status: err?.response?.status,
-      data: err?.response?.data,
-      message: err?.message,
-    });
-
-    throw err;
-  }
+  transporter.verify((err) => {
+    if (err) {
+      console.error("❌ SMTP verification failed:", err);
+    } else {
+      console.log("✅ SMTP server is ready to send emails.");
+    }
+  });
+} else {
+  console.warn("⚠️ No SMTP credentials found. Emails will not be sent.");
 }
 
 // ---------- Password reset email ----------
 export async function sendPasswordResetEmail(to, resetLink) {
-  await sendEmail({
+  if (!transporter) {
+    console.log("📧 [NO SMTP] Cannot send reset email. Link:");
+    console.log(resetLink);
+    return;
+  }
+
+  const from = SMTP_FROM || SMTP_USER;
+
+  await transporter.sendMail({
+    from,
     to,
     subject: "Tourism Nepal - Reset your password",
     html: `
@@ -71,7 +74,16 @@ export async function sendPasswordResetEmail(to, resetLink) {
 
 // ---------- Signup verification code email ----------
 export async function sendSignupVerificationEmail(to, code) {
-  await sendEmail({
+  if (!transporter) {
+    console.log("📧 [NO SMTP] Cannot send signup code. Code:");
+    console.log(code);
+    return;
+  }
+
+  const from = SMTP_FROM || SMTP_USER;
+
+  await transporter.sendMail({
+    from,
     to,
     subject: "Tourism Nepal - Verify your email",
     html: `
