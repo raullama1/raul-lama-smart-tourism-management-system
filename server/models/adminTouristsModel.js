@@ -45,6 +45,7 @@ export async function getAdminTouristsModel({
         u.phone,
         u.role,
         u.created_at,
+        u.profile_image,
         COALESCE(u.is_blocked, 0) AS is_blocked,
         COUNT(DISTINCT b.id) AS total_bookings,
         COUNT(DISTINCT r.id) AS total_reviews,
@@ -54,7 +55,8 @@ export async function getAdminTouristsModel({
       LEFT JOIN reviews r ON r.user_id = u.id
       LEFT JOIN wishlists w ON w.user_id = u.id
       WHERE ${conditions.join(" AND ")}
-      GROUP BY u.id, u.name, u.email, u.phone, u.role, u.created_at, u.is_blocked
+      GROUP BY
+        u.id, u.name, u.email, u.phone, u.role, u.created_at, u.profile_image, u.is_blocked
       ORDER BY ${orderBy}
     `,
     params
@@ -62,6 +64,7 @@ export async function getAdminTouristsModel({
 
   return rows.map((row) => ({
     ...row,
+    profile_image: row.profile_image || "",
     is_blocked: Number(row.is_blocked) === 1,
     created_at: formatDateOnly(row.created_at),
     total_bookings: Number(row.total_bookings || 0),
@@ -80,6 +83,7 @@ export async function getAdminTouristByIdModel(userId) {
         u.phone,
         u.role,
         u.created_at,
+        u.profile_image,
         COALESCE(u.is_blocked, 0) AS is_blocked,
         COUNT(DISTINCT b.id) AS total_bookings,
         COUNT(DISTINCT r.id) AS total_reviews,
@@ -90,7 +94,8 @@ export async function getAdminTouristByIdModel(userId) {
       LEFT JOIN wishlists w ON w.user_id = u.id
       WHERE u.id = ?
         AND u.role = 'tourist'
-      GROUP BY u.id, u.name, u.email, u.phone, u.role, u.created_at, u.is_blocked
+      GROUP BY
+        u.id, u.name, u.email, u.phone, u.role, u.created_at, u.profile_image, u.is_blocked
       LIMIT 1
     `,
     [userId]
@@ -134,6 +139,7 @@ export async function getAdminTouristByIdModel(userId) {
 
   return {
     ...row,
+    profile_image: row.profile_image || "",
     is_blocked: Number(row.is_blocked) === 1,
     created_at: formatDateOnly(row.created_at),
     total_bookings: Number(row.total_bookings || 0),

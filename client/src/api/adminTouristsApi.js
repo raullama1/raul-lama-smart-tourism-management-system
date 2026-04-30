@@ -22,3 +22,24 @@ export async function deleteAdminTouristReview(userId, reviewId) {
   const res = await apiClient.delete(`/admin/tourists/${userId}/reviews/${reviewId}`);
   return res.data;
 }
+
+export function buildAdminTouristAvatarUrl(profileImage) {
+  if (!profileImage) return "";
+
+  const raw = String(profileImage).trim();
+  if (!raw) return "";
+
+  if (raw.startsWith("http://") || raw.startsWith("https://")) {
+    return raw;
+  }
+
+  const serverBase =
+    import.meta.env.VITE_API_ORIGIN ||
+    "https://raul-lama-smart-tourism-management-system-production.up.railway.app";
+
+  if (raw.startsWith("/")) {
+    return `${serverBase}${raw}`;
+  }
+
+  return `${serverBase}/${raw}`;
+}

@@ -19,6 +19,7 @@ import AdminSidebar from "../../components/admin/AdminSidebar";
 import {
   getAdminTourists,
   updateAdminTouristStatus,
+  buildAdminTouristAvatarUrl,
 } from "../../api/adminTouristsApi";
 
 function StatusBadge({ blocked }) {
@@ -37,6 +38,38 @@ function StatusBadge({ blocked }) {
       />
       {blocked ? "Blocked" : "Active"}
     </span>
+  );
+}
+
+function TouristAvatar({ tourist, size = "h-11 w-11", textSize = "text-sm" }) {
+  const [imgError, setImgError] = useState(false);
+
+  const imageUrl = buildAdminTouristAvatarUrl(tourist?.profile_image);
+  const showImage = Boolean(imageUrl) && !imgError;
+
+  const initials =
+    String(tourist?.name || tourist?.email || "T")
+      .trim()
+      .charAt(0)
+      .toUpperCase() || "T";
+
+  if (showImage) {
+    return (
+      <img
+        src={imageUrl}
+        alt={tourist?.name || "Tourist"}
+        className={`${size} rounded-2xl object-cover ring-1 ring-emerald-100`}
+        onError={() => setImgError(true)}
+      />
+    );
+  }
+
+  return (
+    <div
+      className={`flex ${size} items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 ${textSize} font-bold`}
+    >
+      {initials}
+    </div>
   );
 }
 
@@ -94,6 +127,16 @@ function TouristStatusModal({ tourist, onClose, onConfirm, submitting }) {
       onClose={onClose}
       maxWidth="max-w-lg"
     >
+      <div className="mb-4 flex items-center gap-3">
+        <TouristAvatar tourist={tourist} size="h-12 w-12" textSize="text-base" />
+        <div className="min-w-0">
+          <p className="truncate text-base font-bold text-slate-900">
+            {tourist.name || "-"}
+          </p>
+          <p className="truncate text-sm text-slate-500">{tourist.email}</p>
+        </div>
+      </div>
+
       <p className="text-[15px] leading-7 text-slate-600">
         Are you sure you want to{" "}
         <span className="font-semibold text-slate-900">
@@ -209,13 +252,16 @@ function TouristRowCard({ tourist, onOpenStatus, onView }) {
     >
       <div className="flex flex-col gap-4">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="truncate text-base font-bold text-slate-900">
-              {tourist.name || "-"}
-            </p>
-            <div className="mt-2 flex items-center gap-2 text-sm text-slate-500">
-              <FiMail size={15} />
-              <span className="truncate">{tourist.email}</span>
+          <div className="flex min-w-0 items-start gap-3">
+            <TouristAvatar tourist={tourist} size="h-12 w-12" textSize="text-base" />
+            <div className="min-w-0">
+              <p className="truncate text-base font-bold text-slate-900">
+                {tourist.name || "-"}
+              </p>
+              <div className="mt-2 flex items-center gap-2 text-sm text-slate-500">
+                <FiMail size={15} />
+                <span className="truncate">{tourist.email}</span>
+              </div>
             </div>
           </div>
           <StatusBadge blocked={tourist.is_blocked} />
@@ -540,9 +586,7 @@ export default function AdminTouristsPage() {
                             >
                               <td className="px-5 py-4">
                                 <div className="flex items-center gap-3">
-                                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
-                                    <FiUsers size={18} />
-                                  </div>
+                                  <TouristAvatar tourist={tourist} />
                                   <div className="min-w-0">
                                     <p className="truncate text-sm font-bold text-slate-900">
                                       {tourist.name || "-"}

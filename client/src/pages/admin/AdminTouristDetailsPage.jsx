@@ -21,6 +21,7 @@ import {
   deleteAdminTouristReview,
   getAdminTouristById,
   updateAdminTouristStatus,
+  buildAdminTouristAvatarUrl,
 } from "../../api/adminTouristsApi";
 
 function StatusBadge({ blocked }) {
@@ -39,6 +40,38 @@ function StatusBadge({ blocked }) {
       />
       {blocked ? "Blocked" : "Active"}
     </span>
+  );
+}
+
+function TouristAvatar({ tourist, size = "h-24 w-24", textSize = "text-3xl" }) {
+  const [imgError, setImgError] = useState(false);
+
+  const imageUrl = buildAdminTouristAvatarUrl(tourist?.profile_image);
+  const showImage = Boolean(imageUrl) && !imgError;
+
+  const initials =
+    String(tourist?.name || tourist?.email || "T")
+      .trim()
+      .charAt(0)
+      .toUpperCase() || "T";
+
+  if (showImage) {
+    return (
+      <img
+        src={imageUrl}
+        alt={tourist?.name || "Tourist"}
+        className={`${size} rounded-[28px] object-cover ring-1 ring-emerald-100`}
+        onError={() => setImgError(true)}
+      />
+    );
+  }
+
+  return (
+    <div
+      className={`flex ${size} items-center justify-center rounded-[28px] bg-emerald-100 font-black text-emerald-700 ${textSize}`}
+    >
+      {initials}
+    </div>
   );
 }
 
@@ -461,60 +494,74 @@ export default function AdminTouristDetailsPage() {
                       style={{ transformStyle: "preserve-3d" }}
                     >
                       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.10),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.08),transparent_24%)]" />
-                      <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <h2 className="text-xl font-bold tracking-tight text-slate-900">
-                            Account Overview
-                          </h2>
-                          <p className="mt-1 text-sm font-medium text-slate-500">
-                            Main profile information and status.
-                          </p>
+                      <div className="relative">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <h2 className="text-xl font-bold tracking-tight text-slate-900">
+                              Account Overview
+                            </h2>
+                            <p className="mt-1 text-sm font-medium text-slate-500">
+                              Main profile information and status.
+                            </p>
+                          </div>
+                          <StatusBadge blocked={tourist.is_blocked} />
                         </div>
-                        <StatusBadge blocked={tourist.is_blocked} />
-                      </div>
 
-                      <div className="relative mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-2">
-                        <InfoCard
-                          icon={<FiUser size={20} />}
-                          label="Tourist Name"
-                          value={tourist.name}
-                        />
-                        <InfoCard
-                          icon={<FiMail size={20} />}
-                          label="Email"
-                          value={tourist.email}
-                        />
-                        <InfoCard
-                          icon={<FiPhone size={20} />}
-                          label="Phone"
-                          value={tourist.phone}
-                        />
-                        <InfoCard
-                          icon={<FiCalendar size={20} />}
-                          label="Signup Date"
-                          value={formatDateOnly(tourist.created_at)}
-                        />
-                        <InfoCard
-                          icon={<FiShield size={20} />}
-                          label="Account Status"
-                          value={tourist.is_blocked ? "Blocked" : "Active"}
-                        />
-                      </div>
+                        <div className="mt-5 flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+                          <TouristAvatar tourist={tourist} />
+                          <div className="min-w-0">
+                            <h3 className="text-xl font-bold text-slate-900">
+                              {tourist.name || "-"}
+                            </h3>
+                            <p className="mt-1 break-all text-sm text-slate-500">
+                              {tourist.email || "-"}
+                            </p>
+                          </div>
+                        </div>
 
-                      <div className="relative mt-5">
-                        <motion.button
-                          whileHover={{ y: -2 }}
-                          whileTap={{ scale: 0.985 }}
-                          type="button"
-                          onClick={() => setStatusModalOpen(true)}
-                          className={`rounded-2xl px-5 py-3 text-sm font-semibold text-white shadow-lg transition ${
-                            tourist.is_blocked
-                              ? "bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600"
-                              : "bg-gradient-to-r from-red-600 to-rose-500 hover:from-red-700 hover:to-rose-600"
-                          }`}
-                        >
-                          {tourist.is_blocked ? "Unblock Tourist" : "Block Tourist"}
-                        </motion.button>
+                        <div className="relative mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-2">
+                          <InfoCard
+                            icon={<FiUser size={20} />}
+                            label="Tourist Name"
+                            value={tourist.name}
+                          />
+                          <InfoCard
+                            icon={<FiMail size={20} />}
+                            label="Email"
+                            value={tourist.email}
+                          />
+                          <InfoCard
+                            icon={<FiPhone size={20} />}
+                            label="Phone"
+                            value={tourist.phone}
+                          />
+                          <InfoCard
+                            icon={<FiCalendar size={20} />}
+                            label="Signup Date"
+                            value={formatDateOnly(tourist.created_at)}
+                          />
+                          <InfoCard
+                            icon={<FiShield size={20} />}
+                            label="Account Status"
+                            value={tourist.is_blocked ? "Blocked" : "Active"}
+                          />
+                        </div>
+
+                        <div className="relative mt-5">
+                          <motion.button
+                            whileHover={{ y: -2 }}
+                            whileTap={{ scale: 0.985 }}
+                            type="button"
+                            onClick={() => setStatusModalOpen(true)}
+                            className={`rounded-2xl px-5 py-3 text-sm font-semibold text-white shadow-lg transition ${
+                              tourist.is_blocked
+                                ? "bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600"
+                                : "bg-gradient-to-r from-red-600 to-rose-500 hover:from-red-700 hover:to-rose-600"
+                            }`}
+                          >
+                            {tourist.is_blocked ? "Unblock Tourist" : "Block Tourist"}
+                          </motion.button>
+                        </div>
                       </div>
                     </motion.div>
 
