@@ -31,6 +31,7 @@ import {
   updateAgencyBlog,
   deleteAgencyBlog,
 } from "../../api/agencyBlogsApi";
+import { toPublicImageUrl } from "../../utils/publicImageUrl";
 
 const BLOG_TYPES = [
   "Adventure",
@@ -42,10 +43,6 @@ const BLOG_TYPES = [
 
 const MAX_IMAGE_SIZE_MB = 5;
 const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
-
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:5001/api";
-const SERVER_BASE_URL = API_BASE_URL.replace(/\/api\/?$/, "");
 
 const FALLBACK_BLOG_IMAGE =
   "data:image/svg+xml;utf8," +
@@ -62,11 +59,7 @@ const FALLBACK_BLOG_IMAGE =
   `);
 
 function resolveImageUrl(value) {
-  const raw = String(value || "").trim();
-  if (!raw) return FALLBACK_BLOG_IMAGE;
-  if (/^https?:\/\//i.test(raw)) return raw;
-  if (raw.startsWith("/")) return `${SERVER_BASE_URL}${raw}`;
-  return `${SERVER_BASE_URL}/${raw}`;
+  return toPublicImageUrl(value) || FALLBACK_BLOG_IMAGE;
 }
 
 function escapeHtml(text) {
@@ -571,6 +564,9 @@ function EditBlogModal({ open, blog, onClose, onSaved, token }) {
                   src={previewUrl || resolveImageUrl(blog.image_url)}
                   alt={blog.title}
                   className="h-60 w-full object-cover transition duration-700 group-hover:scale-[1.03]"
+                  onError={(e) => {
+                    e.currentTarget.src = FALLBACK_BLOG_IMAGE;
+                  }}
                 />
               </div>
 
@@ -760,6 +756,9 @@ function BlogTableRow({ blog, onEdit, onDelete, index, total }) {
             src={resolveImageUrl(blog.image_url)}
             alt={blog.title}
             className="h-full w-full object-cover"
+            onError={(e) => {
+              e.currentTarget.src = FALLBACK_BLOG_IMAGE;
+            }}
           />
           <div className="absolute inset-0 bg-gradient-to-tr from-slate-950/10 to-transparent" />
         </div>
@@ -821,6 +820,9 @@ function BlogMobileCard({ blog, onEdit, onDelete }) {
             src={resolveImageUrl(blog.image_url)}
             alt={blog.title}
             className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+            onError={(e) => {
+              e.currentTarget.src = FALLBACK_BLOG_IMAGE;
+            }}
           />
         </div>
 

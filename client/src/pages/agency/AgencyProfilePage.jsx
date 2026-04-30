@@ -1,6 +1,6 @@
 // client/src/pages/agency/AgencyProfilePage.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "framer-motion";
 import Tilt from "react-parallax-tilt";
 import { FiBell, FiKey, FiSave } from "react-icons/fi";
 import AgencyLayout from "../../components/agency/AgencyLayout";
@@ -125,7 +125,9 @@ function ChangeAgencyPasswordModal({ open, onClose, token, onSuccess, onError })
     if (!/[A-Z]/.test(newPassword)) return "New password must include an uppercase letter.";
     if (!/[a-z]/.test(newPassword)) return "New password must include a lowercase letter.";
     if (!/[0-9]/.test(newPassword)) return "New password must include a number.";
-    if (!/[^A-Za-z0-9]/.test(newPassword)) return "New password must include a special character.";
+    if (!/[^A-Za-z0-9]/.test(newPassword)) {
+      return "New password must include a special character.";
+    }
     if (newPassword !== confirmPassword) return "Passwords do not match.";
     if (currentPassword === newPassword) {
       return "New password must be different from current password.";

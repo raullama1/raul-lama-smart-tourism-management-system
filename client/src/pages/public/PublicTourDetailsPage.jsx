@@ -13,16 +13,7 @@ import {
   addToWishlist,
   removeFromWishlist,
 } from "../../api/wishlistApi";
-
-const API_ORIGIN = "http://localhost:5001";
-
-function toPublicImageUrl(raw) {
-  const s = String(raw || "").trim();
-  if (!s) return "";
-  if (s.startsWith("http://") || s.startsWith("https://")) return s;
-  if (s.startsWith("/")) return `${API_ORIGIN}${s}`;
-  return `${API_ORIGIN}/${s}`;
-}
+import { toPublicImageUrl } from "../../utils/publicImageUrl";
 
 export default function PublicTourDetailsPage() {
   const { token } = useAuth();
@@ -142,15 +133,15 @@ export default function PublicTourDetailsPage() {
           <Navbar />
 
           {loading ? (
-            <main className="min-h-screen pt-6 pb-10 text-center text-sm text-gray-500">
+            <main className="min-h-screen pb-10 pt-6 text-center text-sm text-gray-500">
               Loading...
             </main>
           ) : !tour ? (
-            <main className="min-h-screen pt-6 pb-10 text-center text-sm text-red-500">
+            <main className="min-h-screen pb-10 pt-6 text-center text-sm text-red-500">
               Tour not found.
             </main>
           ) : (
-            <main className="min-h-screen pt-6 pb-10">
+            <main className="min-h-screen pb-10 pt-6">
               <div className="mx-auto max-w-6xl space-y-6 px-4 md:px-6">
                 <motion.section
                   initial={{ opacity: 0, y: 18 }}
@@ -159,7 +150,10 @@ export default function PublicTourDetailsPage() {
                   className="overflow-hidden rounded-3xl bg-white shadow-sm"
                 >
                   <img
-                    src={toPublicImageUrl(tour.image_url)}
+                    src={
+                      toPublicImageUrl(tour.image_url) ||
+                      "https://via.placeholder.com/1200x600?text=Tour+Image"
+                    }
                     alt={tour.title}
                     className="h-56 w-full object-cover transition-transform duration-700 hover:scale-[1.02] md:h-72 lg:h-80"
                     onError={(e) => {
@@ -246,7 +240,10 @@ export default function PublicTourDetailsPage() {
                     All Agencies offering this Tour
                   </h2>
 
-                  <TourAgenciesList agencies={agencies} onLoginAlert={requireLogin} />
+                  <TourAgenciesList
+                    agencies={agencies}
+                    onLoginAlert={requireLogin}
+                  />
                 </motion.section>
               </div>
             </main>

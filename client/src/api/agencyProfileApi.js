@@ -58,13 +58,20 @@ export async function changeAgencyPassword(token, payload) {
 export function buildAgencyAvatarUrl(profileImage) {
   if (!profileImage) return "";
 
-  const base =
-    import.meta.env.VITE_API_BASE_URL || "http://localhost:5001/api";
-  const serverBase = base.replace(/\/api\/?$/, "");
+  const raw = String(profileImage).trim();
+  if (!raw) return "";
 
-  const normalized = String(profileImage).startsWith("/")
-    ? profileImage
-    : `/${profileImage}`;
+  if (raw.startsWith("http://") || raw.startsWith("https://")) {
+    return raw;
+  }
 
-  return `${serverBase}${normalized}`;
+  const serverBase =
+    import.meta.env.VITE_API_ORIGIN ||
+    "https://raul-lama-smart-tourism-management-system-production.up.railway.app";
+
+  if (raw.startsWith("/")) {
+    return `${serverBase}${raw}`;
+  }
+
+  return `${serverBase}/${raw}`;
 }
